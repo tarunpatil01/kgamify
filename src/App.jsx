@@ -1,10 +1,16 @@
-import { BrowserRouter as Router, Route, Routes, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import "./App.css";
 import backgroundImage from "./assets/background.jpg";
 import Register from "./Register";
 import Dashboard from "./Dashboard";
+import PostJob from "./PostJob";
+import Applications from "./Applications";
+import JobPosted from "./JobPosted";
+import Navbar from "./components/Navbar";
+import Sidebar from "./components/Sidebar";
+import { useState, useEffect } from "react";
 
-function Login() {
+function Login() {  
   const navigate = useNavigate();
 
   const handleSubmit = (event) => {
@@ -12,12 +18,17 @@ function Login() {
     navigate("/dashboard");
   };
 
+  useEffect(() => {
+    const img = new Image();
+    img.src = backgroundImage;
+  }, []);
+
   return (
     <div
       className="flex justify-center items-center h-screen bg-cover bg-center"
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
-      <div className="bg-white bg-opacity-90 p-8 rounded shadow-md w-full max-w-md">
+      <div className="bg-white bg-opacity-90 p-8 rounded-xl shadow-md w-full max-w-md">
         <img
           src="src/assets/KLOGO.png"
           alt="Kgamify Logo"
@@ -71,14 +82,50 @@ function Login() {
   );
 }
 
+function AppContent() {
+  const location = useLocation();
+  const showNavbar = location.pathname !== "/" && location.pathname !== "/register";
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem("theme") === "dark";
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDarkMode]);
+
+  const handleThemeToggle = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  return (
+    <div className={`flex ${isDarkMode ? "dark" : ""}`}>
+      {showNavbar && <Sidebar onToggle={setIsSidebarOpen} onThemeToggle={handleThemeToggle} isDarkMode={isDarkMode} />}
+      <div className="flex-grow">
+        {showNavbar && <Navbar isSidebarOpen={isSidebarOpen} onThemeToggle={handleThemeToggle} isDarkMode={isDarkMode} />}
+        <Routes>
+          <Route path="/register" element={<Register />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/post-job" element={<PostJob />} />
+          <Route path="/applications" element={<Applications />} />
+          <Route path="/job-posted" element={<JobPosted />} />
+          <Route path="/" element={<Login />} />
+        </Routes>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/" element={<Login />} />
-      </Routes>
+      <AppContent />
     </Router>
   );
 }
