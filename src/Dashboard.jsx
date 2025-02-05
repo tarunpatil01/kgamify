@@ -1,27 +1,18 @@
 import React from "react";
+import DashboardImage from "./assets/dashboard.png";
 
 const Dashboard = () => {
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg">
-        <div className="p-5 font-bold text-lg">Dashboard</div>
-        <nav className="mt-5">
-          <ul>
-            <li className="bg-red-500 text-white p-3 rounded">Dashboard</li>
-            <li className="p-3">Post Job</li>
-            <li className="p-3">Job Posted</li>
-            <li className="p-3">Application</li>
-            <li className="p-3">Company Registration</li>
-          </ul>
-        </nav>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 p-6">
-        <div className="bg-red-500 text-white p-6 rounded-lg flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">Welcome To kgamify Job Portal Company Name</h1>
-          <div className="w-24 h-24 bg-white rounded-full"></div>
+    <div className="flex flex-col p-4 h-screen bg-gray-100">
+      
+      <div className="flex-1  ">
+        <div className="bg-[#C30E59] text-white rounded-lg flex justify-between items-center">
+          <div className="ml-10">
+            <h1 className="text-3xl font-light">Welcome To kgamify Job Portal</h1>
+            <h1 className="text-3xl font-light">Company Name</h1>
+            </div>
+          <img className="mr-25 p-0 w-64 h-48 rounded-xl" src={DashboardImage} alt="Dashboard" />
+        </div>
         </div>
 
         {/* Job Statistics */}
@@ -43,7 +34,7 @@ const Dashboard = () => {
           <h2 className="text-xl font-bold">Recent Job Posts</h2>
           <table className="w-full mt-4 border-collapse">
             <thead>
-              <tr className="bg-gray-200">
+              <tr className="bg-blue-50">
                 <th className="p-3 text-left">Job Title</th>
                 <th className="p-3 text-left">Category</th>
                 <th className="p-3 text-left">Openings</th>
@@ -59,7 +50,7 @@ const Dashboard = () => {
                 { title: "Android Dev", category: "Full Time", openings: 4, applications: 45, status: "Active" },
                 { title: "IOS Developer", category: "Full Time", openings: 18, applications: 96, status: "Inactive" }
               ].map((job, index) => (
-                <tr key={index} className="border-t">
+                <tr key={index} className="border-t bg-gray-50">
                   <td className="p-3">{job.title}</td>
                   <td className="p-3">{job.category}</td>
                   <td className="p-3">{job.openings}</td>
@@ -75,7 +66,7 @@ const Dashboard = () => {
           </table>
         </div>
       </div>
-    </div>
+    
   );
 };
 
