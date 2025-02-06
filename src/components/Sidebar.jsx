@@ -16,8 +16,8 @@ function Sidebar({ onToggle, onThemeToggle, isDarkMode }) {
   };
 
   return (
-    <div className={`flex flex-col h-screen bg-white shadow-lg ${isOpen ? "w-60" : "w-16"} transition-width duration-300`}>
-      <div className="flex items-center justify-between p-3">
+    <div className={`flex flex-col min-h-max bg-white shadow-lg ${isOpen ? "w-60" : "w-16"} transition-width duration-300`}>
+      <div className="flex min-h-fit items-center justify-between p-3">
         <button onClick={toggleSidebar}>
           <FaBars className="h-8 w-8 transform scale-x-80 scale-y-75"/>
         </button>
@@ -41,12 +41,6 @@ function Sidebar({ onToggle, onThemeToggle, isDarkMode }) {
             <li className="flex items-center p-3 hover:bg-gray-200">
               <FaClipboardList className="h-6 w-8 mr-3 text-black" />
               {isOpen && <span className="text-black">Job Posted</span>}
-            </li>
-          </Link>
-          <Link to="/applications">
-            <li className="flex items-center p-3 hover:bg-gray-200">
-              <FaFileAlt className="h-6 w-8 mr-3 text-black" />
-              {isOpen && <span className="text-black">Applications</span>}
             </li>
           </Link>
           <Link to="/company-registration">

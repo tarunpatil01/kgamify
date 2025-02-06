@@ -1,11 +1,11 @@
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import "./App.css";
 import backgroundImage from "./assets/background.jpg";
-import Register from "./Register";
-import Dashboard from "./Dashboard";
-import PostJob from "./PostJob";
-import Applications from "./Applications";
-import JobPosted from "./JobPosted";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import PostJob from "./pages/PostJob";
+import JobPosted from "./pages/JobPosted";
+import Job from "./JobApplications/job"; // Add this import
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import { useState, useEffect } from "react";
@@ -113,8 +113,8 @@ function AppContent() {
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/post-job" element={<PostJob />} />
-          <Route path="/applications" element={<Applications />} />
           <Route path="/job-posted" element={<JobPosted />} />
+          <Route path="/job/:jobId" element={<Job />} />
           <Route path="/" element={<Login />} />
         </Routes>
       </div>
