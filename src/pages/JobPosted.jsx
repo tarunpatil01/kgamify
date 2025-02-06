@@ -1,74 +1,74 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
-const JobPosted = () => {
-  const jobs = [
-    {
-      id: 1,
-      title: "Senior Software Engineer",
-      salary: "₹150K - ₹220K",
-      location: "Bengaluru - In Office",
-      type: "Engineering",
-      applicants: 90,
-    },
-    {
-      id: 2,
-      title: "Machine Learning Engineer",
-      salary: "₹160K - ₹220K",
-      location: "Remote",
-      type: "Engineering",
-      applicants: 90,
-    },
-    {
-      id: 3,
-      title: "Data Scientist",
-      salary: "₹140K - ₹180K",
-      location: "Bengaluru - In Office",
-      type: "Data",
-      applicants: 90,
-    },
-    {
-      id: 4,
-      title: "UX Designer",
-      salary: "$120K - $160K",
-      location: "Remote",
-      type: "Design",
-      applicants: 90,
-    },
-    {
-      id: 5,
-      title: "Product Manager",
-      salary: "$130K - $170K",
-      location: "Chennai - In Office",
-      type: "Product",
-      applicants: 90,
-    },
-    {
-      id: 6,
-      title: "Site Reliability Engineer",
-      salary: "$140K - $190K",
-      location: "Remote",
-      type: "Engineering",
-      applicants: 90,
-    },
-    {
-      id: 7,
-      title: "Technical Writer",
-      salary: "$100K - $140K",
-      location: "Bengaluru - In Office",
-      type: "Product",
-      applicants: 90,
-    },
-    {
-      id: 8,
-      title: "Security Engineer",
-      salary: "$130K - $180K",
-      location: "Remote",
-      type: "Engineering",
-      applicants: 90,
-    },
-  ];
+export const jobs = [
+  {
+    id: 1,
+    title: "Senior Software Engineer",
+    salary: "₹150K - ₹220K",
+    location: "Bengaluru - In Office",
+    type: "Engineering",
+    applicants: 90,
+  },
+  {
+    id: 2,
+    title: "Machine Learning Engineer",
+    salary: "₹160K - ₹220K",
+    location: "Remote",
+    type: "Engineering",
+    applicants: 90,
+  },
+  {
+    id: 3,
+    title: "Data Scientist",
+    salary: "₹140K - ₹180K",
+    location: "Bengaluru - In Office",
+    type: "Data",
+    applicants: 90,
+  },
+  {
+    id: 4,
+    title: "UX Designer",
+    salary: "$120K - $160K",
+    location: "Remote",
+    type: "Design",
+    applicants: 90,
+  },
+  {
+    id: 5,
+    title: "Product Manager",
+    salary: "$130K - $170K",
+    location: "Chennai - In Office",
+    type: "Product",
+    applicants: 90,
+  },
+  {
+    id: 6,
+    title: "Site Reliability Engineer",
+    salary: "$140K - $190K",
+    location: "Remote",
+    type: "Engineering",
+    applicants: 90,
+  },
+  {
+    id: 7,
+    title: "Technical Writer",
+    salary: "$100K - $140K",
+    location: "Bengaluru - In Office",
+    type: "Product",
+    applicants: 90,
+  },
+  {
+    id: 8,
+    title: "Security Engineer",
+    salary: "$130K - $180K",
+    location: "Remote",
+    type: "Engineering",
+    applicants: 90,
+  },
+];
 
+const JobPosted = () => {
   const [filteredJobs, setFilteredJobs] = useState(jobs);
   const [selectedType, setSelectedType] = useState("All");
 
