@@ -1,12 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 function Register() {
   const navigate = useNavigate();
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const handleSubmit = (event) => {
     event.preventDefault();
     navigate("/dashboard");
+  };
+
+  const togglePasswordVisibility = () => {
+    setPasswordVisible(!passwordVisible);
   };
 
   return (
@@ -132,6 +138,29 @@ function Register() {
                 type="file"
                 className="w-full p-4 border border-gray-300 rounded mt-2"
               />
+            </div>
+          </div>
+          <div>
+            <h2 className="text-2xl font-semibold mb-6 text-gray-700">Password</h2>
+            <div className="mb-6 relative">
+              <label className="block text-gray-700">Password</label>
+              <input
+                type={passwordVisible ? "text" : "password"}
+                className="w-full p-4 border border-gray-300 rounded mt-2"
+                pattern="(?=.\d)(?=.[a-z])(?=.*[A-Z]).{8,}"
+                title="Must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters"
+                required
+              />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2"
+              >
+                {passwordVisible ? <FaEyeSlash /> : <FaEye />}
+              </button>
+              <p className="text-sm text-gray-600 mt-2">
+                Password must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters.
+              </p>
             </div>
           </div>
           <div>

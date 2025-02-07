@@ -5,9 +5,12 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import PostJob from "./pages/PostJob";
 import JobPosted from "./pages/JobPosted";
-import Job from "./JobApplications/job"; // Add this import
+import Job from "./JobApplications/job"; 
+import ForgotPassword from "./pages/ForgetPassword";
+import EditRegistration from "./pages/EditRegistration";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
+import Footer from "./components/Footer";
 import { useState, useEffect } from "react";
 
 function Login() {  
@@ -65,7 +68,7 @@ function Login() {
           </button>
         </form>
         <div className="mt-6 text-center">
-          <a href="#" className="text-blue-600 hover:underline">
+          <a href="/forgot-password" className="text-blue-600 hover:underline">
             Forgot password?
           </a>
         </div>
@@ -84,7 +87,8 @@ function Login() {
 
 function AppContent() {
   const location = useLocation();
-  const showNavbar = location.pathname !== "/" && location.pathname !== "/register";
+  const showNavbar = location.pathname !== "/" && location.pathname !== "/register" && location.pathname !== "/forgot-password";
+  const showSidebar = location.pathname !== "/" && location.pathname !== "/register" && location.pathname !== "/forgot-password";
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem("theme") === "dark";
@@ -105,18 +109,21 @@ function AppContent() {
   };
 
   return (
-    <div className={`flex ${isDarkMode ? "dark" : ""}`}>
-      {showNavbar && <Sidebar onToggle={setIsSidebarOpen} onThemeToggle={handleThemeToggle} isDarkMode={isDarkMode} />}
+    <div className={`flex ${isDarkMode ? "dark bg-gray-900 " : ""}`}>
+      {showSidebar && <Sidebar onToggle={setIsSidebarOpen} onThemeToggle={handleThemeToggle} isDarkMode={isDarkMode} />}
       <div className="flex-grow">
         {showNavbar && <Navbar isSidebarOpen={isSidebarOpen} onThemeToggle={handleThemeToggle} isDarkMode={isDarkMode} />}
         <Routes>
-          <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/post-job" element={<PostJob />} />
-          <Route path="/job-posted" element={<JobPosted />} />
-          <Route path="/job/:jobId" element={<Job />} />
+          <Route path="/register" element={<Register isDarkMode={isDarkMode} />} />
+          <Route path="/dashboard" element={<Dashboard isDarkMode={isDarkMode} />} />
+          <Route path="/post-job" element={<PostJob isDarkMode={isDarkMode} />} />
+          <Route path="/job-posted" element={<JobPosted isDarkMode={isDarkMode} />} />
+          <Route path="/forgot-password" element={<ForgotPassword isDarkMode={isDarkMode} />} />
+          <Route path="/EditRegistration" element={<EditRegistration isDarkMode={isDarkMode} />} />
+          <Route path="/job/:jobId" element={<Job isDarkMode={isDarkMode} />} />
           <Route path="/" element={<Login />} />
         </Routes>
+        <Footer isDarkMode={isDarkMode} />
       </div>
     </div>
   );
