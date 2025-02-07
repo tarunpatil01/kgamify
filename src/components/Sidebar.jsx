@@ -1,10 +1,16 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FaBars, FaHome, FaBriefcase, FaFileAlt, FaBuilding, FaMoon, FaSun, FaClipboardList, FaSignOutAlt } from "react-icons/fa";
 
 function Sidebar({ onToggle, onThemeToggle, isDarkMode }) {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isForgetPasswordPage = location.pathname === "/forgot-password";
+
+  if (isForgetPasswordPage) {
+    return null;
+  }
 
   const toggleSidebar = () => {
     setIsOpen(!isOpen);
@@ -16,8 +22,8 @@ function Sidebar({ onToggle, onThemeToggle, isDarkMode }) {
   };
 
   return (
-    <div className={`flex flex-col min-h-max bg-white shadow-lg ${isOpen ? "w-60" : "w-16"} transition-width duration-300`}>
-      <div className="flex min-h-fit items-center justify-between p-3">
+    <div className={`flex flex-col h-full ${isDarkMode ? "bg-gray-900 text-white" : "bg-white text-black"} shadow-lg ${isOpen ? "w-60" : "w-16"} transition-width duration-300`}>
+      <div className="flex items-center justify-between p-3">
         <button onClick={toggleSidebar}>
           <FaBars className="h-8 w-8 transform scale-x-80 scale-y-75"/>
         </button>
@@ -26,42 +32,48 @@ function Sidebar({ onToggle, onThemeToggle, isDarkMode }) {
       <nav className="mt-5 flex-grow">
         <ul>
           <Link to="/dashboard">
-            <li className="flex items-center p-3 hover:bg-gray-200">
-              <FaHome className="h-6 w-8 mr-3 text-black" />
-              {isOpen && <span className="text-black">Dashboard</span>}
+            <li className="flex items-center p-3 hover:bg-gray-200 dark:hover:bg-gray-100">
+              <FaHome className="h-6 w-8 mr-3" />
+              {isOpen && <span>Dashboard</span>}
             </li>
           </Link>
-          <Link to="/post-job">
-            <li className="flex items-center p-3 hover:bg-gray-200">
-              <FaBriefcase className="h-6 w-8 mr-3 text-black" />
-              {isOpen && <span className="text-black">Post Job</span>}
+          <Link to="/post-job" state={{ isDarkMode }}>
+            <li className="flex items-center p-3 hover:bg-gray-200 dark:hover:bg-gray-100">
+              <FaBriefcase className="h-6 w-8 mr-3" />
+              {isOpen && <span>Post Job</span>}
             </li>
           </Link>
           <Link to="/job-posted">
-            <li className="flex items-center p-3 hover:bg-gray-200">
-              <FaClipboardList className="h-6 w-8 mr-3 text-black" />
-              {isOpen && <span className="text-black">Job Posted</span>}
+            <li className="flex items-center p-3 hover:bg-gray-200 dark:hover:bg-gray-100">
+              <FaClipboardList className="h-6 w-8 mr-3" />
+              {isOpen && <span>Job Posted</span>}
             </li>
           </Link>
-          <Link to="/company-registration">
-            <li className="flex items-center p-3 hover:bg-gray-200">
-              <FaBuilding className="h-6 w-8 mr-3 text-black" />
-              {isOpen && <span className="text-black">Company Registration</span>}
+          <Link to="/EditRegistration">
+            <li className="flex items-center p-3 hover:bg-gray-200 dark:hover:bg-gray-100">
+              <FaBuilding className="h-6 w-8 mr-3" />
+              {isOpen && <span>Edit Registration</span>}
             </li>
           </Link>
         </ul>
       </nav>
-      <div className="flex p-3 hover:bg-gray-200 text-lg items-center">
-        <button onClick={onThemeToggle} className="flex items-center">
-          {isDarkMode ? <FaSun className="h-6 w-8 mr-3" /> : <FaMoon className="h-6 w-8 mr-3" />}
-          {isOpen && (isDarkMode ? "Light Mode" : "Dark Mode")}
-        </button>
-      </div>
-      <div className="flex p-3 hover:bg-gray-200 text-lg items-center">
-        <button onClick={handleLogout} className="flex items-center">
-          <FaSignOutAlt className="h-6 w-8 mr-3" />
-          {isOpen && "Logout"}
-        </button>
+      <div className="  ">
+        <div className="flex p-3 hover:bg-gray-200 dark:hover:bg-gray-100 text-lg items-center">
+          <Link>
+          <button onClick={onThemeToggle} className="flex items-center">
+            {isDarkMode ? <FaSun className="h-6 w-8 mr-3" /> : <FaMoon className="h-6 w-8 mr-3" />}
+            {isOpen && (isDarkMode ? "Light Mode" : "Dark Mode")}
+          </button>
+          </Link>
+        </div>
+        <div className="flex p-3 hover:bg-gray-200 dark:hover:bg-gray-100 text-lg items-center">
+          <Link>
+          <button onClick={handleLogout} className="flex items-center">
+            <FaSignOutAlt className="h-6 w-8 mr-3" />
+            {isOpen && "Logout"}
+          </button>
+          </Link>
+        </div>
       </div>
     </div>
   );

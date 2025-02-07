@@ -1,9 +1,16 @@
 import React from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Route, Routes } from "react-router-dom";
 import { FaSun, FaMoon } from "react-icons/fa";
+import PostJob from "../pages/PostJob";
 
 function Navbar({ isSidebarOpen, onThemeToggle, isDarkMode }) {
   const location = useLocation();
+  const isForgetPasswordPage = location.pathname === "/forgot-password";
+
+  if (isForgetPasswordPage) {
+    return null;
+  }
+
   let pageTitle = "";
 
   switch (location.pathname) {
@@ -27,8 +34,8 @@ function Navbar({ isSidebarOpen, onThemeToggle, isDarkMode }) {
   }
 
   return (
-    <nav className={`bg-white  text-[#C30E59] p-2 flex justify-between items-center transition-all duration-300 ${isSidebarOpen ? "ml-20" : "ml-16"}`}>
-      <h1 className="text-xl font-bold">{pageTitle}</h1>
+    <nav className={`p-2 flex justify-between items-center transition-all duration-300  ${isDarkMode ? "bg-gray-900 text-white" : "bg-white text-[#C30E59]"}`}>
+      <h1 className="text-xl font-bold ml-10">{pageTitle}</h1>
       <div className="flex items-center">
         <button onClick={onThemeToggle} className="mr-4">
           {isDarkMode ? <FaSun className="h-6 w-6 text-yellow-500" /> : <FaMoon className="h-6 w-6 text-gray-500" />}
