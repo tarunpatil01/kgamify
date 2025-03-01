@@ -57,22 +57,18 @@ function Sidebar({ onToggle, onThemeToggle, isDarkMode }) {
           </Link>
         </ul>
       </nav>
-      <div className="  ">
+      <div className="mt-auto">
         <div className="flex p-3 hover:bg-gray-200 dark:hover:bg-gray-100 text-lg items-center">
-          <Link>
-          <button onClick={onThemeToggle} className="flex items-center">
-            {isDarkMode ? <FaSun className="h-6 w-8 mr-3" /> : <FaMoon className="h-6 w-8 mr-3" />}
+          <button onClick={onThemeToggle} className="flex items-center text-blue-800">
+            {isDarkMode ? <FaMoon className="h-6 w-8 mr-3" /> : <FaSun className="h-6 w-8 mr-3" />}
             {isOpen && (isDarkMode ? "Light Mode" : "Dark Mode")}
           </button>
-          </Link>
         </div>
-        <div className="flex p-3 hover:bg-gray-200 dark:hover:bg-gray-100 text-lg items-center">
-          <Link>
+        <div className="flex p-3 text-blue-800 hover:bg-gray-200 dark:hover:bg-gray-100 text-lg items-center">
           <button onClick={handleLogout} className="flex items-center">
             <FaSignOutAlt className="h-6 w-8 mr-3" />
             {isOpen && "Logout"}
           </button>
-          </Link>
         </div>
       </div>
     </div>
