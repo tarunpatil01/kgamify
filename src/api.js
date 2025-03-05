@@ -59,3 +59,13 @@ export const getJobById = async (jobId) => {
     throw error;
   }
 };
+
+export const getCompanyInfo = async (companyId) => {
+  try {
+    const response = await axios.get(`${API_URL}/company/${companyId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching company details:", error);
+    throw error;
+  }
+};

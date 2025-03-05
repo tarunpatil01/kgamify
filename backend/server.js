@@ -1,27 +1,96 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const passport = require('passport');
+const session = require('express-session');
 const cors = require('cors');
-require('dotenv').config();
+const jwt = require('jsonwebtoken');
+const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
+require('./config/passport'); // Import passport configuration
 
 const app = express();
 const port = process.env.PORT || 5000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
+app.use(session({ secret: 'your-secret-key', resave: false, saveUninitialized: true }));
+app.use(passport.initialize());
+app.use(passport.session());
 
+// Middleware to verify JWT token
+function verifyToken(req, res, next) {
+  const token = req.headers["authorization"];
+  if (!token) return res.status(403).json({ message: "No token provided" });
+
+  jwt.verify(token, "your_secret_key", (err, decoded) => {
+    if (err) return res.status(401).json({ message: "Unauthorized" });
+    req.user = decoded.user;
+    next();
+  });
+}
+
+// Google OAuth strategy
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: 'http://localhost:3000/api/auth/callback/google',
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        let company = await Company.findOne({ googleId: profile.id });
+        if (!company) {
+          company = new Company({
+            googleId: profile.id,
+            email: profile.emails[0].value,
+            companyName: profile.displayName,
+            // Add other fields as necessary
+          });
+          await company.save();
+        }
+        return done(null, company);
+      } catch (err) {
+        return done(err, false);
+      }
+    }
+  )
+);
+
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/company', require('./routes/company'));
+app.use('/api/application', require('./routes/application'));
+app.use('/api/job', require('./routes/job')); // Use job routes
+
+// Google OAuth login route
+app.get(
+  '/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+// Google OAuth callback route
+app.get(
+  '/auth/google/callback',
+  passport.authenticate('google', { session: false }),
+  (req, res) => {
+    const token = jwt.sign({ user: req.user }, 'your_secret_key', {
+      expiresIn: '1h',
+    });
+    res.json({ token, user: req.user });
+  }
+);
+
+// Protected route
+app.get("/protected", verifyToken, (req, res) => {
+  res.json({ message: "You are authorized", user: req.user });
+});
+
+// Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
-
-// Import routes
-const companyRoutes = require('./routes/company');
-const applicationRoutes = require('./routes/application');
-const jobRoutes = require('./routes/job'); // Import job routes
-
-// Use routes
-app.use('/api/company', companyRoutes);
-app.use('/api/application', applicationRoutes);
-app.use('/api/job', jobRoutes); // Use job routes
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
