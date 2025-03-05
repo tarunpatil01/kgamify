@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { FaEdit } from "react-icons/fa";
+import { getCompanyInfo } from "../api"; // Import the new function
 
 function EditRegistration({ isDarkMode }) {
   const [companyDetails, setCompanyDetails] = useState({
-    companyName: "Example Company",
+    companyName: "",
     logo: null,
     website: "",
-    industry: "Technology",
+    industry: "",
     type: "",
     size: "",
     contactName: "",
     email: "",
     phone: "",
     address: "",
-    registrationNumber: "123456",
-    yearEstablished: "2000",
+    registrationNumber: "",
+    yearEstablished: "",
     documents: null,
     description: "",
     socialMediaLinks: "",
@@ -23,19 +24,8 @@ function EditRegistration({ isDarkMode }) {
   useEffect(() => {
     const fetchCompanyDetails = async () => {
       try {
-        const response = await fetch("/api/companies/details/67b725dd2f143dd55cb8ae04"); // Use the correct company ID
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const data = await response.json();
-          setCompanyDetails(data);
-        } else {
-          const text = await response.text();
-          console.error("Received non-JSON response:", text);
-          throw new Error("Received non-JSON response");
-        }
+        const data = await getCompanyInfo("67b725dd2f143dd55cb8ae04"); // Use the correct company ID
+        setCompanyDetails(data);
       } catch (error) {
         console.error("Error fetching company details:", error);
       }
