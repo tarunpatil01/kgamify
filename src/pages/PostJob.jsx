@@ -13,7 +13,7 @@ import { createJob } from "../api"; // Import createJob function
 
 const jobTitles = ["Software Engineer", "Product Manager", "Designer", "Data Scientist"]; // Add job titles array
 
-export default function PostJob({ isDarkMode }) {
+export default function PostJob({ isDarkMode, email }) { // Add email prop
   const [formData, setFormData] = useState({
     jobTitle: "",
     jobDescription: "",
@@ -35,6 +35,8 @@ export default function PostJob({ isDarkMode }) {
     numberOfPositions: "",
     category: "",
     tags: "",
+    postedAt: new Date().toISOString(), // Set the real-time date
+    companyEmail: email, // Add company email to form data
   });
 
   const [openSnackbar, setOpenSnackbar] = useState(false); // State for Snackbar
@@ -46,7 +48,7 @@ export default function PostJob({ isDarkMode }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const response = await createJob(formData);
+      const response = await createJob({ ...formData, email }); // Pass email with job data
       console.log('Job posted successfully:', response);
       setOpenSnackbar(true); // Show Snackbar on success
       // Optionally, navigate to another page or show a success message
@@ -313,7 +315,7 @@ export default function PostJob({ isDarkMode }) {
           </div>
           <button
             type="submit"
-            className={`w-full p-4 rounded transition duration-300 ${isDarkMode ? "bg-[#E82561] text-white hover:bg-[#d71e55]" : "bg-[#E82561] text-white hover:bg-[#d71e55]"}`}
+            className={`w-full p-4 rounded transition duration-300 ${isDarkMode ? "bg-[#ff8200] text-white hover:bg-[#e57400]" : "bg-[#ff8200] text-white hover:bg-[#e57400]"}`}
           >Post Job</button>
         </form>
       </div>

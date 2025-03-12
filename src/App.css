@@ -11,3 +11,28 @@
   background-size: cover;
   background-position: center;
 }
+
+/* Add orange color scheme */
+.bg-orange-primary {
+  background-color: #ff8200;
+}
+
+.text-orange-primary {
+  color: #ff8200;
+}
+
+.border-orange-primary {
+  border-color: #ff8200;
+}
+
+.hover\:bg-orange-primary:hover {
+  background-color: #ff8200;
+}
+
+.hover\:text-orange-primary:hover {
+  color: #ff8200;
+}
+
+.hover\:border-orange-primary:hover {
+  border-color: #ff8200;
+}

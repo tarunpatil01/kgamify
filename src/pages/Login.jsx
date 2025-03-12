@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import backgroundImage from '../assets/background.jpg';
 import { loginCompany } from '../api';
 
@@ -26,21 +26,28 @@ const Login = ({ setLoggedInEmail }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setErrorMessage(""); // Clear previous errors
     try {
       const response = await loginCompany(formData);
       if (response.success) {
-        setLoggedInEmail(formData.email);
         if (rememberMe) {
           localStorage.setItem("rememberedEmail", formData.email);
         } else {
           localStorage.removeItem("rememberedEmail");
         }
+        setLoggedInEmail(formData.email);
+        localStorage.setItem('companyType', response.type);
         navigate("/dashboard");
-      } else {
-        setErrorMessage(response.error);
       }
     } catch (error) {
-      setErrorMessage(error.error);
+      console.error("Login error:", error);
+      if (error?.error === 'Your company is not approved by Admin yet') {
+        setErrorMessage("Your company is not approved by Admin yet. Please wait for approval.");
+      } else if (error?.error === 'Invalid credentials') {
+        setErrorMessage("Invalid email or password. Please try again.");
+      } else {
+        setErrorMessage("An error occurred during login. Please try again.");
+      }
     }
   };
 
@@ -103,7 +110,7 @@ const Login = ({ setLoggedInEmail }) => {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white p-3 sm:p-4 rounded-full hover:bg-blue-700 transition duration-300 font-semibold"
+            className="w-full bg-[#ff8200] text-white p-3 sm:p-4 rounded-full hover:bg-[#e57400] transition duration-300 font-semibold"
           >
             Login Now
           </button>
@@ -145,6 +152,13 @@ const Login = ({ setLoggedInEmail }) => {
               Register now
             </a>
           </p>
+        </div>
+        <div className="mt-6 sm:mt-8 text-center">
+          <Link to="/admin-login">
+            <button className="w-full bg-gray-800 text-white p-3 sm:p-4 rounded-full hover:bg-gray-900 transition duration-300 font-semibold">
+              Admin Portal
+            </button>
+          </Link>
         </div>
       </div>
     </div>

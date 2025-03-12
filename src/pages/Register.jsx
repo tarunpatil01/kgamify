@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { registerCompany } from "../api";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 
-function Register() {
+function Register({ isDarkMode }) {
   const navigate = useNavigate();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,6 +26,8 @@ function Register() {
     socialMediaLinks: "",
     password: "",
   });
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleChange = (event) => {
     const { name, value, files } = event.target;
@@ -35,11 +39,41 @@ function Register() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    
+    // Validate file types
+    if (formData.logo && !formData.logo.type.startsWith('image/')) {
+      setErrorMessage('Logo must be an image file');
+      return;
+    }
+
+    if (formData.documents && formData.documents.type !== 'application/pdf') {
+      setErrorMessage('Documents must be PDF files');
+      return;
+    }
+
+    const formDataToSend = new FormData();
+    
+    // Append form data
+    Object.keys(formData).forEach(key => {
+      if (formData[key] !== null && formData[key] !== undefined) {
+        formDataToSend.append(key, formData[key]);
+      }
+    });
+
     try {
-      const response = await registerCompany(formData);
-      console.log('Company registered successfully:', response);
-      navigate("/dashboard");
+      const response = await registerCompany(formDataToSend);
+      setErrorMessage('');
+      setOpenSnackbar(true);
+      setTimeout(() => {
+        setOpenSnackbar(false);
+        navigate("/");
+      }, 3000);
     } catch (error) {
+      if (error.response?.data?.error === 'Email already registered') {
+        setErrorMessage('This email is already registered. Please use a different email.');
+      } else {
+        setErrorMessage(error.response?.data?.error || 'Registration failed. Please try again.');
+      }
       console.error("Error registering company:", error);
     }
   };
@@ -48,12 +82,14 @@ function Register() {
     setPasswordVisible(!passwordVisible);
   };
 
+  const handleCloseSnackbar = () => {
+    setOpenSnackbar(false);
+  };
+
   return (
-    <div className="flex p-4 sm:p-12 justify-center items-center h-full bg-gray-100">
-      <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-3xl">
-        <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center text-gray-800">
-          Company Registration
-        </h1>
+    <div className={`flex p-4 sm:p-12 justify-center items-center h-full ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
+      <div className={`p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-3xl ${isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}>
+        <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">Company Registration</h1>
         <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-700">
@@ -258,14 +294,24 @@ function Register() {
               />
             </div>
           </div>
+          {errorMessage && (
+            <div className="mb-4 sm:mb-6">
+              <p className="text-red-500">{errorMessage}</p>
+            </div>
+          )}
           <button
             type="submit"
-            className="w-full bg-[#E82561] text-white p-4 rounded hover:bg-[#d71e55] transition duration-300"
+            className={`w-full p-4 rounded transition duration-300 ${isDarkMode ? "bg-[#ff8200] text-white hover:bg-[#e57400]" : "bg-[#ff8200] text-white hover:bg-[#e57400]"}`}
           >
             Register
           </button>
         </form>
       </div>
+      <Snackbar open={openSnackbar} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+        <Alert onClose={handleCloseSnackbar} severity="success" sx={{ width: '100%' }}>
+          Company registration request sent successfully!
+        </Alert>
+      </Snackbar>
     </div>
   );
 }
