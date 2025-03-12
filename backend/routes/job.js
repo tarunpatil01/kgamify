@@ -12,10 +12,20 @@ router.get('/', async (req, res) => {
     
     let query = {};
     if (email) {
+      console.log(`Backend: Filtering jobs by company email: "${email}"`);
       query = { companyEmail: email };
     }
     
     const jobs = await Job.find(query);
+    console.log(`Backend: Found ${jobs.length} jobs${email ? ' for ' + email : ''}`);
+    
+    if (email && jobs.length === 0) {
+      console.log(`Backend: No jobs found for email: ${email}. Checking for jobs without companyEmail...`);
+      const allJobs = await Job.find({});
+      const missingEmailJobs = allJobs.filter(job => !job.companyEmail);
+      console.log(`Backend: Found ${missingEmailJobs.length} jobs with missing companyEmail field`);
+    }
+    
     res.status(200).json(jobs);
   } catch (err) {
     console.error('Error fetching jobs:', err);
@@ -26,17 +36,22 @@ router.get('/', async (req, res) => {
 // Create a new job
 router.post('/', async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) {
+    const { email, companyEmail } = req.body;
+    // Use either explicitly provided companyEmail or fall back to email
+    const finalEmail = companyEmail || email;
+    
+    if (!finalEmail) {
       return res.status(401).json({ error: 'Company email required' });
     }
 
+    console.log("Creating job post with company email:", finalEmail);
+
     // Find company in either collection and verify it's approved
-    let company = await Company.findOne({ email, approved: true });
+    let company = await Company.findOne({ email: finalEmail, approved: true });
     
     // If not found in regular companies, try Google companies
     if (!company) {
-      company = await GoogleCompany.findOne({ email, approved: true });
+      company = await GoogleCompany.findOne({ email: finalEmail, approved: true });
     }
     
     if (!company) {
@@ -46,7 +61,7 @@ router.post('/', async (req, res) => {
     const newJob = new Job({
       ...req.body,
       companyName: company.companyName,
-      companyEmail: email
+      companyEmail: finalEmail // Ensure consistent field usage
     });
     
     await newJob.save();

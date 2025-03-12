@@ -12,13 +12,14 @@ import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import Footer from "./components/Footer";
 import { useState, useEffect } from "react";
-import { loginCompany, getCompanyInfo } from "./api"; 
+import { loginCompany, getCompanyInfo } from "./api"; // Make sure this import is correct
 import JobApplications from "./pages/JobApplications"; 
 import GoogleRegister from "./pages/GoogleRegister";
 import Login from "./pages/Login";
 import GoogleCallback from './pages/GoogleCallback';
 import AdminPortal from "./pages/AdminPortal"; // Import AdminPortal component
 import AdminLogin from "./pages/AdminLogin"; // Import AdminLogin component
+import EditJob from "./pages/EditJob";
 
 function AppContent() {
   const location = useLocation();
@@ -51,11 +52,33 @@ function AppContent() {
 
   useEffect(() => {
     const fetchCompanyData = async () => {
-      if (!loggedInEmail) return;
+      if (!loggedInEmail) {
+        console.log("No logged in email found, skipping company data fetch");
+        return;
+      }
       
       setIsLoading(true);
       try {
         console.log("Fetching company info for:", loggedInEmail);
+        
+        // Try to get from localStorage first
+        const cachedCompanyData = localStorage.getItem('companyData');
+        if (cachedCompanyData) {
+          try {
+            const parsedData = JSON.parse(cachedCompanyData);
+            if (parsedData.email === loggedInEmail) {
+              console.log("Using cached company data");
+              setLoggedInCompany(parsedData);
+              setIsLoading(false);
+              return;
+            }
+          } catch (parseError) {
+            console.error("Error parsing cached company data:", parseError);
+            // Continue with API fetch if parsing fails
+          }
+        }
+        
+        // If we reach here, we need to fetch from API
         const response = await getCompanyInfo(loggedInEmail);
         console.log("Company data received:", response);
         setLoggedInCompany(response);
@@ -84,7 +107,7 @@ function AppContent() {
           <Route path="/register" element={<Register isDarkMode={isDarkMode} />} />
           <Route path="/dashboard" element={<Dashboard isDarkMode={isDarkMode} email={loggedInEmail} />} />
           <Route path="/post-job" element={<PostJob isDarkMode={isDarkMode} email={loggedInEmail} />} />
-          <Route path="/job-posted" element={<JobPosted isDarkMode={isDarkMode} />} />
+          <Route path="/job-posted" element={<JobPosted isDarkMode={isDarkMode} email={loggedInEmail} />} />
           <Route path="/forgot-password" element={<ForgotPassword isDarkMode={isDarkMode} />} />
           <Route path="/EditRegistration" element={<EditRegistration isDarkMode={isDarkMode} />} />
           <Route path="/job/:jobId" element={<Job isDarkMode={isDarkMode} />} />
@@ -93,6 +116,7 @@ function AppContent() {
           <Route path="/api/auth/callback/google" element={<GoogleCallback />} />
           <Route path="/admin" element={<AdminPortal isDarkMode={isDarkMode} />} />
           <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/edit-job/:jobId" element={<EditJob isDarkMode={isDarkMode} />} />
           <Route path="/" element={<Login setLoggedInEmail={setLoggedInEmail} />} />
         </Routes>
         <Footer isDarkMode={isDarkMode} />

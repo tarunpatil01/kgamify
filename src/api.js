@@ -63,18 +63,26 @@ export const registerGoogleCompany = async (formData) => {
 
 export const loginCompany = async (loginData) => {
   try {
+    console.log("Login request with data:", loginData.email);
     const response = await axios.post(`${API_URL}/companies/login`, loginData);
+    console.log("Login response:", response.data);
+    
     // Store the company type in localStorage
     if (response.data.success) {
       localStorage.setItem('companyType', response.data.type);
+      
+      // Also store the company data in localStorage for easier access
+      localStorage.setItem('companyData', JSON.stringify(response.data.company));
     }
     return response.data;
   } catch (error) {
-    console.error('Error details:', error.response?.data || error);
+    console.error('Login error details:', error.response?.data || error);
     if (error.response?.status === 403) {
       throw { error: 'Your company is not approved by Admin yet' };
     } else if (error.response?.status === 401) {
       throw { error: 'Invalid credentials' };
+    } else if (error.response?.status === 400) {
+      throw { error: error.response.data.error || 'Bad request' };
     } else {
       throw error.response?.data || { error: "An unknown error occurred" };
     }
@@ -107,11 +115,21 @@ export const getJobs = async (filters = {}) => {
   try {
     // Build query parameters
     let queryParams = '';
-    if (filters.email) {
+    if (filters && filters.email) {
+      console.log("Adding email filter to jobs query:", filters.email);
       queryParams = `?email=${encodeURIComponent(filters.email)}`;
     }
     
-    const response = await axios.get(`${API_URL}/job${queryParams}`);
+    const requestUrl = `${API_URL}/job${queryParams}`;
+    console.log(`Making GET request to: ${requestUrl}`);
+    const response = await axios.get(requestUrl);
+    
+    if (filters && filters.email) {
+      console.log(`Received ${response.data.length} jobs for company email: ${filters.email}`);
+    } else {
+      console.log(`Received ${response.data.length} total jobs`);
+    }
+    
     return response.data;
   } catch (error) {
     console.error('Error fetching jobs:', error);
@@ -131,10 +149,30 @@ export const getJobById = async (jobId) => {
 
 export const getCompanyInfo = async (email) => {
   try {
+    if (!email) {
+      console.error("No email provided to getCompanyInfo");
+      throw new Error("Email is required");
+    }
+    
     console.log("Fetching company info for email:", email);
-    // Try to fetch from both Company and GoogleCompany collections
-    const response = await axios.get(`${API_URL}/companies/info?email=${email}`);
-    console.log("Company info response:", response.data);
+    
+    // Try to get from localStorage first for better performance
+    const cachedCompanyData = localStorage.getItem('companyData');
+    if (cachedCompanyData) {
+      const parsedData = JSON.parse(cachedCompanyData);
+      if (parsedData.email === email) {
+        console.log("Using cached company data");
+        return parsedData;
+      }
+    }
+    
+    // If not in cache, fetch from API
+    const response = await axios.get(`${API_URL}/companies/info?email=${encodeURIComponent(email)}`);
+    console.log("Company info API response:", response.data);
+    
+    // Update the cache
+    localStorage.setItem('companyData', JSON.stringify(response.data));
+    
     return response.data;
   } catch (error) {
     console.error("Error fetching company details:", error);

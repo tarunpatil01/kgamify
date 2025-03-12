@@ -11,6 +11,7 @@ const Login = ({ setLoggedInEmail }) => {
   });
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem("rememberedEmail"));
   const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -27,8 +28,18 @@ const Login = ({ setLoggedInEmail }) => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setErrorMessage(""); // Clear previous errors
+    
+    if (!formData.email || !formData.password) {
+      setErrorMessage("Please enter both email and password");
+      return;
+    }
+    
+    setIsLoading(true);
     try {
+      console.log("Attempting login with:", formData.email);
       const response = await loginCompany(formData);
+      
+      console.log("Login response:", response);
       if (response.success) {
         if (rememberMe) {
           localStorage.setItem("rememberedEmail", formData.email);
@@ -48,6 +59,8 @@ const Login = ({ setLoggedInEmail }) => {
       } else {
         setErrorMessage("An error occurred during login. Please try again.");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -80,6 +93,7 @@ const Login = ({ setLoggedInEmail }) => {
               onChange={handleChange}
               placeholder="Enter your Email ID"
               className="w-full p-3 sm:p-4  border border-gray-300 rounded-lg mt-2  focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
             />
           </div>
           <div>
@@ -91,9 +105,10 @@ const Login = ({ setLoggedInEmail }) => {
               onChange={handleChange}
               placeholder="Enter your Password"
               className="w-full p-3 sm:p-4 border border-gray-300 rounded-lg mt-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
             />
           </div>
-          {errorMessage && <p className="text-red-500 text-center">{errorMessage}</p>}
+          {errorMessage && <p className="text-red-500 text-center font-medium">{errorMessage}</p>}
           <div className="flex items-center justify-between">
             <label className="flex items-center text-gray-700 cursor-pointer">
               <input
@@ -110,9 +125,10 @@ const Login = ({ setLoggedInEmail }) => {
           </div>
           <button
             type="submit"
+            disabled={isLoading}
             className="w-full bg-[#ff8200] text-white p-3 sm:p-4 rounded-full hover:bg-[#e57400] transition duration-300 font-semibold"
           >
-            Login Now
+            {isLoading ? "Logging in..." : "Login Now"}
           </button>
         </form>
         <div className="mt-6 sm:mt-8 text-center">
