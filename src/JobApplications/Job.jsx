@@ -33,7 +33,7 @@ const Job = ({ isDarkMode }) => {
   }
 
   return (
-    <div className={`flex h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
+    <div className={`flex h-full ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
       <div className={`flex-1 p-6 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"} min-h-screen`}>
         <div className={`p-5 rounded-lg shadow-md ${isDarkMode ? "bg-gray-700" : "bg-[#F6C794]"}`}>
           <div className={`text-3xl font-bold mb-4 ${isDarkMode ? "text-white" : "text-[#C30E59]"}`}>

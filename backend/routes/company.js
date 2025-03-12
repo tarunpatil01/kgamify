@@ -97,21 +97,31 @@ const checkApproval = async (req, res, next) => {
 // Login a company
 router.post('/login', async (req, res) => {
   try {
+    console.log("Login attempt with:", req.body);
     const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
     
     // First check regular company collection
     const regularCompany = await Company.findOne({ email });
+    console.log("Found regular company:", regularCompany ? regularCompany.companyName : "none");
+    
     if (regularCompany) {
       // Check password match
       if (regularCompany.password !== password) {
+        console.log("Password mismatch for regular company");
         return res.status(401).json({ error: 'Invalid credentials' });
       }
       
       // Check if company is approved
       if (!regularCompany.approved) {
+        console.log("Regular company not approved yet");
         return res.status(403).json({ error: 'Your company is not approved by Admin yet' });
       }
       
+      console.log("Regular company login successful");
       return res.status(200).json({ 
         success: true, 
         company: regularCompany,
@@ -121,10 +131,14 @@ router.post('/login', async (req, res) => {
 
     // If not found in regular companies, check Google companies
     const googleCompany = await GoogleCompany.findOne({ email });
+    console.log("Found Google company:", googleCompany ? googleCompany.companyName : "none");
+    
     if (googleCompany) {
       if (!googleCompany.approved) {
+        console.log("Google company not approved yet");
         return res.status(403).json({ error: 'Your company is not approved by Admin yet' });
       }
+      console.log("Google company login successful");
       return res.status(200).json({ 
         success: true, 
         company: googleCompany,
@@ -132,8 +146,10 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    console.log("No company found with email:", email);
     return res.status(401).json({ error: 'Invalid credentials' });
   } catch (err) {
+    console.error("Login error:", err);
     res.status(400).json({ error: err.message });
   }
 });

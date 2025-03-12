@@ -67,7 +67,7 @@ function Navbar({ isSidebarOpen, onThemeToggle, isDarkMode, userCompany }) {
         <div 
           className="w-8 h-8 sm:w-10 sm:h-10 rounded-full cursor-pointer overflow-hidden bg-gray-200 flex items-center justify-center"
           onMouseEnter={() => setShowDropdown(true)}
-          onMouseLeave={() => setShowDropdown(false)}
+          onMouseLeave={() => setShowDropdown(true)}
         >
           {logoUrl ? (
             <img

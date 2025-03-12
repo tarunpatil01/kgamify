@@ -27,7 +27,11 @@ const jobSchema = new mongoose.Schema({
     default: Date.now,
   },
   companyName: { type: String, required: true }, // Add companyName field
+  companyEmail: { type: String, required: true }, // Ensure this field exists and is required
 });
+
+// Add an index on companyEmail for better query performance
+jobSchema.index({ companyEmail: 1 });
 
 const Job = mongoose.model('Job', jobSchema);
 
