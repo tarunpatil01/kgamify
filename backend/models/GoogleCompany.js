@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const companySchema = new mongoose.Schema({
+const googleCompanySchema = new mongoose.Schema({
   companyName: { type: String, required: true },
   logo: {
     type: String, // Now storing Cloudinary URL
@@ -22,9 +22,9 @@ const companySchema = new mongoose.Schema({
   },
   description: { type: String },
   socialMediaLinks: { type: String },
-  password: { type: String, required: true },
+  googleId: { type: String, required: true }, // Google unique identifier
   approved: { type: Boolean, default: false }
 }, { toJSON: { getters: true } });
 
-const Company = mongoose.model('Company', companySchema);
-module.exports = Company;
+const GoogleCompany = mongoose.model('GoogleCompany', googleCompanySchema);
+module.exports = GoogleCompany;

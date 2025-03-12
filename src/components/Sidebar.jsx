@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { FaBars, FaHome, FaBriefcase, FaFileAlt, FaBuilding, FaMoon, FaSun, FaClipboardList, FaSignOutAlt } from "react-icons/fa";
+import { FaBars, FaHome, FaBriefcase, FaFileAlt, FaBuilding, FaMoon, FaSun, FaClipboardList, FaSignOutAlt, FaUserShield } from "react-icons/fa";
 
 function Sidebar({ onToggle, onThemeToggle, isDarkMode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,10 +27,9 @@ function Sidebar({ onToggle, onThemeToggle, isDarkMode }) {
         <button onClick={toggleSidebar}>
           <FaBars className="h-8 w-8 transform scale-x-80 scale-y-75"/>
         </button>
-        {isOpen && <div className="font-bold text-xl pr-10">Dashboard</div>}
       </div>
-      <nav className="mt-5 flex-grow">
-        <ul>
+      <nav className="h-screen mt-5 flex-grow">
+        <ul className="my-5">
           <Link to="/dashboard">
             <li className="flex items-center p-3 hover:bg-gray-200 dark:hover:bg-gray-100">
               <FaHome className="h-6 w-8 mr-3" />
@@ -55,22 +54,9 @@ function Sidebar({ onToggle, onThemeToggle, isDarkMode }) {
               {isOpen && <span>Edit Registration</span>}
             </li>
           </Link>
+          
         </ul>
       </nav>
-      <div className="mt-auto">
-        <div className="flex p-3 hover:bg-gray-200 dark:hover:bg-gray-100 text-lg items-center">
-          <button onClick={onThemeToggle} className="flex items-center text-blue-800">
-            {isDarkMode ? <FaMoon className="h-6 w-8 mr-3" /> : <FaSun className="h-6 w-8 mr-3" />}
-            {isOpen && (isDarkMode ? "Light Mode" : "Dark Mode")}
-          </button>
-        </div>
-        <div className="flex p-3 text-blue-800 hover:bg-gray-200 dark:hover:bg-gray-100 text-lg items-center">
-          <button onClick={handleLogout} className="flex items-center">
-            <FaSignOutAlt className="h-6 w-8 mr-3" />
-            {isOpen && "Logout"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

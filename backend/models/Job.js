@@ -22,6 +22,11 @@ const jobSchema = new mongoose.Schema({
   category: { type: String },
   tags: { type: String },
   applicants: { type: [{ name: String, resume: String, testScore: String, skills: [String] }], default: [] },
+  postedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  companyName: { type: String, required: true }, // Add companyName field
 });
 
 const Job = mongoose.model('Job', jobSchema);
