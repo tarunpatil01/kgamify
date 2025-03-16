@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation, Navigate } from "react-router-dom";
 import "./App.css";
 import backgroundImage from "./assets/background.jpg";
 import Register from "./pages/Register";
@@ -14,9 +14,7 @@ import Footer from "./components/Footer";
 import { useState, useEffect } from "react";
 import { loginCompany, getCompanyInfo } from "./api"; // Make sure this import is correct
 import JobApplications from "./pages/JobApplications"; 
-import GoogleRegister from "./pages/GoogleRegister";
 import Login from "./pages/Login";
-import GoogleCallback from './pages/GoogleCallback';
 import AdminPortal from "./pages/AdminPortal"; // Import AdminPortal component
 import AdminLogin from "./pages/AdminLogin"; // Import AdminLogin component
 import EditJob from "./pages/EditJob";
@@ -112,8 +110,7 @@ function AppContent() {
           <Route path="/EditRegistration" element={<EditRegistration isDarkMode={isDarkMode} />} />
           <Route path="/job/:jobId" element={<Job isDarkMode={isDarkMode} />} />
           <Route path="/job-applications/:jobId" element={<JobApplications isDarkMode={isDarkMode} email={loggedInEmail} />} />
-          <Route path="/google-register" element={<GoogleRegister />} />
-          <Route path="/api/auth/callback/google" element={<GoogleCallback />} />
+          {/* Remove Google routes */}
           <Route path="/admin" element={<AdminPortal isDarkMode={isDarkMode} />} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/edit-job/:jobId" element={<EditJob isDarkMode={isDarkMode} />} />

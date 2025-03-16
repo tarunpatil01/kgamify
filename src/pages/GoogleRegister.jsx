@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { registerGoogleCompany } from "../api";
+import { registerCompany } from "../api"; // Remove registerGoogleCompany
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 
@@ -22,8 +22,10 @@ function GoogleRegister() {
     documents: null,
     description: "",
     socialMediaLinks: "",
-    googleId: "", // Add googleId field
+    password: "", // Add password field (required for standard registration)
   });
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     // Get Google profile data from URL params or sessionStorage
@@ -51,11 +53,6 @@ function GoogleRegister() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     
-    if (!formData.googleId) {
-      setErrorMessage('Google ID is missing');
-      return;
-    }
-    
     // Validate file types
     if (formData.logo && !formData.logo.type.startsWith('image/')) {
       setErrorMessage('Logo must be an image file');
@@ -75,7 +72,8 @@ function GoogleRegister() {
     });
   
     try {
-      const response = await registerGoogleCompany(formDataToSend);
+      // Use regular company registration instead of Google-specific
+      const response = await registerCompany(formDataToSend);
       setErrorMessage('');
       setOpenSnackbar(true);
       setTimeout(() => {
