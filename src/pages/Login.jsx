@@ -64,10 +64,6 @@ const Login = ({ setLoggedInEmail }) => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:5000/auth/google";
-  };
-
   useEffect(() => {
     const img = new Image();
     img.src = backgroundImage;
@@ -131,36 +127,6 @@ const Login = ({ setLoggedInEmail }) => {
             {isLoading ? "Logging in..." : "Login Now"}
           </button>
         </form>
-        <div className="mt-6 sm:mt-8 text-center">
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full bg-white text-black p-3 sm:p-4 rounded-full border border-gray-300 hover:bg-gray-100 transition duration-300 flex items-center justify-center font-semibold"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 48 48"
-              className="w-5 h-5 mr-2"
-            >
-              <path
-                fill="#4285F4"
-                d="M24 9.5c3.9 0 7.1 1.3 9.5 3.4l7.1-7.1C36.2 2.1 30.5 0 24 0 14.6 0 6.4 5.4 2.5 13.3l8.3 6.4C12.8 13.2 17.9 9.5 24 9.5z"
-              />
-              <path
-                fill="#34A853"
-                d="M46.5 24c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3.1-2.4 5.7-4.9 7.4l7.5 5.8c4.4-4.1 7-10.1 7-17.7z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M12.8 28.7c-1.1-3.1-1.1-6.5 0-9.6L4.5 12.7C1.6 17.3 0 22.9 0 28.5c0 5.6 1.6 11.2 4.5 15.8l8.3-6.4z"
-              />
-              <path
-                fill="#EA4335"
-                d="M24 48c6.5 0 12.1-2.1 16.1-5.7l-7.5-5.8c-2.1 1.4-4.8 2.3-7.6 2.3-6.1 0-11.2-4.1-13-9.6l-8.3 6.4C6.4 42.6 14.6 48 24 48z"
-              />
-            </svg>
-            Login with Google
-          </button>
-        </div>
         <div className="mt-6 sm:mt-8 text-center">
           <p>
             Not Registered Yet?{" "}

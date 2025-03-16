@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Job = require('../models/Job');
 const Company = require('../models/Company');
-const GoogleCompany = require('../models/GoogleCompany');
 
 // Get all jobs (public endpoint without authentication)
 router.get('/', async (req, res) => {
@@ -46,13 +45,8 @@ router.post('/', async (req, res) => {
 
     console.log("Creating job post with company email:", finalEmail);
 
-    // Find company in either collection and verify it's approved
+    // Find company and verify it's approved
     let company = await Company.findOne({ email: finalEmail, approved: true });
-    
-    // If not found in regular companies, try Google companies
-    if (!company) {
-      company = await GoogleCompany.findOne({ email: finalEmail, approved: true });
-    }
     
     if (!company) {
       return res.status(401).json({ error: 'Unauthorized or company not approved' });

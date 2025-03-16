@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const Company = require('../models/Company');
-const GoogleCompany = require('../models/GoogleCompany');
 
 // Admin login route
 router.post('/login', async (req, res) => {
@@ -20,47 +19,22 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Get pending companies from both collections
+// Get pending companies (only regular companies now)
 router.get('/pending-companies', async (req, res) => {
   try {
     const regularCompanies = await Company.find({ approved: false });
-    const googleCompanies = await GoogleCompany.find({ approved: false });
     
-    // Mark the source of each company for frontend processing if needed
-    const taggedRegularCompanies = regularCompanies.map(company => ({
-      ...company.toObject(),
-      source: 'regular'
-    }));
-    
-    const taggedGoogleCompanies = googleCompanies.map(company => ({
-      ...company.toObject(),
-      source: 'google'
-    }));
-    
-    // Combine both arrays
-    const allPendingCompanies = [...taggedRegularCompanies, ...taggedGoogleCompanies];
-    
-    res.status(200).json(allPendingCompanies);
+    res.status(200).json(regularCompanies);
   } catch (err) {
     console.error('Error fetching pending companies:', err);
     res.status(400).json({ error: err.message });
   }
 });
 
-// Approve a company
+// Approve a company (only regular companies now)
 router.post('/approve-company/:id', async (req, res) => {
   try {
-    const { source } = req.query; // Optional query parameter to specify source
-    
-    let company;
-    
-    // Try to find and update in regular companies first
-    company = await Company.findByIdAndUpdate(req.params.id, { approved: true }, { new: true });
-    
-    // If not found in regular companies, try Google companies
-    if (!company && (!source || source === 'google')) {
-      company = await GoogleCompany.findByIdAndUpdate(req.params.id, { approved: true }, { new: true });
-    }
+    const company = await Company.findByIdAndUpdate(req.params.id, { approved: true }, { new: true });
     
     if (!company) {
       return res.status(404).json({ error: 'Company not found' });
@@ -76,17 +50,7 @@ router.post('/approve-company/:id', async (req, res) => {
 // Deny a company (delete from database)
 router.post('/deny-company/:id', async (req, res) => {
   try {
-    const { source } = req.query; // Optional query parameter to specify source
-    
-    let company;
-    
-    // Try to find and delete in regular companies first
-    company = await Company.findByIdAndDelete(req.params.id);
-    
-    // If not found in regular companies, try Google companies
-    if (!company && (!source || source === 'google')) {
-      company = await GoogleCompany.findByIdAndDelete(req.params.id);
-    }
+    const company = await Company.findByIdAndDelete(req.params.id);
     
     if (!company) {
       return res.status(404).json({ error: 'Company not found' });

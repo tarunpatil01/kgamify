@@ -32,35 +32,6 @@ export const registerCompany = async (formData) => {
   }
 };
 
-export const registerGoogleCompany = async (formData) => {
-  try {
-    for (let pair of formData.entries()) {
-      const value = pair[1] instanceof File 
-        ? `File: ${pair[1].name} (${pair[1].type})`
-        : pair[1];
-      console.log(`${pair[0]}: ${value}`);
-    }
-
-    const response = await axios.post(`${API_URL}/companies/google`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      validateStatus: function (status) {
-        return status < 500;
-      }
-    });
-
-    if (response.status === 400) {
-      throw new Error(response.data.error || 'Registration failed');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error details:', error.response?.data || error.message);
-    throw error;
-  }
-};
-
 export const loginCompany = async (loginData) => {
   try {
     console.log("Login request with data:", loginData.email);

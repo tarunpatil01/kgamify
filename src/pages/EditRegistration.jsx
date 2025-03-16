@@ -124,8 +124,19 @@ function EditRegistration({ isDarkMode }) {
       const response = await updateCompanyProfile(formData.email, formDataToSend);
       setErrorMessage('');
       setOpenSnackbar(true);
+      
+      // Check if password was changed - indicated by the presence of a non-empty password field
+      const wasPasswordChanged = formData.password && formData.password.trim().length > 0;
+      
       setTimeout(() => {
         setOpenSnackbar(false);
+        // If password was changed, redirect to login page
+        if (wasPasswordChanged) {
+          localStorage.removeItem('rememberedEmail');
+          localStorage.removeItem('companyType');
+          localStorage.removeItem('companyData');
+          navigate('/');
+        }
       }, 3000);
     } catch (error) {
       setErrorMessage(error.response?.data?.error || 'Update failed. Please try again.');
