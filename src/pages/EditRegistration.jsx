@@ -24,7 +24,8 @@ function EditRegistration({ isDarkMode }) {
     documents: null,
     description: "",
     socialMediaLinks: "",
-    password: "",
+    password: "", // Password will be empty initially
+    newPassword: "", // Add field for new password
   });
   const [currentLogo, setCurrentLogo] = useState(null);
   const [currentDocuments, setCurrentDocuments] = useState(null);
@@ -61,7 +62,8 @@ function EditRegistration({ isDarkMode }) {
           yearEstablished: companyData.yearEstablished || "",
           description: companyData.description || "",
           socialMediaLinks: companyData.socialMediaLinks || "",
-          password: companyData.password || "",
+          password: "", // Don't set password from server response
+          newPassword: "", // Initialize new password field
         });
         
         // Store the current logo and documents URLs
@@ -115,6 +117,11 @@ function EditRegistration({ isDarkMode }) {
         if (formData[key] && formData[key] instanceof File) {
           formDataToSend.append(key, formData[key]);
         }
+      } else if (key === 'password') {
+        // Skip the original password field
+      } else if (key === 'newPassword' && formData[key]) {
+        // If new password is provided, send it as 'password'
+        formDataToSend.append('password', formData[key]);
       } else if (formData[key] !== null && formData[key] !== undefined) {
         formDataToSend.append(key, formData[key]);
       }
@@ -125,8 +132,8 @@ function EditRegistration({ isDarkMode }) {
       setErrorMessage('');
       setOpenSnackbar(true);
       
-      // Check if password was changed - indicated by the presence of a non-empty password field
-      const wasPasswordChanged = formData.password && formData.password.trim().length > 0;
+      // Check if password was changed
+      const wasPasswordChanged = formData.newPassword && formData.newPassword.trim().length > 0;
       
       setTimeout(() => {
         setOpenSnackbar(false);
@@ -347,11 +354,11 @@ function EditRegistration({ isDarkMode }) {
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-[#ff8200]">Password</h2>
             <div className="mb-4 sm:mb-6 relative">
-              <label className="block text-gray-700 dark:text-gray-300">Password</label>
+              <label className="block text-gray-700 dark:text-gray-300">New Password</label>
               <input
                 type={passwordVisible ? "text" : "password"}
-                name="password"
-                value={formData.password}
+                name="newPassword"
+                value={formData.newPassword}
                 onChange={handleChange}
                 className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
                 pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
@@ -365,6 +372,9 @@ function EditRegistration({ isDarkMode }) {
                 {passwordVisible ? <FaEyeSlash className={`${isDarkMode ? "text-white" : ""}`} /> : <FaEye className={`${isDarkMode ? "text-white" : ""}`} />}
               </button>
               <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"} mt-2`}>
+                Enter a new password only if you want to change it. Leave blank to keep your current password.
+              </p>
+              <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"} mt-1`}>
                 Password must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters.
               </p>
             </div>

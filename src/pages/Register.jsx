@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaSpinner, FaCloudUploadAlt } from "react-icons/fa"; // Add FaCloudUploadAlt
 import { registerCompany } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
@@ -27,7 +27,11 @@ function Register({ isDarkMode }) {
     password: "",
   });
   const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState(""); // Add message state
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success"); // Add severity state
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false); // Add uploading state
 
   const handleChange = (event) => {
     const { name, value, files } = event.target;
@@ -51,7 +55,21 @@ function Register({ isDarkMode }) {
       return;
     }
 
+    // Set loading state to true
+    setIsSubmitting(true);
+
     const formDataToSend = new FormData();
+    
+    // Check if files are being uploaded
+    const hasFiles = formData.logo || formData.documents;
+    
+    // If files are present, show uploading notification
+    if (hasFiles) {
+      setIsUploading(true);
+      setSnackbarMessage("Uploading files... Please wait");
+      setSnackbarSeverity("info");
+      setOpenSnackbar(true);
+    }
     
     // Append form data
     Object.keys(formData).forEach(key => {
@@ -63,18 +81,32 @@ function Register({ isDarkMode }) {
     try {
       const response = await registerCompany(formDataToSend);
       setErrorMessage('');
+      // Update snackbar for success
+      setIsUploading(false);
+      setSnackbarMessage('Company registration request sent successfully!');
+      setSnackbarSeverity('success');
       setOpenSnackbar(true);
+      
       setTimeout(() => {
         setOpenSnackbar(false);
         navigate("/");
       }, 3000);
     } catch (error) {
+      // Update snackbar for error
+      setIsUploading(false);
+      setSnackbarSeverity('error');
+      
       if (error.response?.data?.error === 'Email already registered') {
         setErrorMessage('This email is already registered. Please use a different email.');
+        setSnackbarMessage('Email already registered');
       } else {
         setErrorMessage(error.response?.data?.error || 'Registration failed. Please try again.');
+        setSnackbarMessage('Registration failed');
       }
+      setOpenSnackbar(true);
       console.error("Error registering company:", error);
+    } finally {
+      setIsSubmitting(false); // Reset loading state regardless of outcome
     }
   };
 
@@ -90,6 +122,19 @@ function Register({ isDarkMode }) {
     <div className={`flex p-4 sm:p-12 justify-center items-center h-full ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
       <div className={`p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-3xl ${isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}>
         <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">Company Registration</h1>
+        
+        {/* Show loading overlay when submitting */}
+        {isSubmitting && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div className={`p-8 rounded-lg ${isDarkMode ? "bg-gray-800" : "bg-white"} flex flex-col items-center`}>
+              <FaSpinner className="animate-spin text-[#ff8200] text-4xl mb-4" />
+              <p className={`text-lg ${isDarkMode ? "text-white" : "text-gray-800"}`}>
+                {isUploading ? "Uploading files and registering your company..." : "Registering your company..."}
+              </p>
+            </div>
+          </div>
+        )}
+        
         <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-700">
@@ -301,9 +346,30 @@ function Register({ isDarkMode }) {
           )}
           <button
             type="submit"
-            className={`w-full p-4 rounded transition duration-300 ${isDarkMode ? "bg-[#ff8200] text-white hover:bg-[#e57400]" : "bg-[#ff8200] text-white hover:bg-[#e57400]"}`}
+            disabled={isSubmitting}
+            className={`w-full p-4 rounded transition duration-300 ${
+              isDarkMode 
+                ? "bg-[#ff8200] text-white hover:bg-[#e57400]" 
+                : "bg-[#ff8200] text-white hover:bg-[#e57400]"
+            } ${isSubmitting ? "opacity-75 cursor-not-allowed" : ""}`}
           >
-            Register
+            {isSubmitting ? (
+              <span className="flex items-center justify-center">
+                {isUploading ? (
+                  <>
+                    <FaCloudUploadAlt className="mr-2" />
+                    Uploading & Registering...
+                  </>
+                ) : (
+                  <>
+                    <FaSpinner className="animate-spin mr-2" />
+                    Registering...
+                  </>
+                )}
+              </span>
+            ) : (
+              "Register"
+            )}
           </button>
         </form>
       </div>
@@ -316,10 +382,10 @@ function Register({ isDarkMode }) {
       >
         <Alert 
           onClose={handleCloseSnackbar} 
-          severity="success" 
+          severity={snackbarSeverity} 
           sx={{ width: '100%', maxWidth: '600px', fontSize: '1.1rem', '& .MuiAlert-message': { fontSize: '1.1rem' } }}
         >
-          Company registration request sent successfully!
+          {snackbarMessage}
         </Alert>
       </Snackbar>
     </div>
