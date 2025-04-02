@@ -13,8 +13,9 @@ router.post('/login', async (req, res) => {
       return res.status(404).json({ error: 'Company not found' });
     }
     
-    // Simple password check (in production, use bcrypt)
-    if (password !== company.password) {
+    // Use the comparePassword method
+    const isMatch = await company.comparePassword(password);
+    if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
@@ -23,7 +24,11 @@ router.post('/login', async (req, res) => {
       expiresIn: '1d',
     });
     
-    res.json({ token, company });
+    // Remove password from response
+    const companySafe = company.toObject();
+    delete companySafe.password;
+    
+    res.json({ token, company: companySafe });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error' });

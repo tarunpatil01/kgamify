@@ -9,18 +9,27 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Configure storage
+// Configure storage with improved document handling
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'kgamify',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
-    resource_type: 'auto' // Auto-detect file type
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
+    resource_type: 'auto', // Auto-detect file type
+    // Make sure documents are publicly accessible
+    access_mode: 'public',
+    // Add unique identifier to prevent name conflicts
+    public_id: (req, file) => `${Date.now()}-${file.originalname.split('.')[0]}`
   }
 });
 
-// Create multer upload middleware
-const upload = multer({ storage: storage });
+// Create multer upload middleware with size limits
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  }
+});
 
 module.exports = {
   cloudinary,
