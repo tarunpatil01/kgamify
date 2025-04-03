@@ -132,7 +132,6 @@ function AppContent() {
             <Route path="/job-posted" element={<JobPosted isDarkMode={isDarkMode} email={loggedInEmail} />} />
             <Route path="/forgot-password" element={<ForgotPassword isDarkMode={isDarkMode} />} />
             <Route path="/EditRegistration" element={<EditRegistration isDarkMode={isDarkMode} />} />
-            <Route path="/job/:jobId" element={<Job isDarkMode={isDarkMode} />} />
             <Route path="/admin" element={<AdminPortal isDarkMode={isDarkMode} />} />
             <Route path="/admin-login" element={<AdminLogin />} />
             <Route path="/edit-job/:jobId" element={<EditJob isDarkMode={isDarkMode} />} />
