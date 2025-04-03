@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation, Navigate } from "react-router-dom";
 import "./App.css";
-import backgroundImage from "./assets/background.jpg";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import PostJob from "./pages/PostJob";
@@ -13,7 +12,6 @@ import Sidebar from "./components/Sidebar";
 import Footer from "./components/Footer";
 import { useState, useEffect } from "react";
 import { loginCompany, getCompanyInfo } from "./api"; // Make sure this import is correct
-import JobApplications from "./pages/JobApplications"; 
 import Login from "./pages/Login";
 import AdminPortal from "./pages/AdminPortal"; // Import AdminPortal component
 import AdminLogin from "./pages/AdminLogin"; // Import AdminLogin component
@@ -136,7 +134,6 @@ function AppContent() {
             <Route path="/forgot-password" element={<ForgotPassword isDarkMode={isDarkMode} />} />
             <Route path="/EditRegistration" element={<EditRegistration isDarkMode={isDarkMode} />} />
             <Route path="/job/:jobId" element={<Job isDarkMode={isDarkMode} />} />
-            <Route path="/job-applications/:jobId" element={<JobApplications isDarkMode={isDarkMode} email={loggedInEmail} />} />
             <Route path="/admin" element={<AdminPortal isDarkMode={isDarkMode} />} />
             <Route path="/admin-login" element={<AdminLogin />} />
             <Route path="/edit-job/:jobId" element={<EditJob isDarkMode={isDarkMode} />} />
