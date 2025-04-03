@@ -33,6 +33,21 @@ function AppContent() {
   });
   const [loggedInCompany, setLoggedInCompany] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+      // Auto-close sidebar on small screens when resizing
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -93,29 +108,40 @@ function AppContent() {
 
   return (
     <div className={`flex flex-col md:flex-row ${isDarkMode ? "dark bg-gray-900 " : ""}`}>
-      {showSidebar && <Sidebar onToggle={setIsSidebarOpen} onThemeToggle={handleThemeToggle} isDarkMode={isDarkMode} />}
-      <div className="flex-grow">
-        {showNavbar && <Navbar 
-          isSidebarOpen={isSidebarOpen} 
-          onThemeToggle={handleThemeToggle} 
-          isDarkMode={isDarkMode}
-          userCompany={loggedInCompany || {}} // Provide empty object fallback
-        />}
-        <Routes>
-          <Route path="/register" element={<Register isDarkMode={isDarkMode} />} />
-          <Route path="/dashboard" element={<Dashboard isDarkMode={isDarkMode} email={loggedInEmail} />} />
-          <Route path="/post-job" element={<PostJob isDarkMode={isDarkMode} email={loggedInEmail} />} />
-          <Route path="/job-posted" element={<JobPosted isDarkMode={isDarkMode} email={loggedInEmail} />} />
-          <Route path="/forgot-password" element={<ForgotPassword isDarkMode={isDarkMode} />} />
-          <Route path="/EditRegistration" element={<EditRegistration isDarkMode={isDarkMode} />} />
-          <Route path="/job/:jobId" element={<Job isDarkMode={isDarkMode} />} />
-          <Route path="/job-applications/:jobId" element={<JobApplications isDarkMode={isDarkMode} email={loggedInEmail} />} />
-          {/* Remove Google routes */}
-          <Route path="/admin" element={<AdminPortal isDarkMode={isDarkMode} />} />
-          <Route path="/admin-login" element={<AdminLogin />} />
-          <Route path="/edit-job/:jobId" element={<EditJob isDarkMode={isDarkMode} />} />
-          <Route path="/" element={<Login setLoggedInEmail={setLoggedInEmail} />} />
-        </Routes>
+      {showSidebar && (
+        <div className={`${isMobileView ? "fixed z-30" : "relative"}`}>
+          <Sidebar 
+            onToggle={setIsSidebarOpen} 
+            onThemeToggle={handleThemeToggle} 
+            isDarkMode={isDarkMode} 
+          />
+        </div>
+      )}
+      <div className={`flex-grow transition-all duration-300 ${showSidebar && isSidebarOpen && !isMobileView ? "md:ml-0 " : showSidebar && !isSidebarOpen && !isMobileView ? "md:ml-0" : "ml-15"}`}>
+        {showNavbar && (
+          <Navbar 
+            isSidebarOpen={isSidebarOpen} 
+            onThemeToggle={handleThemeToggle} 
+            isDarkMode={isDarkMode}
+            userCompany={loggedInCompany || {}} // Provide empty object fallback
+          />
+        )}
+        <div className="min-h-[calc(100vh-64px)]"> {/* Adjust height to account for navbar and footer */}
+          <Routes>
+            <Route path="/register" element={<Register isDarkMode={isDarkMode} />} />
+            <Route path="/dashboard" element={<Dashboard isDarkMode={isDarkMode} email={loggedInEmail} />} />
+            <Route path="/post-job" element={<PostJob isDarkMode={isDarkMode} email={loggedInEmail} />} />
+            <Route path="/job-posted" element={<JobPosted isDarkMode={isDarkMode} email={loggedInEmail} />} />
+            <Route path="/forgot-password" element={<ForgotPassword isDarkMode={isDarkMode} />} />
+            <Route path="/EditRegistration" element={<EditRegistration isDarkMode={isDarkMode} />} />
+            <Route path="/job/:jobId" element={<Job isDarkMode={isDarkMode} />} />
+            <Route path="/job-applications/:jobId" element={<JobApplications isDarkMode={isDarkMode} email={loggedInEmail} />} />
+            <Route path="/admin" element={<AdminPortal isDarkMode={isDarkMode} />} />
+            <Route path="/admin-login" element={<AdminLogin />} />
+            <Route path="/edit-job/:jobId" element={<EditJob isDarkMode={isDarkMode} />} />
+            <Route path="/" element={<Login setLoggedInEmail={setLoggedInEmail} />} />
+          </Routes>
+        </div>
         <Footer isDarkMode={isDarkMode} />
       </div>
     </div>
