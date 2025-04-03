@@ -118,7 +118,7 @@ function AppContent() {
           />
         </div>
       )}
-      <div className={`flex-grow transition-all duration-300 ${showSidebar && isSidebarOpen && !isMobileView && !isLoginPage ? "md:ml-0 " : showSidebar && !isSidebarOpen && !isMobileView && !isLoginPage ? "md:ml-0" : "ml-0"}`}>
+      <div className={`flex-grow transition-all duration-300 ${showSidebar && isSidebarOpen && !isMobileView && !isLoginPage ? "md:ml-0 " : "ml-0"} ${ showSidebar && !isSidebarOpen && !isMobileView && !isLoginPage ? "md:ml-0" : "ml-15"}`}>
         {showNavbar && !isLoginPage && (
           <Navbar 
             isSidebarOpen={isSidebarOpen} 
