@@ -271,7 +271,13 @@ const EditJob = ({ isDarkMode }) => {
                 <TextField
                   name="salary"
                   value={formData.salary}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Only update if the input is a number or empty
+                    if (value === "" || /^[\d,-]+$/.test(value)) {
+                      setFormData({ ...formData, salary: value });
+                    }
+                  }}
                   fullWidth
                   className="focus:border-blue-500"
                   size="small"
@@ -338,7 +344,13 @@ const EditJob = ({ isDarkMode }) => {
               <TextField
                 name="numberOfPositions"
                 value={formData.numberOfPositions}
-                onChange={handleChange}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Only update if the input is a number or empty
+                  if (value === "" || /^[\d,-]+$/.test(value)) {
+                    setFormData({ ...formData, numberOfPositions: value });
+                  }
+                }}
                 fullWidth
                 className="focus:border-blue-500"
                 size="small"
