@@ -4,7 +4,6 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import PostJob from "./pages/PostJob";
 import JobPosted from "./pages/JobPosted";
-import Job from "./JobApplications/job"; 
 import ForgotPassword from "./pages/ForgetPassword";
 import EditRegistration from "./pages/EditRegistration";
 import Navbar from "./components/Navbar";
