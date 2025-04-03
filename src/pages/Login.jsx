@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import backgroundImage from '../assets/background.jpg';
+import Klogo from '../assets/KLOGO.png';
 import { loginCompany } from '../api';
 
 const Login = ({ setLoggedInEmail }) => {
@@ -75,7 +76,7 @@ const Login = ({ setLoggedInEmail }) => {
       <div className="bg-white bg-opacity-90 p-4 sm:p-6 md:p-10 rounded-2xl shadow-2xl w-full max-w-xs sm:max-w-md md:max-w-lg">
         <div className="flex justify-center">
           <img
-            src="src/assets/KLOGO.png"
+            src={Klogo}
             alt="Kgamify Logo"
             className="mb-4 sm:mb-6 w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 object-contain"
           />
