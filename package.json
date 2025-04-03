@@ -1,6 +1,7 @@
 {
   "name": "kgamify",
   "private": true,
+  "homepage": ".",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -8,8 +9,6 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "fix-jobs": "node backend/scripts/fixJobEmails.js",
-    "cleanup-google": "node scripts/cleanupGoogleFiles.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
