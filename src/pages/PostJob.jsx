@@ -12,9 +12,15 @@ import {
 } from "@mui/material";
 import { createJob } from "../api"; // Import createJob function
 
-const jobTitles = ["Software Engineer", "Product Manager", "Designer", "Data Scientist"]; // Add job titles array
+const jobTitles = [
+  "Software Engineer",
+  "Product Manager",
+  "Designer",
+  "Data Scientist",
+]; // Add job titles array
 
-export default function PostJob({ isDarkMode, email }) { // Add email prop
+export default function PostJob({ isDarkMode, email }) {
+  // Add email prop
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     jobTitle: "",
@@ -44,9 +50,9 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
   // Update companyEmail whenever the email prop changes
   useEffect(() => {
     if (email) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        companyEmail: email
+        companyEmail: email,
       }));
     }
   }, [email]);
@@ -59,25 +65,25 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    
+
     if (!email) {
       alert("You must be logged in to post a job");
       navigate("/");
       return;
     }
-    
+
     try {
       // Ensure companyEmail is explicitly set to the current user's email
       const jobDataToSubmit = {
         ...formData,
         companyEmail: email, // Ensure this is always set
       };
-      
-      console.log('Submitting job with email:', email);
+
+      console.log("Submitting job with email:", email);
       const response = await createJob(jobDataToSubmit);
-      console.log('Job posted successfully:', response);
+      console.log("Job posted successfully:", response);
       setOpenSnackbar(true);
-      
+
       // Add navigation after successful post
       setTimeout(() => {
         navigate("/job-posted");
@@ -92,12 +98,24 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
   };
 
   return (
-    <div className={`flex p-4 sm:p-10 justify-center items-center h-fit ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
-      <div className={`p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-4xl ${isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}>
-        <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">Create a Job Post</h1>
+    <div
+      className={`flex p-4 sm:p-10 justify-center items-center h-fit ${
+        isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"
+      }`}
+    >
+      <div
+        className={`p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-4xl ${
+          isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"
+        }`}
+      >
+        <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">
+          Create a Job Post
+        </h1>
         <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Job Details</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+              Job Details
+            </h2>
             <div className="mb-4 sm:mb-6">
               <label className="block">Job Title</label>
               <Autocomplete
@@ -122,7 +140,11 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
             <div className="mb-4 sm:mb-6">
               <label className="block">Job Description</label>
               <TextareaAutosize
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode
+                    ? "border-gray-600 bg-gray-700 text-white"
+                    : "border-gray-400"
+                }`}
                 name="jobDescription"
                 value={formData.jobDescription}
                 onChange={handleChange}
@@ -195,17 +217,35 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
                 <TextField
                   name="salary"
                   value={formData.salary}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Only update if the input is a number or empty
+                    if (value === "" || /^[\d,-]+$/.test(value)) {
+                      setFormData({ ...formData, salary: value });
+                    }
+                  }}
+                  type="text"
+                  placeholder="e.g. 50000-70000 or 50000, 70000"
+                  inputProps={{
+                    inputMode: "numeric",
+                    pattern: "[0-9,-]*",
+                  }}
                   fullWidth
                   className="focus:border-blue-500"
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block">Equity</label>
+                <label className="block">Equity / Shares</label>
                 <TextField
                   name="equity"
                   value={formData.equity}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Only update if the input is a number or empty
+                    if (value === "" || /^\d+$/.test(value)) {
+                      setFormData({ ...formData, equity: value });
+                    }
+                  }}
                   fullWidth
                   className="focus:border-blue-500"
                 />
@@ -225,7 +265,11 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
               <label className="block">Recruitment Process</label>
               <TextareaAutosize
                 name="recruitmentProcess"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode
+                    ? "border-gray-600 bg-gray-700 text-white"
+                    : "border-gray-400"
+                }`}
                 value={formData.recruitmentProcess}
                 onChange={handleChange}
                 minRows={3}
@@ -236,7 +280,11 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
               <label className="block">Responsibilities</label>
               <TextareaAutosize
                 name="responsibilities"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode
+                    ? "border-gray-600 bg-gray-700 text-white"
+                    : "border-gray-400"
+                }`}
                 value={formData.responsibilities}
                 onChange={handleChange}
                 minRows={3}
@@ -247,7 +295,11 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
               <label className="block">Skills</label>
               <TextareaAutosize
                 name="skills"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode
+                    ? "border-gray-600 bg-gray-700 text-white"
+                    : "border-gray-400"
+                }`}
                 value={formData.skills}
                 onChange={handleChange}
                 minRows={3}
@@ -258,7 +310,11 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
               <label className="block">Benefits</label>
               <TextareaAutosize
                 name="benefits"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode
+                    ? "border-gray-600 bg-gray-700 text-white"
+                    : "border-gray-400"
+                }`}
                 value={formData.benefits}
                 onChange={handleChange}
                 minRows={3}
@@ -269,7 +325,11 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
               <label className="block">Eligibility</label>
               <TextareaAutosize
                 name="eligibility"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode
+                    ? "border-gray-600 bg-gray-700 text-white"
+                    : "border-gray-400"
+                }`}
                 value={formData.eligibility}
                 onChange={handleChange}
                 minRows={3}
@@ -280,7 +340,11 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
               <label className="block">Company Description</label>
               <TextareaAutosize
                 name="companyDescription"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode
+                    ? "border-gray-600 bg-gray-700 text-white"
+                    : "border-gray-400"
+                }`}
                 value={formData.companyDescription}
                 onChange={handleChange}
                 minRows={3}
@@ -291,7 +355,11 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
               <label className="block">Additional Information</label>
               <TextareaAutosize
                 name="additionalInformation"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode
+                    ? "border-gray-600 bg-gray-700 text-white"
+                    : "border-gray-400"
+                }`}
                 value={formData.additionalInformation}
                 onChange={handleChange}
                 minRows={3}
@@ -317,7 +385,13 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
               <TextField
                 name="numberOfPositions"
                 value={formData.numberOfPositions}
-                onChange={handleChange}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Only update if the input is a number or empty
+                  if (value === "" || /^\d+$/.test(value)) {
+                    setFormData({ ...formData, numberOfPositions: value });
+                  }
+                }}
                 fullWidth
                 className="focus:border-blue-500"
               />
@@ -326,7 +400,16 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
               <label className="block">Category</label>
               <Autocomplete
                 freeSolo
-                options={["Engineering", "Data", "Design", "Product", "Marketing", "Sales", "HR", "Finance"]}
+                options={[
+                  "Engineering",
+                  "Data",
+                  "Design",
+                  "Product",
+                  "Marketing",
+                  "Sales",
+                  "HR",
+                  "Finance",
+                ]}
                 value={formData.category}
                 onChange={(event, newValue) => {
                   setFormData({ ...formData, category: newValue });
@@ -360,21 +443,32 @@ export default function PostJob({ isDarkMode, email }) { // Add email prop
           </div>
           <button
             type="submit"
-            className={`w-full p-4 rounded transition duration-300 ${isDarkMode ? "bg-[#ff8200] text-white hover:bg-[#e57400]" : "bg-[#ff8200] text-white hover:bg-[#e57400]"}`}
-          >Post Job</button>
+            className={`w-full p-4 rounded transition duration-300 ${
+              isDarkMode
+                ? "bg-[#ff8200] text-white hover:bg-[#e57400]"
+                : "bg-[#ff8200] text-white hover:bg-[#e57400]"
+            }`}
+          >
+            Post Job
+          </button>
         </form>
       </div>
-      <Snackbar 
-        open={openSnackbar} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
         onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ width: '100%' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        sx={{ width: "100%" }}
       >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity="success" 
-          sx={{ width: '100%', maxWidth: '600px', fontSize: '1.1rem', '& .MuiAlert-message': { fontSize: '1.1rem' } }}
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity="success"
+          sx={{
+            width: "100%",
+            maxWidth: "600px",
+            fontSize: "1.1rem",
+            "& .MuiAlert-message": { fontSize: "1.1rem" },
+          }}
         >
           Job posted successfully
         </Alert>

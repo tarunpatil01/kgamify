@@ -70,74 +70,88 @@ const Login = ({ setLoggedInEmail }) => {
   }, []);
 
   return (
-    <div className="relative flex justify-center items-center h-screen bg-cover bg-center p-4 sm:p-8 bg-blur" style={{ backgroundImage: `url(${backgroundImage})` }}>
-      <div className="bg-white bg-opacity-90 p-2 sm:p-10 rounded-2xl shadow-2xl w-full max-w-lg">
-        <img
-          src="src/assets/KLOGO.png"
-          alt="Kgamify Logo"
-          className="mx-auto mb-6 sm:mb-4 w-24 sm:w-32 h-24 sm:h-32 object-contain"
-        />
-        <h1 className="text-3xl sm:text-4xl font-bold mb-6 sm:mb-8 text-center text-gray-800">Welcome to Kgamify</h1>
+    <div className="relative flex justify-center items-center min-h-screen bg-cover bg-center p-3 sm:p-6 md:p-8 bg-blur" 
+         style={{ backgroundImage: `url(${backgroundImage})` }}>
+      <div className="bg-white bg-opacity-90 p-4 sm:p-6 md:p-10 rounded-2xl shadow-2xl w-full max-w-xs sm:max-w-md md:max-w-lg">
+        <div className="flex justify-center">
+          <img
+            src="src/assets/KLOGO.png"
+            alt="Kgamify Logo"
+            className="mb-4 sm:mb-6 w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 object-contain"
+          />
+        </div>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 md:mb-8 text-center text-gray-800">Welcome to Kgamify</h1>
        
-        <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-3 sm:space-y-4 md:space-y-6" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-gray-700 font-semibold">Email ID</label>
+            <label className="block text-sm sm:text-base text-gray-700 font-semibold mb-1">Email ID</label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
               placeholder="Enter your Email ID"
-              className="w-full p-3 sm:p-4  border border-gray-300 rounded-lg mt-2  focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2.5 sm:p-3 md:p-4 text-sm sm:text-base border border-gray-300 rounded-lg 
+                      focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-700 font-semibold">Password</label>
+            <label className="block text-sm sm:text-base text-gray-700 font-semibold mb-1">Password</label>
             <input
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
               placeholder="Enter your Password"
-              className="w-full p-3 sm:p-4 border border-gray-300 rounded-lg mt-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2.5 sm:p-3 md:p-4 text-sm sm:text-base border border-gray-300 rounded-lg 
+                      focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
-          {errorMessage && <p className="text-red-500 text-center font-medium">{errorMessage}</p>}
-          <div className="flex items-center justify-between">
-            <label className="flex items-center text-gray-700 cursor-pointer">
+          
+          {errorMessage && (
+            <p className="text-red-500 text-center text-xs sm:text-sm font-medium py-1">{errorMessage}</p>
+          )}
+          
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+            <label className="flex items-center text-gray-700 text-sm sm:text-base cursor-pointer">
               <input
                 type="checkbox"
-                className="mr-2 w-5 h-5"
+                className="mr-2 w-4 h-4"
                 checked={rememberMe}
                 onChange={handleRememberMeChange}
               />
               Remember Me
             </label>
-            <a href="/forgot-password" className="text-blue-600 hover:underline">
+            <Link to="/forgot-password" className="text-blue-600 hover:underline text-sm sm:text-base">
               Forgot password?
-            </a>
+            </Link>
           </div>
+          
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#ff8200] text-white p-3 sm:p-4 rounded-full hover:bg-[#e57400] transition duration-300 font-semibold"
+            className="w-full bg-[#ff8200] text-white p-2.5 sm:p-3 md:p-4 rounded-full hover:bg-[#e57400] 
+                     transition duration-300 text-sm sm:text-base font-semibold"
           >
             {isLoading ? "Logging in..." : "Login Now"}
           </button>
         </form>
-        <div className="mt-6 sm:mt-8 text-center">
+        
+        <div className="mt-4 sm:mt-6 md:mt-8 text-center text-sm sm:text-base">
           <p>
             Not Registered Yet?{" "}
-            <a href="/register" className="text-blue-600 hover:underline">
+            <Link to="/register" className="text-blue-600 hover:underline">
               Register now
-            </a>
+            </Link>
           </p>
         </div>
-        <div className="mt-6 sm:mt-8 text-center">
-          <Link to="/admin-login">
-            <button className="w-full bg-gray-800 text-white p-3 sm:p-4 rounded-full hover:bg-gray-900 transition duration-300 font-semibold">
+        
+        <div className="mt-3 sm:mt-4 md:mt-6 text-center">
+          <Link to="/admin-login" className="inline-block w-full">
+            <button className="w-full bg-gray-800 text-white p-2.5 sm:p-3 md:p-4 rounded-full hover:bg-gray-900 
+                             transition duration-300 text-sm sm:text-base font-semibold">
               Admin Portal
             </button>
           </Link>

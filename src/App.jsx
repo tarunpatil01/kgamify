@@ -21,6 +21,7 @@ import EditJob from "./pages/EditJob";
 
 function AppContent() {
   const location = useLocation();
+  const isLoginPage = location.pathname === "/";
   const showNavbar = location.pathname !== "/" && location.pathname !== "/register" && location.pathname !== "/forgot-password" && location.pathname !== "/admin-login";
   const showSidebar = location.pathname !== "/" && location.pathname !== "/register" && location.pathname !== "/forgot-password" && location.pathname !== "/admin-login";
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -108,7 +109,7 @@ function AppContent() {
 
   return (
     <div className={`flex flex-col md:flex-row ${isDarkMode ? "dark bg-gray-900 " : ""}`}>
-      {showSidebar && (
+      {showSidebar && !isLoginPage && (
         <div className={`${isMobileView ? "fixed z-30" : "relative"}`}>
           <Sidebar 
             onToggle={setIsSidebarOpen} 
@@ -117,8 +118,8 @@ function AppContent() {
           />
         </div>
       )}
-      <div className={`flex-grow transition-all duration-300 ${showSidebar && isSidebarOpen && !isMobileView ? "md:ml-0 " : showSidebar && !isSidebarOpen && !isMobileView ? "md:ml-0" : "ml-15"}`}>
-        {showNavbar && (
+      <div className={`flex-grow transition-all duration-300 ${showSidebar && isSidebarOpen && !isMobileView && !isLoginPage ? "md:ml-0 " : showSidebar && !isSidebarOpen && !isMobileView && !isLoginPage ? "md:ml-0" : "ml-0"}`}>
+        {showNavbar && !isLoginPage && (
           <Navbar 
             isSidebarOpen={isSidebarOpen} 
             onThemeToggle={handleThemeToggle} 
@@ -126,7 +127,7 @@ function AppContent() {
             userCompany={loggedInCompany || {}} // Provide empty object fallback
           />
         )}
-        <div className="min-h-[calc(100vh-64px)]"> {/* Adjust height to account for navbar and footer */}
+        <div className={`${isLoginPage ? "" : "min-h-[calc(100vh-64px)]"}`}>
           <Routes>
             <Route path="/register" element={<Register isDarkMode={isDarkMode} />} />
             <Route path="/dashboard" element={<Dashboard isDarkMode={isDarkMode} email={loggedInEmail} />} />
@@ -142,7 +143,7 @@ function AppContent() {
             <Route path="/" element={<Login setLoggedInEmail={setLoggedInEmail} />} />
           </Routes>
         </div>
-        <Footer isDarkMode={isDarkMode} />
+        {!isLoginPage && <Footer isDarkMode={isDarkMode} />}
       </div>
     </div>
   );
