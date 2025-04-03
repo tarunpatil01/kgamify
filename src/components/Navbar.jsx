@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaSun, FaMoon, FaEdit, FaSignOutAlt, FaBuilding } from "react-icons/fa";
+import { FaSun, FaMoon, FaEdit, FaSignOutAlt, FaBuilding, FaBars } from "react-icons/fa";
 
 function Navbar({ isSidebarOpen, onThemeToggle, isDarkMode, userCompany }) {
   const location = useLocation();
@@ -8,17 +8,26 @@ function Navbar({ isSidebarOpen, onThemeToggle, isDarkMode, userCompany }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const navigate = useNavigate();
   const [logoUrl, setLogoUrl] = useState(null);
+  const dropdownRef = useRef(null);
   
-  console.log("UserCompany in Navbar:", userCompany); // Add debugging log
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     if (userCompany && userCompany.logo) {
-      console.log("Logo found:", typeof userCompany.logo, userCompany.logo.substring(0, 30) + "..."); // Debugging log
-      
-      // Direct use of base64 data or cloudinary URL
       setLogoUrl(userCompany.logo);
     } else {
-      console.log("No logo found in user company data"); // Debugging log
       setLogoUrl(null);
     }
   }, [userCompany]);
@@ -49,25 +58,34 @@ function Navbar({ isSidebarOpen, onThemeToggle, isDarkMode, userCompany }) {
     navigate("/EditRegistration");
   };
 
+  const toggleDropdown = () => {
+    setShowDropdown(!showDropdown);
+  };
+
   return (
     <nav
-      className={`p-2 flex justify-between items-center transition-all duration-300 ${
+      className={`p-2 sm:p-3 flex justify-between items-center shadow-sm transition-all duration-300 ${
         isDarkMode ? "bg-gray-900 text-white" : "bg-white text-[#ff8200]"
       }`}
     >
-      <h1 className="text-lg sm:text-xl font-bold ml-2 sm:ml-10">{pageTitle}</h1>
-      <div className="flex items-center relative mr-5 sm:mr-10">
-        <button onClick={onThemeToggle} className="mr-2 sm:mr-4">
+      <h1 className="text-lg sm:text-xl font-bold ml-2 sm:ml-10 truncate">{pageTitle}</h1>
+      <div className="flex items-center relative mr-2 sm:mr-10" ref={dropdownRef}>
+        <button 
+          onClick={onThemeToggle} 
+          className="mr-2 sm:mr-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+        >
           {isDarkMode ? (
             <FaMoon className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
           ) : (
             <FaSun className="h-5 w-5 sm:h-6 sm:w-6 text-gray-500" />
           )}
         </button>
-        <div 
-          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full cursor-pointer overflow-hidden bg-gray-200 flex items-center justify-center"
-          onMouseEnter={() => setShowDropdown(true)}
-          onMouseLeave={() => setShowDropdown(true)}
+        <button 
+          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full cursor-pointer overflow-hidden bg-gray-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-gray-300"
+          onClick={toggleDropdown}
+          aria-label="User menu"
+          aria-expanded={showDropdown}
         >
           {logoUrl ? (
             <img
@@ -81,17 +99,13 @@ function Navbar({ isSidebarOpen, onThemeToggle, isDarkMode, userCompany }) {
               }}
             />
           ) : (
-            <FaBuilding className="w-5 h-5 text-gray-500" />
+            <FaBuilding className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
           )}
-        </div>
+        </button>
         
         {/* Dropdown menu */}
         {showDropdown && (
-          <div
-            className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg py-2 z-10"
-            onMouseEnter={() => setShowDropdown(true)}
-            onMouseLeave={() => setShowDropdown(false)}
-          >
+          <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg py-2 z-20">
             <button
               className="flex items-center w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-200 transition-colors duration-200 ease-in-out"
               onClick={handleEditRegistration}

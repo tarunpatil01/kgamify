@@ -151,14 +151,14 @@ const EditJob = ({ isDarkMode }) => {
   }
 
   return (
-    <div className={`flex p-4 sm:p-10 justify-center items-center h-fit ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
-      <div className={`p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-4xl ${isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}>
-        <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">Edit Job Post</h1>
-        <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
+    <div className={`p-2 sm:p-4 md:p-10 min-h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
+      <div className={`p-3 sm:p-5 md:p-8 rounded-2xl shadow-lg w-full max-w-4xl mx-auto ${isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}>
+        <h1 className="text-xl sm:text-2xl md:text-4xl font-bold mb-3 sm:mb-6 md:mb-8 text-center">Edit Job Post</h1>
+        <form className="space-y-3 sm:space-y-6 md:space-y-8" onSubmit={handleSubmit}>
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">Job Details</h2>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Job Title</label>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-3 sm:mb-4 md:mb-6">Job Details</h2>
+            <div className="mb-3 sm:mb-4 md:mb-6">
+              <label className="block text-sm sm:text-base mb-1">Job Title</label>
               <Autocomplete
                 freeSolo
                 options={jobTitles}
@@ -174,32 +174,33 @@ const EditJob = ({ isDarkMode }) => {
                     onChange={handleChange}
                     fullWidth
                     className="focus:border-blue-500"
+                    size="small"
                     required
                   />
                 )}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Job Description</label>
+            <div className="mb-3 sm:mb-4 md:mb-6">
+              <label className="block text-sm sm:text-base mb-1">Job Description</label>
               <TextareaAutosize
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 text-sm sm:text-base w-full ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
                 name="jobDescription"
                 value={formData.jobDescription}
                 onChange={handleChange}
                 minRows={3}
-                style={{ width: "100%" }}
                 required
               />
             </div>
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
-              <div className="w-full sm:w-1/2">
-                <label className="block">Employment Type</label>
+            <div className="mb-3 sm:mb-4 md:mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <label className="block text-sm sm:text-base mb-1">Employment Type</label>
                 <Select
                   name="employmentType"
                   value={formData.employmentType}
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  size="small"
                   required
                 >
                   <MenuItem value="">Select Employment Type</MenuItem>
@@ -209,14 +210,15 @@ const EditJob = ({ isDarkMode }) => {
                   <MenuItem value="internship">Internship</MenuItem>
                 </Select>
               </div>
-              <div className="w-full sm:w-1/2">
-                <label className="block">Experience Level</label>
+              <div>
+                <label className="block text-sm sm:text-base mb-1">Experience Level</label>
                 <Select
                   name="experienceLevel"
                   value={formData.experienceLevel}
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  size="small"
                   required
                 >
                   <MenuItem value="">Select Experience Level</MenuItem>
@@ -230,15 +232,16 @@ const EditJob = ({ isDarkMode }) => {
             </div>
             
             {/* Remaining form fields */}
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
-              <div className="w-full sm:w-1/2">
-                <label className="block">Remote or Onsite</label>
+            <div className="mb-3 sm:mb-4 md:mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <label className="block text-sm sm:text-base mb-1">Remote or Onsite</label>
                 <Select
                   name="remoteOrOnsite"
                   value={formData.remoteOrOnsite}
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  size="small"
                   required
                 >
                   <MenuItem value="">Select Option</MenuItem>
@@ -247,76 +250,80 @@ const EditJob = ({ isDarkMode }) => {
                   <MenuItem value="hybrid">Hybrid</MenuItem>
                 </Select>
               </div>
-              <div className="w-full sm:w-1/2">
-                <label className="block">Location</label>
+              <div>
+                <label className="block text-sm sm:text-base mb-1">Location</label>
                 <TextField
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  size="small"
                   required
                 />
               </div>
             </div>
             
             {/* Rest of form fields... */}
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
-              <div className="w-full sm:w-1/2">
-                <label className="block">Salary Range ₹(INR)</label>
+            <div className="mb-3 sm:mb-4 md:mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <label className="block text-sm sm:text-base mb-1">Salary Range ₹(INR)</label>
                 <TextField
                   name="salary"
                   value={formData.salary}
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  size="small"
                   required
                 />
               </div>
-              <div className="w-full sm:w-1/2">
-                <label className="block">Equity</label>
+              <div>
+                <label className="block text-sm sm:text-base mb-1">Equity</label>
                 <TextField
                   name="equity"
                   value={formData.equity}
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  size="small"
                 />
               </div>
             </div>
             
-            {/* Continue with all the fields from PostJob.jsx */}
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Sponsorship</label>
+            <div className="mb-3 sm:mb-4 md:mb-6">
+              <label className="block text-sm sm:text-base mb-1">Sponsorship</label>
               <TextField
                 name="sponsorship"
                 value={formData.sponsorship}
                 onChange={handleChange}
                 fullWidth
                 className="focus:border-blue-500"
+                size="small"
               />
             </div>
             
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Recruitment Process</label>
+            <div className="mb-3 sm:mb-4 md:mb-6">
+              <label className="block text-sm sm:text-base mb-1">Recruitment Process</label>
               <TextareaAutosize
                 name="recruitmentProcess"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 text-sm sm:text-base w-full ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
                 value={formData.recruitmentProcess}
                 onChange={handleChange}
-                minRows={3}
+                minRows={2}
                 style={{ width: "100%" }}
               />
             </div>
             
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Status</label>
+            <div className="mb-3 sm:mb-4 md:mb-6">
+              <label className="block text-sm sm:text-base mb-1">Status</label>
               <Select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
                 fullWidth
                 className="focus:border-blue-500"
+                size="small"
                 required
               >
                 <MenuItem value="">Select Status</MenuItem>
@@ -326,21 +333,22 @@ const EditJob = ({ isDarkMode }) => {
               </Select>
             </div>
             
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Number of Positions</label>
+            <div className="mb-3 sm:mb-4 md:mb-6">
+              <label className="block text-sm sm:text-base mb-1">Number of Positions</label>
               <TextField
                 name="numberOfPositions"
                 value={formData.numberOfPositions}
                 onChange={handleChange}
                 fullWidth
                 className="focus:border-blue-500"
+                size="small"
                 type="number"
                 required
               />
             </div>
             
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Category</label>
+            <div className="mb-3 sm:mb-4 md:mb-6">
+              <label className="block text-sm sm:text-base mb-1">Category</label>
               <Autocomplete
                 freeSolo
                 options={["Engineering", "Data", "Design", "Product", "Marketing", "Sales", "HR", "Finance"]}
@@ -360,34 +368,36 @@ const EditJob = ({ isDarkMode }) => {
                     }}
                     fullWidth
                     className="focus:border-blue-500"
+                    size="small"
                   />
                 )}
               />
             </div>
             
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Tags (comma separated)</label>
+            <div className="mb-3 sm:mb-4 md:mb-6">
+              <label className="block text-sm sm:text-base mb-1">Tags (comma separated)</label>
               <TextField
                 name="tags"
                 value={formData.tags}
                 onChange={handleChange}
                 fullWidth
                 className="focus:border-blue-500"
+                size="small"
               />
             </div>
           </div>
           
-          <div className="flex justify-between">
+          <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0">
             <button
               type="button"
               onClick={() => navigate("/job-posted")}
-              className="px-6 py-3 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+              className="order-2 sm:order-1 px-4 sm:px-6 py-2 sm:py-3 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-sm sm:text-base"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className={`px-6 py-3 rounded transition duration-300 ${isDarkMode ? "bg-[#ff8200] text-white hover:bg-[#e57400]" : "bg-[#ff8200] text-white hover:bg-[#e57400]"}`}
+              className={`order-1 sm:order-2 px-4 sm:px-6 py-2 sm:py-3 rounded transition duration-300 text-sm sm:text-base ${isDarkMode ? "bg-[#ff8200] text-white hover:bg-[#e57400]" : "bg-[#ff8200] text-white hover:bg-[#e57400]"}`}
             >
               Update Job
             </button>
@@ -405,7 +415,14 @@ const EditJob = ({ isDarkMode }) => {
         <Alert 
           onClose={handleCloseSnackbar} 
           severity={snackbarSeverity} 
-          sx={{ width: '100%', maxWidth: '600px', fontSize: '1.1rem', '& .MuiAlert-message': { fontSize: '1.1rem' } }}
+          sx={{ 
+            width: '100%', 
+            maxWidth: { xs: '90%', sm: '600px' }, 
+            fontSize: { xs: '0.9rem', sm: '1.1rem' }, 
+            '& .MuiAlert-message': { 
+              fontSize: 'inherit' 
+            } 
+          }}
         >
           {snackbarMessage}
         </Alert>
