@@ -15,6 +15,7 @@ import Login from "./pages/Login";
 import AdminPortal from "./pages/AdminPortal"; // Import AdminPortal component
 import AdminLogin from "./pages/AdminLogin"; // Import AdminLogin component
 import EditJob from "./pages/EditJob";
+import Job from "./JobApplications/Job.jsx";
 
 function AppContent() {
   const location = useLocation();
@@ -131,10 +132,11 @@ function AppContent() {
             <Route path="/post-job" element={<PostJob isDarkMode={isDarkMode} email={loggedInEmail} />} />
             <Route path="/job-posted" element={<JobPosted isDarkMode={isDarkMode} email={loggedInEmail} />} />
             <Route path="/forgot-password" element={<ForgotPassword isDarkMode={isDarkMode} />} />
-            <Route path="/EditRegistration" element={<EditRegistration isDarkMode={isDarkMode} />} />
+            <Route path="/Edit-Registration" element={<EditRegistration isDarkMode={isDarkMode} />} />
             <Route path="/admin" element={<AdminPortal isDarkMode={isDarkMode} />} />
             <Route path="/admin-login" element={<AdminLogin />} />
             <Route path="/edit-job/:jobId" element={<EditJob isDarkMode={isDarkMode} />} />
+            <Route path="/job/:jobId" element={<Job isDarkMode={isDarkMode} />} />
             <Route path="/" element={<Login setLoggedInEmail={setLoggedInEmail} />} />
           </Routes>
         </div>

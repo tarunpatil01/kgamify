@@ -55,7 +55,7 @@ function Navbar({ isSidebarOpen, onThemeToggle, isDarkMode, userCompany }) {
   };
 
   const handleEditRegistration = () => {
-    navigate("/EditRegistration");
+    navigate("/Edit-Registration");
   };
 
   const toggleDropdown = () => {

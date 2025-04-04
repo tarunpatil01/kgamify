@@ -87,7 +87,7 @@ function Sidebar({ onToggle, onThemeToggle, isDarkMode }) {
           />
           
           <SidebarLink 
-            to="/EditRegistration" 
+            to="/Edit-Registration" 
             icon={<FaBuilding />} 
             text="Edit Registration" 
             isOpen={isOpen}
