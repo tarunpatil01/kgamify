@@ -15,6 +15,7 @@ const statesAndCities = {
   "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai"],
   "Uttar Pradesh": ["Lucknow", "Kanpur", "Varanasi"],
   "West Bengal": ["Kolkata", "Darjeeling", "Siliguri"],
+
   // Add more states and cities as needed
 };
 
@@ -274,7 +275,7 @@ function Register({ isDarkMode }) {
                   ))}
                 </select>
               </div>
-              
+
               <div className="mb-4 sm:mb-6">
                 <label className="block">
                   Pin Code <span className="text-red-500">*</span>
@@ -324,6 +325,42 @@ function Register({ isDarkMode }) {
                   accept=".pdf"
                   required
                 />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Company Size <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="companyType"
+                  value={formData.companyType}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  required
+                >
+                  <option value="">Select Company Size</option>
+                  <option value="10 - 50  ">10 - 50 </option>
+                  <option value="50 - 100">50 - 100</option>
+                  <option value="100 - 150  ">100 - 150 </option>
+                  <option value="150 - 200 ">150 - 200 </option>
+                  <option value="200 - 250 ">200 - 250 </option>
+                  <option value="250 - 300 ">250 - 300 </option>
+                  <option value="300 - 350 ">300 - 350 </option>
+                  <option value="350 - 400 ">350 - 400 </option>
+                  <option value="400 - 450 ">400 - 450 </option>
+                  <option value="450 - 500 ">450 - 500 </option>
+                  <option value="500 - 550 ">500 - 550 </option>
+                  <option value="550 - 600">550 - 600</option>
+                  <option value="500-600">550 - 600</option>
+                  <option value="600 - 650">600 - 650</option>
+                  <option value="650 - 700">650 - 700</option>
+                  <option value="700 - 750">700 - 750</option>
+                  <option value="750 - 800">750 - 800</option>
+                  <option value="800 - 850">800 - 850</option>
+                  <option value="850 - 900">850 - 900</option>
+                  <option value="900 - 950">900 - 950</option>
+                  <option value="950 - 1000">950 - 1000</option>
+                  <option value="1000 - 1500">1000 - 1500</option>
+                </select>
               </div>
               <div className="mb-4 sm:mb-6">
                 <label className="block">
