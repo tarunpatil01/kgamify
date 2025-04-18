@@ -438,7 +438,7 @@ export default function PostJob({ isDarkMode, email }) {
                 ? "bg-[#ff8200] text-white hover:bg-[#e57400]"
                 : "bg-[#ff8200] text-white hover:bg-[#e57400]"
             }`}
-          >
+          > 
             Post Job
           </button>
         </form>
