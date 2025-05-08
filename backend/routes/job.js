@@ -18,6 +18,7 @@ router.get('/', async (req, res) => {
     const jobs = await Job.find(query);
     console.log(`Backend: Found ${jobs.length} jobs${email ? ' for ' + email : ''}`);
     
+    // Debugging for missing email fields
     if (email && jobs.length === 0) {
       console.log(`Backend: No jobs found for email: ${email}. Checking for jobs without companyEmail...`);
       const allJobs = await Job.find({});
@@ -52,6 +53,7 @@ router.post('/', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized or company not approved' });
     }
 
+    // Handle job description from textarea (no HTML processing needed)
     const newJob = new Job({
       ...req.body,
       companyName: company.companyName,
@@ -82,9 +84,22 @@ router.get('/:id', async (req, res) => {
 // Edit a job
 router.put('/:id', async (req, res) => {
   try {
-    const job = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    // Ensure the job exists
+    const existingJob = await Job.findById(req.params.id);
+    if (!existingJob) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    
+    // Update the job - preserve companyEmail if not provided
+    const updatedData = {
+      ...req.body,
+      companyEmail: req.body.companyEmail || existingJob.companyEmail
+    };
+    
+    const job = await Job.findByIdAndUpdate(req.params.id, updatedData, { new: true });
     res.json(job);
   } catch (error) {
+    console.error('Error updating job:', error);
     res.status(400).json({ error: error.message });
   }
 });
