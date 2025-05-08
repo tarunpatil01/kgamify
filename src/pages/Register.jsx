@@ -506,9 +506,6 @@ function Register({ isDarkMode }) {
                   <option value="Startup">Startup</option>
                   <option value="Partnership">Partnership</option>
                   <option value="Proprietorship">Proprietorship</option>
-                  <option value="LLP">Limited Liability Partnership (LLP)</option>
-                  <option value="OPC">One Person Company (OPC)</option>
-                  <option value="Foreign Company">Foreign Company</option>
                   <option value="NGO">Non-Governmental Organization (NGO)</option>
                 </select>
               </div>
