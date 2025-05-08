@@ -5,18 +5,211 @@ import { registerCompany } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 
-// List of Indian states and cities
+// Expanded list of Indian states and cities
 const statesAndCities = {
-  "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur"],
-  Bihar: ["Patna", "Gaya", "Bhagalpur"],
-  Delhi: ["New Delhi"],
-  Karnataka: ["Bengaluru", "Mysuru", "Mangaluru"],
-  Maharashtra: ["Mumbai", "Pune", "Nagpur"],
-  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai"],
-  "Uttar Pradesh": ["Lucknow", "Kanpur", "Varanasi"],
-  "West Bengal": ["Kolkata", "Darjeeling", "Siliguri"],
-
-  // Add more states and cities as needed
+  "Andhra Pradesh": [
+    "Visakhapatnam",
+    "Vijayawada",
+    "Guntur",
+    "Nellore",
+    "Kurnool",
+    "Rajahmundry",
+    "Tirupati",
+  ],
+  Assam: [
+    "Guwahati",
+    "Silchar",
+    "Dibrugarh",
+    "Jorhat",
+    "Nagaon",
+    "Tinsukia",
+    "Tezpur",
+  ],
+  Bihar: [
+    "Patna",
+    "Gaya",
+    "Bhagalpur",
+    "Muzaffarpur",
+    "Darbhanga",
+    "Purnia",
+    "Arrah",
+    "Begusarai",
+  ],
+  Chhattisgarh: [
+    "Raipur",
+    "Bhilai",
+    "Bilaspur",
+    "Korba",
+    "Durg",
+    "Rajnandgaon",
+    "Jagdalpur",
+  ],
+  Delhi: [
+    "New Delhi",
+    "Old Delhi",
+    "South Delhi",
+    "North Delhi",
+    "East Delhi",
+    "West Delhi",
+  ],
+  Goa: ["Panaji", "Margao", "Vasco da Gama", "Mapusa", "Ponda", "Bicholim"],
+  Gujarat: [
+    "Ahmedabad",
+    "Surat",
+    "Vadodara",
+    "Rajkot",
+    "Bhavnagar",
+    "Jamnagar",
+    "Gandhinagar",
+    "Anand",
+  ],
+  Haryana: [
+    "Gurgaon",
+    "Faridabad",
+    "Chandigarh",
+    "Ambala",
+    "Panipat",
+    "Karnal",
+    "Hisar",
+    "Rohtak",
+  ],
+  "Himachal Pradesh": [
+    "Shimla",
+    "Manali",
+    "Dharamshala",
+    "Solan",
+    "Mandi",
+    "Kullu",
+    "Chamba",
+  ],
+  Jharkhand: [
+    "Ranchi",
+    "Jamshedpur",
+    "Dhanbad",
+    "Bokaro",
+    "Hazaribagh",
+    "Deoghar",
+    "Dumka",
+  ],
+  Karnataka: [
+    "Bengaluru",
+    "Mysuru",
+    "Mangaluru",
+    "Hubli-Dharwad",
+    "Belagavi",
+    "Shivamogga",
+    "Tumakuru",
+    "Davanagere",
+  ],
+  Kerala: [
+    "Thiruvananthapuram",
+    "Kochi",
+    "Kozhikode",
+    "Thrissur",
+    "Kollam",
+    "Palakkad",
+    "Kannur",
+    "Alappuzha",
+  ],
+  "Madhya Pradesh": [
+    "Bhopal",
+    "Indore",
+    "Jabalpur",
+    "Gwalior",
+    "Ujjain",
+    "Sagar",
+    "Dewas",
+    "Satna",
+  ],
+  Maharashtra: [
+    "Mumbai",
+    "Pune",
+    "Nagpur",
+    "Thane",
+    "Nashik",
+    "Aurangabad",
+    "Solapur",
+    "Navi Mumbai",
+    "Kolhapur",
+  ],
+  Odisha: [
+    "Bhubaneswar",
+    "Cuttack",
+    "Rourkela",
+    "Brahmapur",
+    "Sambalpur",
+    "Puri",
+    "Balasore",
+  ],
+  Punjab: [
+    "Ludhiana",
+    "Amritsar",
+    "Jalandhar",
+    "Patiala",
+    "Bathinda",
+    "Mohali",
+    "Pathankot",
+    "Hoshiarpur",
+  ],
+  Rajasthan: [
+    "Jaipur",
+    "Jodhpur",
+    "Udaipur",
+    "Kota",
+    "Ajmer",
+    "Bikaner",
+    "Alwar",
+    "Bharatpur",
+  ],
+  "Tamil Nadu": [
+    "Chennai",
+    "Coimbatore",
+    "Madurai",
+    "Tiruchirappalli",
+    "Salem",
+    "Tirunelveli",
+    "Erode",
+    "Vellore",
+  ],
+  Telangana: [
+    "Hyderabad",
+    "Warangal",
+    "Nizamabad",
+    "Karimnagar",
+    "Khammam",
+    "Ramagundam",
+    "Mahbubnagar",
+  ],
+  "Uttar Pradesh": [
+    "Lucknow",
+    "Kanpur",
+    "Varanasi",
+    "Agra",
+    "Prayagraj",
+    "Meerut",
+    "Bareilly",
+    "Aligarh",
+    "Moradabad",
+  ],
+  Uttarakhand: [
+    "Dehradun",
+    "Haridwar",
+    "Roorkee",
+    "Haldwani",
+    "Rudrapur",
+    "Kashipur",
+    "Rishikesh",
+  ],
+  "West Bengal": [
+    "Kolkata",
+    "Asansol",
+    "Siliguri",
+    "Durgapur",
+    "Bardhaman",
+    "Malda",
+    "Baharampur",
+    "Howrah",
+  ],
 };
 
 function Register({ isDarkMode }) {
@@ -37,7 +230,8 @@ function Register({ isDarkMode }) {
     city: "",
     state: "",
     pinCode: "",
-    companyType: "",
+    companyType: "", // Company type (e.g. Private Limited)
+    companySize: "", // Company size (e.g. 10-50 employees)
     documents: null,
     username: "",
     password: "",
@@ -47,8 +241,6 @@ function Register({ isDarkMode }) {
     twitter: "",
     linkedin: "",
     youtube: "",
-    state: "",
-    city: "",
   });
   const [currentStep, setCurrentStep] = useState(1);
   const [cities, setCities] = useState([]);
@@ -311,6 +503,13 @@ function Register({ isDarkMode }) {
                   <option value="">Select Company Type</option>
                   <option value="Private Limited">Private Limited</option>
                   <option value="Public Limited">Public Limited</option>
+                  <option value="Startup">Startup</option>
+                  <option value="Partnership">Partnership</option>
+                  <option value="Proprietorship">Proprietorship</option>
+                  <option value="LLP">Limited Liability Partnership (LLP)</option>
+                  <option value="OPC">One Person Company (OPC)</option>
+                  <option value="Foreign Company">Foreign Company</option>
+                  <option value="NGO">Non-Governmental Organization (NGO)</option>
                 </select>
               </div>
               <div className="mb-4 sm:mb-6">
@@ -331,35 +530,20 @@ function Register({ isDarkMode }) {
                   Company Size <span className="text-red-500">*</span>
                 </label>
                 <select
-                  name="companyType"
-                  value={formData.companyType}
+                  name="companySize"
+                  value={formData.companySize}
                   onChange={handleChange}
                   className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
                   required
                 >
                   <option value="">Select Company Size</option>
-                  <option value="10 - 50  ">10 - 50 </option>
-                  <option value="50 - 100">50 - 100</option>
-                  <option value="100 - 150  ">100 - 150 </option>
-                  <option value="150 - 200 ">150 - 200 </option>
-                  <option value="200 - 250 ">200 - 250 </option>
-                  <option value="250 - 300 ">250 - 300 </option>
-                  <option value="300 - 350 ">300 - 350 </option>
-                  <option value="350 - 400 ">350 - 400 </option>
-                  <option value="400 - 450 ">400 - 450 </option>
-                  <option value="450 - 500 ">450 - 500 </option>
-                  <option value="500 - 550 ">500 - 550 </option>
-                  <option value="550 - 600">550 - 600</option>
-                  <option value="500-600">550 - 600</option>
-                  <option value="600 - 650">600 - 650</option>
-                  <option value="650 - 700">650 - 700</option>
-                  <option value="700 - 750">700 - 750</option>
-                  <option value="750 - 800">750 - 800</option>
-                  <option value="800 - 850">800 - 850</option>
-                  <option value="850 - 900">850 - 900</option>
-                  <option value="900 - 950">900 - 950</option>
-                  <option value="950 - 1000">950 - 1000</option>
-                  <option value="1000 - 1500">1000 - 1500</option>
+                  <option value="1-10">1-10 employees</option>
+                  <option value="10-50">10-50 employees</option>
+                  <option value="50-100">50-100 employees</option>
+                  <option value="100-500">100-500 employees</option>
+                  <option value="500-1000">500-1000 employees</option>
+                  <option value="1000-5000">1000-5000 employees</option>
+                  <option value="5000+">5000+ employees</option>
                 </select>
               </div>
               <div className="mb-4 sm:mb-6">
