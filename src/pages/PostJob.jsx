@@ -8,11 +8,9 @@ import {
   Autocomplete,
   Snackbar,
   Alert,
-  TextareaAutosize, // Add this import
+  TextareaAutosize,
 } from "@mui/material";
 import { createJob } from "../api";
-import ReactQuill from "react-quill"; // Import ReactQuill for HTML editor
-import "react-quill/dist/quill.snow.css"; // Import Quill styles
 
 const jobTitles = [
   "Software Engineer",
@@ -70,10 +68,6 @@ export default function PostJob({ isDarkMode, email }) {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleQuillChange = (value) => {
-    setFormData({ ...formData, jobDescription: value });
   };
 
   const handleSubmit = async (event) => {
@@ -152,11 +146,17 @@ export default function PostJob({ isDarkMode, email }) {
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block">Job Description</label>
-              <ReactQuill
-                theme="snow"
+              <TextareaAutosize
+                name="jobDescription"
                 value={formData.jobDescription}
-                onChange={handleQuillChange}
-                className="bg-white text-black"
+                onChange={handleChange}
+                minRows={5}
+                className={`w-full p-2 border rounded focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode
+                    ? "border-gray-600 bg-gray-700 text-white"
+                    : "border-gray-400 bg-white text-black"
+                }`}
+                style={{ width: "100%" }}
               />
             </div>
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
@@ -438,7 +438,7 @@ export default function PostJob({ isDarkMode, email }) {
                 ? "bg-[#ff8200] text-white hover:bg-[#e57400]"
                 : "bg-[#ff8200] text-white hover:bg-[#e57400]"
             }`}
-          > 
+          >
             Post Job
           </button>
         </form>
