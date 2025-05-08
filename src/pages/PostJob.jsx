@@ -3,21 +3,29 @@ import { useNavigate } from "react-router-dom";
 import {
   Button,
   TextField,
-  TextareaAutosize,
   Select,
   MenuItem,
-  Autocomplete, // Import Autocomplete component
-  Snackbar, // Import Snackbar component
-  Alert, // Import Alert component
+  Autocomplete,
+  Snackbar,
+  Alert,
+  TextareaAutosize, // Add this import
 } from "@mui/material";
-import { createJob } from "../api"; // Import createJob function
+import { createJob } from "../api";
+import ReactQuill from "react-quill"; // Import ReactQuill for HTML editor
+import "react-quill/dist/quill.snow.css"; // Import Quill styles
 
 const jobTitles = [
   "Software Engineer",
   "Product Manager",
   "Designer",
   "Data Scientist",
-]; // Add job titles array
+];
+const salaryOptions = [
+  "20,000-30,000",
+  "30,000-50,000",
+  "50,000-70,000",
+  "70,000+",
+];
 
 export default function PostJob({ isDarkMode, email }) {
   // Add email prop
@@ -57,10 +65,15 @@ export default function PostJob({ isDarkMode, email }) {
     }
   }, [email]);
 
+  const [cities, setCities] = useState([]);
   const [openSnackbar, setOpenSnackbar] = useState(false); // State for Snackbar
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleQuillChange = (value) => {
+    setFormData({ ...formData, jobDescription: value });
   };
 
   const handleSubmit = async (event) => {
@@ -139,6 +152,7 @@ export default function PostJob({ isDarkMode, email }) {
               />
             </div>
             <div className="mb-4 sm:mb-6">
+<<<<<<< HEAD
               <label className="block">Job Description*</label>
               <TextareaAutosize
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -152,6 +166,14 @@ export default function PostJob({ isDarkMode, email }) {
                 minRows={3}
                 style={{ width: "100%" }}
                 required
+=======
+              <label className="block">Job Description</label>
+              <ReactQuill
+                theme="snow"
+                value={formData.jobDescription}
+                onChange={handleQuillChange}
+                className="bg-white text-black"
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
               />
             </div>
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
@@ -166,11 +188,13 @@ export default function PostJob({ isDarkMode, email }) {
                   required
                 >
                   <MenuItem value="">Select Employment Type</MenuItem>
+                  <MenuItem value="freelance">Freelance</MenuItem>
                   <MenuItem value="full-time">Full-time</MenuItem>
                   <MenuItem value="part-time">Part-time</MenuItem>
                   <MenuItem value="contract">Contract</MenuItem>
                 </Select>
               </div>
+
               <div className="w-full sm:w-1/2">
                 <label className="block">Experience Level*</label>
                 <Select
@@ -218,26 +242,21 @@ export default function PostJob({ isDarkMode, email }) {
               </div>
             </div>
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
+<<<<<<< HEAD
               <div className="w-full sm:w-1/2">
                 <label className="block">Salary Range ₹(INR)*</label>
                 <TextField
+=======
+              <div className="mb-4 sm:mb-6">
+                <label className="block">Salary Range ₹(INR)</label>
+                <Select
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                   name="salary"
                   value={formData.salary}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Only update if the input is a number or empty
-                    if (value === "" || /^[\d,-]+$/.test(value)) {
-                      setFormData({ ...formData, salary: value });
-                    }
-                  }}
-                  type="text"
-                  placeholder="e.g. 50000-70000 or 50000, 70000"
-                  inputProps={{
-                    inputMode: "numeric",
-                    pattern: "[0-9,-]*",
-                  }}
+                  onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+<<<<<<< HEAD
                   required
                 />
               </div>
@@ -261,15 +280,31 @@ export default function PostJob({ isDarkMode, email }) {
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block">Sponsorship*</label>
+=======
+                >
+                  <MenuItem value="">Select Salary Range</MenuItem>
+                  {salaryOptions.map((option) => (
+                    <MenuItem key={option} value={option}>
+                      {option}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </div>
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block">Relocation Benefits</label>
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
               <TextField
-                name="sponsorship"
-                value={formData.sponsorship}
+                name="relocationBenefits"
+                value={formData.relocationBenefits}
                 onChange={handleChange}
                 fullWidth
                 className="focus:border-blue-500"
                 required
               />
             </div>
+            {/* Other fields remain unchanged */}
+
             <div className="mb-4 sm:mb-6">
               <label className="block">Recruitment Process*</label>
               <TextareaAutosize
@@ -464,31 +499,31 @@ export default function PostJob({ isDarkMode, email }) {
                 ? "bg-[#ff8200] text-white hover:bg-[#e57400]"
                 : "bg-[#ff8200] text-white hover:bg-[#e57400]"
             }`}
-          >
+          > 
             Post Job
           </button>
         </form>
-      </div>
-      <Snackbar
-        open={openSnackbar}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        sx={{ width: "100%" }}
-      >
-        <Alert
+        <Snackbar
+          open={openSnackbar}
+          autoHideDuration={6000}
           onClose={handleCloseSnackbar}
-          severity="success"
-          sx={{
-            width: "100%",
-            maxWidth: "600px",
-            fontSize: "1.1rem",
-            "& .MuiAlert-message": { fontSize: "1.1rem" },
-          }}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+          sx={{ width: "100%" }}
         >
-          Job posted successfully
-        </Alert>
-      </Snackbar>
+          <Alert
+            onClose={handleCloseSnackbar}
+            severity="success"
+            sx={{
+              width: "100%",
+              maxWidth: "600px",
+              fontSize: "1.1rem",
+              "& .MuiAlert-message": { fontSize: "1.1rem" },
+            }}
+          >
+            Job posted successfully
+          </Alert>
+        </Snackbar>
+      </div>
     </div>
   );
 }
