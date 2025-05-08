@@ -1,9 +1,23 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEyeSlash, FaSpinner, FaCloudUploadAlt } from "react-icons/fa"; // Add FaCloudUploadAlt
+import { FaEye, FaEyeSlash, FaSpinner, FaCloudUploadAlt } from "react-icons/fa";
 import { registerCompany } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+
+// List of Indian states and cities
+const statesAndCities = {
+  "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur"],
+  Bihar: ["Patna", "Gaya", "Bhagalpur"],
+  Delhi: ["New Delhi"],
+  Karnataka: ["Bengaluru", "Mysuru", "Mangaluru"],
+  Maharashtra: ["Mumbai", "Pune", "Nagpur"],
+  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai"],
+  "Uttar Pradesh": ["Lucknow", "Kanpur", "Varanasi"],
+  "West Bengal": ["Kolkata", "Darjeeling", "Siliguri"],
+
+  // Add more states and cities as needed
+};
 
 function Register({ isDarkMode }) {
   const navigate = useNavigate();
@@ -11,27 +25,44 @@ function Register({ isDarkMode }) {
   const [formData, setFormData] = useState({
     companyName: "",
     logo: null,
-    website: "",
+    website: "www.",
     industry: "",
     type: "",
     size: "",
     contactName: "",
     email: "",
     phone: "",
-    address: "",
-    registrationNumber: "",
-    yearEstablished: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    pinCode: "",
+    companyType: "",
     documents: null,
-    description: "",
-    socialMediaLinks: "",
+    username: "",
     password: "",
+    confirmPassword: "",
+    description: "",
+    instagram: "",
+    twitter: "",
+    linkedin: "",
+    youtube: "",
+    state: "",
+    city: "",
   });
+  const [currentStep, setCurrentStep] = useState(1);
+  const [cities, setCities] = useState([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState(""); // Add message state
-  const [snackbarSeverity, setSnackbarSeverity] = useState("success"); // Add severity state
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false); // Add uploading state
+
+  const handleStateChange = (event) => {
+    const selectedState = event.target.value;
+    setFormData((prev) => ({ ...prev, state: selectedState, city: "" }));
+    setCities(statesAndCities[selectedState] || []);
+  };
 
   const handleChange = (event) => {
     const { name, value, files } = event.target;
@@ -41,8 +72,12 @@ function Register({ isDarkMode }) {
     }));
   };
 
+  const handleNext = () => setCurrentStep((prev) => prev + 1);
+  const handlePrevious = () => setCurrentStep((prev) => prev - 1);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+<<<<<<< HEAD
 
     // Validate file types
     if (formData.logo && !formData.logo.type.startsWith("image/")) {
@@ -113,6 +148,9 @@ function Register({ isDarkMode }) {
     } finally {
       setIsSubmitting(false); // Reset loading state regardless of outcome
     }
+=======
+    // Add validation and submission logic here
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
   };
 
   const togglePasswordVisibility = () => {
@@ -138,6 +176,7 @@ function Register({ isDarkMode }) {
           Company Registration
         </h1>
 
+<<<<<<< HEAD
         {/* Show loading overlay when submitting */}
         {isSubmitting && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
@@ -168,6 +207,18 @@ function Register({ isDarkMode }) {
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
               <div className="w-full sm:w-1/2">
                 <label className="block text-gray-700">Company Name*</label>
+=======
+        <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
+          {currentStep === 1 && (
+            <>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+                Basic Info
+              </h2>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Company Name <span className="text-red-500">*</span>
+                </label>
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                 <input
                   type="text"
                   name="companyName"
@@ -177,9 +228,15 @@ function Register({ isDarkMode }) {
                   required
                 />
               </div>
+<<<<<<< HEAD
               <div className="w-full sm:w-1/2">
                 <label className="block text-gray-700">
                   Logo (.png/.jpg /.jpeg)*
+=======
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Logo (PNG, JPEG) <span className="text-red-500">*</span>
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                 </label>
                 <input
                   type="file"
@@ -187,6 +244,7 @@ function Register({ isDarkMode }) {
                   accept=".png, .jpg, .jpeg"
                   onChange={handleChange}
                   className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+<<<<<<< HEAD
                   required
                 />
               </div>
@@ -194,6 +252,16 @@ function Register({ isDarkMode }) {
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
               <div className="w-full sm:w-1/2">
                 <label className="block text-gray-700">Website*</label>
+=======
+                  accept=".png, .jpeg"
+                  required
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Website <span className="text-red-500">*</span>
+                </label>
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                 <input
                   type="url"
                   name="website"
@@ -204,15 +272,24 @@ function Register({ isDarkMode }) {
                   required
                 />
               </div>
+<<<<<<< HEAD
               {/* <div className="w-full sm:w-1/2">
                 <label className="block text-gray-700">Industry*</label>
                 <input
                   type="text"
+=======
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Industry Type <span className="text-red-500">*</span>
+                </label>
+                <select
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                   name="industry"
                   value={formData.industry}
                   onChange={handleChange}
                   className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
                   required
+<<<<<<< HEAD
                 />
               </div> */}
               <div className="w-full sm:w-1/2">
@@ -277,6 +354,28 @@ function Register({ isDarkMode }) {
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
               <div className="w-full sm:w-1/2">
                 <label className="block text-gray-700">Contact Name*</label>
+=======
+                >
+                  <option value="">Select Industry</option>
+                  <option value="IT">IT</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Healthcare">Healthcare</option>
+                  <option value="Education">Education</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {currentStep === 2 && (
+            <>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+                Contact Person Details
+              </h2>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Contact Name <span className="text-red-500">*</span>
+                </label>
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                 <input
                   type="text"
                   name="contactName"
@@ -286,8 +385,15 @@ function Register({ isDarkMode }) {
                   required
                 />
               </div>
+<<<<<<< HEAD
               <div className="w-full sm:w-1/2">
                 <label className="block text-gray-700">Email*</label>
+=======
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Email <span className="text-red-500">*</span>
+                </label>
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                 <input
                   type="email"
                   name="email"
@@ -297,10 +403,17 @@ function Register({ isDarkMode }) {
                   required
                 />
               </div>
+<<<<<<< HEAD
             </div>
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
               <div className="w-full sm:w-1/2">
                 <label className="block text-gray-700">Phone*</label>
+=======
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Phone <span className="text-red-500">*</span>
+                </label>
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                 <input
                   type="tel"
                   name="phone"
@@ -310,17 +423,25 @@ function Register({ isDarkMode }) {
                   required
                 />
               </div>
+<<<<<<< HEAD
               <div className="w-full sm:w-1/2">
                 <label className="block text-gray-700">Address*</label>
+=======
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Address Line 1 <span className="text-red-500">*</span>
+                </label>
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                 <input
                   type="text"
-                  name="address"
-                  value={formData.address}
+                  name="addressLine1"
+                  value={formData.addressLine1}
                   onChange={handleChange}
                   className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
                   required
                 />
               </div>
+<<<<<<< HEAD
             </div>
           </div>
           <div>
@@ -332,26 +453,203 @@ function Register({ isDarkMode }) {
                 <label className="block text-gray-700">
                   Registration Number*
                 </label>
+=======
+              <div className="mb-4 sm:mb-6">
+                <label className="block">Address Line 2</label>
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                 <input
                   type="text"
-                  name="registrationNumber"
-                  value={formData.registrationNumber}
+                  name="addressLine2"
+                  value={formData.addressLine2}
                   onChange={handleChange}
                   className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
                   required
                 />
               </div>
+<<<<<<< HEAD
               <div className="w-full sm:w-1/2">
                 <label className="block text-gray-700">Year Established*</label>
+=======
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  State <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="state"
+                  value={formData.state}
+                  onChange={handleStateChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  required
+                >
+                  <option value="">Select State</option>
+                  {Object.keys(statesAndCities).map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  City <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  required
+                  disabled={!formData.state}
+                >
+                  <option value="">Select City</option>
+                  {cities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Pin Code <span className="text-red-500">*</span>
+                </label>
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
                 <input
-                  type="number"
-                  name="yearEstablished"
-                  value={formData.yearEstablished}
+                  type="text"
+                  name="pinCode"
+                  value={formData.pinCode}
                   onChange={handleChange}
                   className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
                   required
                 />
               </div>
+            </>
+          )}
+
+          {currentStep === 3 && (
+            <>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+                Company Details
+              </h2>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Company Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="companyType"
+                  value={formData.companyType}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  required
+                >
+                  <option value="">Select Company Type</option>
+                  <option value="Private Limited">Private Limited</option>
+                  <option value="Public Limited">Public Limited</option>
+                </select>
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Documents (PDF) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  name="documents"
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  accept=".pdf"
+                  required
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Company Size <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="companyType"
+                  value={formData.companyType}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  required
+                >
+                  <option value="">Select Company Size</option>
+                  <option value="10 - 50  ">10 - 50 </option>
+                  <option value="50 - 100">50 - 100</option>
+                  <option value="100 - 150  ">100 - 150 </option>
+                  <option value="150 - 200 ">150 - 200 </option>
+                  <option value="200 - 250 ">200 - 250 </option>
+                  <option value="250 - 300 ">250 - 300 </option>
+                  <option value="300 - 350 ">300 - 350 </option>
+                  <option value="350 - 400 ">350 - 400 </option>
+                  <option value="400 - 450 ">400 - 450 </option>
+                  <option value="450 - 500 ">450 - 500 </option>
+                  <option value="500 - 550 ">500 - 550 </option>
+                  <option value="550 - 600">550 - 600</option>
+                  <option value="500-600">550 - 600</option>
+                  <option value="600 - 650">600 - 650</option>
+                  <option value="650 - 700">650 - 700</option>
+                  <option value="700 - 750">700 - 750</option>
+                  <option value="750 - 800">750 - 800</option>
+                  <option value="800 - 850">800 - 850</option>
+                  <option value="850 - 900">850 - 900</option>
+                  <option value="900 - 950">900 - 950</option>
+                  <option value="950 - 1000">950 - 1000</option>
+                  <option value="1000 - 1500">1000 - 1500</option>
+                </select>
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Username <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  required
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type={passwordVisible ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
+                  title="Must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters"
+                  required
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Confirm Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type={passwordVisible ? "text" : "password"}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  required
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">Instagram</label>
+                <input
+                  type="url"
+                  name="instagram"
+                  value={formData.instagram}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  required
+                />
+              </div>
+<<<<<<< HEAD
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block text-gray-700">Documents*</label>
@@ -380,13 +678,51 @@ function Register({ isDarkMode }) {
                 title="Must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters"
                 required
               />
+=======
+              <div className="mb-4 sm:mb-6">
+                <label className="block">Twitter</label>
+                <input
+                  type="url"
+                  name="twitter"
+                  value={formData.twitter}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">LinkedIn</label>
+                <input
+                  type="url"
+                  name="linkedin"
+                  value={formData.linkedin}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">YouTube</label>
+                <input
+                  type="url"
+                  name="youtube"
+                  value={formData.youtube}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                />
+              </div>
+            </>
+          )}
+
+          <div className="flex justify-between">
+            {currentStep > 1 && (
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
               <button
                 type="button"
-                onClick={togglePasswordVisibility}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2"
+                onClick={handlePrevious}
+                className="p-2 sm:p-4 bg-gray-500 text-white rounded hover:bg-gray-600"
               >
-                {passwordVisible ? <FaEyeSlash /> : <FaEye />}
+                Previous
               </button>
+<<<<<<< HEAD
               <p className="text-sm text-gray-600 mt-2">
                 Password must contain at least one number, one uppercase and
                 lowercase letter, and at least 8 or more characters.
@@ -447,8 +783,26 @@ function Register({ isDarkMode }) {
               </span>
             ) : (
               "Register"
+=======
+>>>>>>> 5da1ec7d4d03b694050505cda0cd802a9782a0eb
             )}
-          </button>
+            {currentStep < 3 ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="p-2 sm:p-4 bg-[#ff8200] text-white rounded hover:bg-[#e57400]"
+              >
+                Next
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className="p-2 sm:p-4 bg-green-500 text-white rounded hover:bg-green-600"
+              >
+                Submit
+              </button>
+            )}
+          </div>
         </form>
       </div>
       <Snackbar
