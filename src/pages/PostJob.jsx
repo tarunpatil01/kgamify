@@ -117,7 +117,7 @@ export default function PostJob({ isDarkMode, email }) {
               Job Details
             </h2>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Job Title</label>
+              <label className="block">Job Title*</label>
               <Autocomplete
                 freeSolo
                 options={jobTitles}
@@ -133,12 +133,13 @@ export default function PostJob({ isDarkMode, email }) {
                     onChange={handleChange}
                     fullWidth
                     className="focus:border-blue-500"
+                    required
                   />
                 )}
               />
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Job Description</label>
+              <label className="block">Job Description*</label>
               <TextareaAutosize
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
                   isDarkMode
@@ -150,17 +151,19 @@ export default function PostJob({ isDarkMode, email }) {
                 onChange={handleChange}
                 minRows={3}
                 style={{ width: "100%" }}
+                required
               />
             </div>
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
               <div className="w-full sm:w-1/2">
-                <label className="block">Employment Type</label>
+                <label className="block">Employment Type*</label>
                 <Select
                   name="employmentType"
                   value={formData.employmentType}
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  required
                 >
                   <MenuItem value="">Select Employment Type</MenuItem>
                   <MenuItem value="full-time">Full-time</MenuItem>
@@ -169,13 +172,14 @@ export default function PostJob({ isDarkMode, email }) {
                 </Select>
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block">Experience Level</label>
+                <label className="block">Experience Level*</label>
                 <Select
                   name="experienceLevel"
                   value={formData.experienceLevel}
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  required
                 >
                   <MenuItem value="">Select Experience Level</MenuItem>
                   <MenuItem value="junior">Junior</MenuItem>
@@ -186,13 +190,14 @@ export default function PostJob({ isDarkMode, email }) {
             </div>
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
               <div className="w-full sm:w-1/2">
-                <label className="block">Remote or Onsite</label>
+                <label className="block">Remote or Onsite*</label>
                 <Select
                   name="remoteOrOnsite"
                   value={formData.remoteOrOnsite}
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  required
                 >
                   <MenuItem value="">Select Option</MenuItem>
                   <MenuItem value="remote">Remote</MenuItem>
@@ -201,19 +206,20 @@ export default function PostJob({ isDarkMode, email }) {
                 </Select>
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block">Location</label>
+                <label className="block">Location*</label>
                 <TextField
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  required
                 />
               </div>
             </div>
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
               <div className="w-full sm:w-1/2">
-                <label className="block">Salary Range ₹(INR)</label>
+                <label className="block">Salary Range ₹(INR)*</label>
                 <TextField
                   name="salary"
                   value={formData.salary}
@@ -232,10 +238,11 @@ export default function PostJob({ isDarkMode, email }) {
                   }}
                   fullWidth
                   className="focus:border-blue-500"
+                  required
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block">Equity / Shares</label>
+                <label className="block">Equity / Shares*</label>
                 <TextField
                   name="equity"
                   value={formData.equity}
@@ -248,21 +255,23 @@ export default function PostJob({ isDarkMode, email }) {
                   }}
                   fullWidth
                   className="focus:border-blue-500"
+                  required
                 />
               </div>
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Sponsorship</label>
+              <label className="block">Sponsorship*</label>
               <TextField
                 name="sponsorship"
                 value={formData.sponsorship}
                 onChange={handleChange}
                 fullWidth
                 className="focus:border-blue-500"
+                required
               />
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Recruitment Process</label>
+              <label className="block">Recruitment Process*</label>
               <TextareaAutosize
                 name="recruitmentProcess"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -274,10 +283,11 @@ export default function PostJob({ isDarkMode, email }) {
                 onChange={handleChange}
                 minRows={3}
                 style={{ width: "100%" }}
+                required
               />
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Responsibilities</label>
+              <label className="block">Responsibilities*</label>
               <TextareaAutosize
                 name="responsibilities"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -289,10 +299,11 @@ export default function PostJob({ isDarkMode, email }) {
                 onChange={handleChange}
                 minRows={3}
                 style={{ width: "100%" }}
+                required
               />
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Skills</label>
+              <label className="block">Skills*</label>
               <TextareaAutosize
                 name="skills"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -304,6 +315,7 @@ export default function PostJob({ isDarkMode, email }) {
                 onChange={handleChange}
                 minRows={3}
                 style={{ width: "100%" }}
+                required
               />
             </div>
             <div className="mb-4 sm:mb-6">
@@ -322,7 +334,7 @@ export default function PostJob({ isDarkMode, email }) {
               />
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Eligibility</label>
+              <label className="block">Eligibility*</label>
               <TextareaAutosize
                 name="eligibility"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -334,10 +346,11 @@ export default function PostJob({ isDarkMode, email }) {
                 onChange={handleChange}
                 minRows={3}
                 style={{ width: "100%" }}
+                required
               />
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Company Description</label>
+              <label className="block">Company Description*</label>
               <TextareaAutosize
                 name="companyDescription"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -349,6 +362,7 @@ export default function PostJob({ isDarkMode, email }) {
                 onChange={handleChange}
                 minRows={3}
                 style={{ width: "100%" }}
+                required
               />
             </div>
             <div className="mb-4 sm:mb-6">
@@ -367,13 +381,14 @@ export default function PostJob({ isDarkMode, email }) {
               />
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Status</label>
+              <label className="block">Status*</label>
               <Select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
                 fullWidth
                 className="focus:border-blue-500"
+                required
               >
                 <MenuItem value="">Select Status</MenuItem>
                 <MenuItem value="active">Active</MenuItem>
@@ -381,7 +396,7 @@ export default function PostJob({ isDarkMode, email }) {
               </Select>
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Number of Positions</label>
+              <label className="block">Number of Positions*</label>
               <TextField
                 name="numberOfPositions"
                 value={formData.numberOfPositions}
@@ -394,10 +409,11 @@ export default function PostJob({ isDarkMode, email }) {
                 }}
                 fullWidth
                 className="focus:border-blue-500"
+                required
               />
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Category</label>
+              <label className="block">Category*</label>
               <Autocomplete
                 freeSolo
                 options={[
