@@ -8,12 +8,21 @@ const bcrypt = require('bcrypt');
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Configure CORS to accept requests from frontend
+// Configure CORS to accept requests from all frontends
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'], // Add any other origins as needed
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: [
+    'http://localhost:3000', 
+    'http://localhost:5173',
+    'https://kgamify-job-portal.vercel.app',
+    process.env.FRONTEND_URL // Add environment variable for flexibility
+  ].filter(Boolean), // Filter out undefined values
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true
 }));
+
+// For preflight requests - ensure OPTIONS requests work correctly
+app.options('*', cors());
 
 // Increase JSON payload size limit
 app.use(express.json({ limit: '50mb' }));
