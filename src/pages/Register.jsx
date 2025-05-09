@@ -269,7 +269,84 @@ function Register({ isDarkMode }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    // Add validation and submission logic here
+    setErrorMessage("");
+    setIsSubmitting(true);
+
+    try {
+      // Validate passwords match
+      if (formData.password !== formData.confirmPassword) {
+        setSnackbarMessage("Passwords don't match");
+        setSnackbarSeverity("error");
+        setOpenSnackbar(true);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Prepare form data for submission
+      const submissionData = new FormData();
+
+      // Add regular fields to form data
+      submissionData.append("companyName", formData.companyName);
+      submissionData.append("website", formData.website);
+      submissionData.append("industry", formData.industry);
+      submissionData.append("type", formData.companyType);
+      submissionData.append("size", formData.companySize);
+      submissionData.append("contactName", formData.contactName);
+      submissionData.append("email", formData.email);
+      submissionData.append("phone", formData.phone);
+
+      // Combine address fields
+      const address = `${formData.addressLine1}, ${
+        formData.addressLine2 ? formData.addressLine2 + ", " : ""
+      }${formData.city}, ${formData.state}, ${formData.pinCode}`;
+      submissionData.append("address", address);
+
+      // Add registration details
+      submissionData.append("registrationNumber", formData.username); // Using username as registration number
+      submissionData.append("yearEstablished", new Date().getFullYear().toString());
+      submissionData.append("password", formData.password);
+
+      // Handle files
+      if (formData.logo) {
+        submissionData.append("logo", formData.logo);
+      }
+
+      if (formData.documents) {
+        submissionData.append("documents", formData.documents);
+      }
+
+      // Add description and social media links as JSON
+      const description = formData.description || "No description provided";
+      submissionData.append("description", description);
+
+      const socialMediaLinks = {
+        instagram: formData.instagram || "",
+        twitter: formData.twitter || "",
+        linkedin: formData.linkedin || "",
+        youtube: formData.youtube || "",
+      };
+      submissionData.append("socialMediaLinks", JSON.stringify(socialMediaLinks));
+
+      // Submit the form
+      const response = await registerCompany(submissionData);
+
+      // Handle successful registration
+      setSnackbarMessage("Registration successful! Waiting for admin approval.");
+      setSnackbarSeverity("success");
+      setOpenSnackbar(true);
+
+      // Redirect to login page after a delay
+      setTimeout(() => {
+        navigate("/");
+      }, 3000);
+    } catch (error) {
+      console.error("Registration error:", error);
+      setSnackbarMessage(error.message || "Registration failed. Please try again.");
+      setSnackbarSeverity("error");
+      setOpenSnackbar(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const togglePasswordVisibility = () => {
@@ -649,8 +726,15 @@ function Register({ isDarkMode }) {
               <button
                 type="submit"
                 className="p-2 sm:p-4 bg-green-500 text-white rounded hover:bg-green-600"
+                disabled={isSubmitting}
               >
-                Submit
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center">
+                    <FaSpinner className="animate-spin mr-2" /> Submitting...
+                  </div>
+                ) : (
+                  "Submit"
+                )}
               </button>
             )}
           </div>

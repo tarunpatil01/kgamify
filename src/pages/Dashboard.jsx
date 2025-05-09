@@ -15,12 +15,8 @@ const Dashboard = ({ isDarkMode, email }) => {
       setLoading(true);
       try {
         console.log("Fetching jobs with email:", email);
-        // Get all jobs
-        const allJobsResponse = await getJobs();
-        console.log("All jobs received:", allJobsResponse);
-        setJobs(allJobsResponse || []);
         
-        // If email is available, fetch company-specific jobs
+        // If email is available, fetch company-specific jobs first
         if (email) {
           console.log("Making API call to fetch jobs with company email:", email);
           const companyJobsResponse = await getJobs({email});
@@ -29,11 +25,23 @@ const Dashboard = ({ isDarkMode, email }) => {
           if (companyJobsResponse && companyJobsResponse.length > 0) {
             setError(null);
             setCompanyJobs(companyJobsResponse);
+            // Also set these as general jobs for the recent jobs list
+            setJobs(companyJobsResponse);
           } else {
             console.log("No jobs found for this company email");
             setCompanyJobs([]);
             setError("No listed jobs were found by your company");
+            
+            // Get all jobs for the recent jobs list if no company jobs
+            const allJobsResponse = await getJobs();
+            console.log("All jobs received:", allJobsResponse);
+            setJobs(allJobsResponse || []);
           }
+        } else {
+          // No email - get all jobs
+          const allJobsResponse = await getJobs();
+          console.log("All jobs received:", allJobsResponse);
+          setJobs(allJobsResponse || []);
         }
       } catch (error) {
         console.error("Error fetching jobs:", error);
@@ -48,8 +56,11 @@ const Dashboard = ({ isDarkMode, email }) => {
     fetchJobs();
   }, [email]);
 
-  const totalJobs = jobs.length;
-  const totalApplications = (companyJobs.length > 0 ? companyJobs : jobs).reduce(
+  // Use companyJobs for company statistics
+  const totalJobs = email ? companyJobs.length : jobs.length;
+  
+  // Only count applications for this company's jobs
+  const totalApplications = (email ? companyJobs : jobs).reduce(
     (acc, job) => acc + (job.applicants?.length || 0), 
     0
   );
