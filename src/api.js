@@ -202,13 +202,13 @@ export const denyCompany = async (companyId) => {
   }
 };
 
-export const adminLogin = async (password) => {
+export const adminLogin = async (loginData) => {
   try {
-    const response = await axios.post(`${API_URL}/admin/login`, { password });
+    const response = await axios.post(`${API_URL}/admin/login`, loginData);
     return response.data;
   } catch (error) {
-    console.error('Error logging in as admin:', error.response.data.message);
-    throw error.response.data;
+    console.error('Error logging in as admin:', error.response?.data?.message || error.message);
+    throw error.response?.data || error;
   }
 };
 

@@ -32,6 +32,8 @@ function EditRegistration({ isDarkMode }) {
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   // Fetch company data on component mount
   useEffect(() => {
@@ -96,6 +98,7 @@ function EditRegistration({ isDarkMode }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setErrorMessage("");
     
     // Validate file types if files are selected
     if (formData.logo && !formData.logo.type?.startsWith('image/')) {
@@ -107,27 +110,55 @@ function EditRegistration({ isDarkMode }) {
       setErrorMessage('Documents must be PDF files');
       return;
     }
+    
+    // Check if password fields match if a new password is provided
+    if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
+      setErrorMessage("New passwords don't match");
+      return;
+    }
 
     const formDataToSend = new FormData();
+    setIsSubmitting(true);
     
-    // Append form data
-    Object.keys(formData).forEach(key => {
-      if (key === 'logo' || key === 'documents') {
-        // Only append files if they've been changed
-        if (formData[key] && formData[key] instanceof File) {
+    try {
+      // Append form data - similar to Register.jsx approach
+      Object.keys(formData).forEach(key => {
+        if (key === 'logo' || key === 'documents') {
+          // Only append files if they've been changed
+          if (formData[key] && formData[key] instanceof File) {
+            formDataToSend.append(key, formData[key]);
+          }
+        } else if (key === 'password') {
+          // Skip the original password field
+        } else if (key === 'newPassword' && formData[key]) {
+          // If new password is provided, send it as 'password'
+          formDataToSend.append('password', formData[key]);
+        } else if (key === 'confirmPassword') {
+          // Skip confirmPassword field
+        } else if (formData[key] !== null && formData[key] !== undefined) {
           formDataToSend.append(key, formData[key]);
         }
-      } else if (key === 'password') {
-        // Skip the original password field
-      } else if (key === 'newPassword' && formData[key]) {
-        // If new password is provided, send it as 'password'
-        formDataToSend.append('password', formData[key]);
-      } else if (formData[key] !== null && formData[key] !== undefined) {
-        formDataToSend.append(key, formData[key]);
-      }
-    });
+      });
 
-    try {
+      // Add social media links as JSON if they exist
+      if (formData.instagram || formData.twitter || formData.linkedin || formData.youtube) {
+        const socialMediaLinks = {
+          instagram: formData.instagram || "",
+          twitter: formData.twitter || "",
+          linkedin: formData.linkedin || "",
+          youtube: formData.youtube || "",
+        };
+        formDataToSend.append('socialMediaLinks', JSON.stringify(socialMediaLinks));
+      }
+
+      // Log the FormData contents for debugging (optional)
+      for (let pair of formDataToSend.entries()) {
+        const value = pair[1] instanceof File 
+          ? `File: ${pair[1].name} (${pair[1].type})`
+          : pair[1];
+        console.log(`${pair[0]}: ${value}`);
+      }
+
       const response = await updateCompanyProfile(formData.email, formDataToSend);
       setErrorMessage('');
       setOpenSnackbar(true);
@@ -146,8 +177,10 @@ function EditRegistration({ isDarkMode }) {
         }
       }, 3000);
     } catch (error) {
-      setErrorMessage(error.response?.data?.error || 'Update failed. Please try again.');
+      setErrorMessage(error.response?.data?.error || error.message || 'Update failed. Please try again.');
       console.error("Error updating company:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -371,13 +404,25 @@ function EditRegistration({ isDarkMode }) {
               >
                 {passwordVisible ? <FaEyeSlash className={`${isDarkMode ? "text-white" : ""}`} /> : <FaEye className={`${isDarkMode ? "text-white" : ""}`} />}
               </button>
-              <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"} mt-2`}>
-                Enter a new password only if you want to change it. Leave blank to keep your current password.
-              </p>
-              <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"} mt-1`}>
-                Password must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters.
-              </p>
             </div>
+            
+            <div className="mb-4 sm:mb-6 relative">
+              <label className="block text-gray-700 dark:text-gray-300">Confirm New Password</label>
+              <input
+                type={passwordVisible ? "text" : "password"}
+                name="confirmPassword"
+                value={formData.confirmPassword || ""}
+                onChange={handleChange}
+                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+              />
+            </div>
+            
+            <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"} mt-1`}>
+              Enter a new password only if you want to change it. Leave blank to keep your current password.
+            </p>
+            <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"} mt-1`}>
+              Password must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters.
+            </p>
           </div>
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-[#ff8200]">Other</h2>
@@ -409,9 +454,16 @@ function EditRegistration({ isDarkMode }) {
           )}
           <button
             type="submit"
+            disabled={isSubmitting}
             className={`w-full p-4 rounded transition duration-300 bg-[#ff8200] text-white hover:bg-[#e57400]`}
           >
-            Update Profile
+            {isSubmitting ? (
+              <div className="flex items-center justify-center">
+                <span className="mr-2 animate-spin">⟳</span> Updating...
+              </div>
+            ) : (
+              "Update Profile"
+            )}
           </button>
         </form>
       </div>

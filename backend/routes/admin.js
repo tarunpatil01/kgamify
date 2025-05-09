@@ -1,65 +1,80 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const Company = require('../models/Company');
 
-// Admin login route
-router.post('/login', async (req, res) => {
-  const { password } = req.body;
-  const adminPassword = process.env.ADMIN_PASSWORD;
-
+// Get pending companies
+router.get('/pending-companies', async (req, res) => {
   try {
-    if (password !== adminPassword) {
-      return res.status(401).json({ message: 'Invalid admin password' });
-    }
-
-    // Successful login without JWT token
-    res.json({ message: 'Login successful' });
-  } catch (err) {
+    const pendingCompanies = await Company.find({ approved: false });
+    res.json(pendingCompanies);
+  } catch (error) {
+    console.error('Error fetching pending companies:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get pending companies (only regular companies now)
-router.get('/pending-companies', async (req, res) => {
-  try {
-    const regularCompanies = await Company.find({ approved: false });
+// Admin login route - using environment variables
+router.post('/login', (req, res) => {
+  // Get username and password from request
+  const { username, password } = req.body;
+  
+  console.log('Admin login attempt:', { username });
+  
+  // Check admin credentials from environment variables
+  const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  
+  // Log environment variable status (without exposing actual values)
+  console.log('Using environment variables for admin auth:', {
+    usernameFromEnv: !!process.env.ADMIN_USERNAME,
+    passwordFromEnv: !!process.env.ADMIN_PASSWORD
+  });
+  
+  if (username === adminUsername && password === adminPassword) {
+    // Create JWT token
+    const token = jwt.sign(
+      { user: { role: 'admin' } },
+      process.env.JWT_SECRET || 'adminsecretkey',
+      { expiresIn: '1h' }
+    );
     
-    res.status(200).json(regularCompanies);
-  } catch (err) {
-    console.error('Error fetching pending companies:', err);
-    res.status(400).json({ error: err.message });
+    console.log('Admin login successful');
+    res.json({ message: 'Login successful', token });
+  } else {
+    console.log('Admin login failed: Invalid credentials');
+    res.status(401).json({ message: 'Invalid credentials' });
   }
 });
 
-// Approve a company (only regular companies now)
+// Approve company route
 router.post('/approve-company/:id', async (req, res) => {
   try {
-    const company = await Company.findByIdAndUpdate(req.params.id, { approved: true }, { new: true });
+    const company = await Company.findByIdAndUpdate(
+      req.params.id,
+      { approved: true },
+      { new: true }
+    );
     
     if (!company) {
-      return res.status(404).json({ error: 'Company not found' });
+      return res.status(404).json({ message: 'Company not found' });
     }
     
-    res.status(200).json(company);
-  } catch (err) {
-    console.error('Error approving company:', err);
-    res.status(400).json({ error: err.message });
+    res.json({ message: 'Company approved successfully' });
+  } catch (error) {
+    console.error('Error approving company:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Deny a company (delete from database)
+// Deny company route
 router.post('/deny-company/:id', async (req, res) => {
   try {
-    const company = await Company.findByIdAndDelete(req.params.id);
-    
-    if (!company) {
-      return res.status(404).json({ error: 'Company not found' });
-    }
-    
-    res.status(200).json({ message: 'Company registration denied' });
-  } catch (err) {
-    console.error('Error denying company:', err);
-    res.status(400).json({ error: err.message });
+    await Company.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Company denied and removed' });
+  } catch (error) {
+    console.error('Error denying company:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
