@@ -8,21 +8,46 @@ const bcrypt = require('bcrypt');
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Configure CORS to accept requests from all frontends
+// CORS configuration - explicitly set all allowed origins
+const allowedOrigins = [
+  'http://localhost:3000', 
+  'http://localhost:5173',
+  'https://kgamify-job-portal.vercel.app',
+  process.env.FRONTEND_URL
+].filter(Boolean); // Remove any undefined values
+
+// More robust CORS configuration
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', true);
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
+// Standard CORS middleware as backup
 app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://localhost:5173',
-    'https://kgamify-job-portal.vercel.app',
-    process.env.FRONTEND_URL // Add environment variable for flexibility
-  ].filter(Boolean), // Filter out undefined values
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true
 }));
-
-// For preflight requests - ensure OPTIONS requests work correctly
-app.options('*', cors());
 
 // Increase JSON payload size limit
 app.use(express.json({ limit: '50mb' }));
@@ -51,6 +76,15 @@ app.use('/api/admin', adminRoutes);
 // Protected route
 app.get("/protected", verifyToken, (req, res) => {
   res.json({ message: "You are authorized", user: req.user });
+});
+
+// Add header debug endpoint to check if CORS headers are being applied
+app.get('/api/debug/headers', (req, res) => {
+  res.json({
+    headers: req.headers,
+    origin: req.headers.origin,
+    corsEnabled: true
+  });
 });
 
 // Basic health check endpoint
