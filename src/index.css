@@ -59,3 +59,75 @@
 .quill {
   margin-bottom: 50px;
 }
+
+/* Styling for Quill content when rendered */
+.job-description-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.job-description-content ol,
+.job-description-content ul {
+  padding-left: 2rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.job-description-content ol {
+  list-style-type: decimal;
+}
+
+.job-description-content ul {
+  list-style-type: disc;
+}
+
+.job-description-content li {
+  margin-bottom: 0.25rem;
+}
+
+.job-description-content p {
+  margin-bottom: 1rem;
+}
+
+.job-description-content strong {
+  font-weight: bold;
+}
+
+.job-description-content em {
+  font-style: italic;
+}
+
+.job-description-content h1,
+.job-description-content h2,
+.job-description-content h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: bold;
+}
+
+.job-description-content h1 {
+  font-size: 1.5rem;
+}
+
+.job-description-content h2 {
+  font-size: 1.25rem;
+}
+
+.job-description-content h3 {
+  font-size: 1.125rem;
+}
+
+.description-content a {
+  color: #3182ce;
+  text-decoration: underline;
+}
+
+/* Specific styles for description previews */
+.description-preview .description-content {
+  display: inline;
+}
+
+/* Dark mode specific styles */
+.dark .job-description-content a {
+  color: #63b3ed;
+}

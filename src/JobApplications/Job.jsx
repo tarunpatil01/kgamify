@@ -18,15 +18,6 @@ const Job = ({ isDarkMode }) => {
       try {
         setLoading(true);
         
-        // Check if user is authenticated
-        const email = localStorage.getItem("rememberedEmail");
-        if (!email) {
-          console.log("Not authenticated. Redirecting to login page...");
-          setAuthError(true);
-          setTimeout(() => navigate("/", { state: { redirectTo: `/job/${jobId}` } }), 3000);
-          return;
-        }
-        
         // Fetch job details
         console.log("Fetching job details for ID:", jobId);
         const jobData = await getJobById(jobId);
@@ -34,25 +25,20 @@ const Job = ({ isDarkMode }) => {
         setJob(jobData);
         
         // Fetch applications for this job
+        console.log("Fetching applications for job ID:", jobId);
         try {
-          console.log("Fetching applications for job ID:", jobId);
           const applicationsData = await getApplicationsByJobId(jobId);
           console.log("Applications data received:", applicationsData);
           setApplications(Array.isArray(applicationsData) ? applicationsData : []);
         } catch (appError) {
           console.error("Error fetching applications:", appError);
-          
-          if (appError.message === "Authentication required to view applications") {
-            setAuthError(true);
-          } else {
-            setError("Could not load applications. Please try again later.");
-          }
           setApplications([]);
         }
+        
+        setLoading(false);
       } catch (err) {
         console.error("Error fetching job details:", err);
         setError(err.message || "Failed to fetch job details");
-      } finally {
         setLoading(false);
       }
     };
@@ -62,7 +48,7 @@ const Job = ({ isDarkMode }) => {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
+      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
         <p className="text-xl">Loading job details...</p>
       </div>
     );
@@ -70,11 +56,16 @@ const Job = ({ isDarkMode }) => {
 
   if (authError) {
     return (
-      <div className={`flex flex-col items-center justify-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
-        <div className={`p-8 rounded-lg shadow-lg max-w-md text-center ${isDarkMode ? "bg-gray-800" : "bg-white"}`}>
-          <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-          <p className="mb-6">You need to be logged in to view job applications.</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Redirecting to login page...</p>
+      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
+        <div className="bg-red-100 dark:bg-red-900 p-4 rounded-lg">
+          <p className="text-red-700 dark:text-red-200">Authentication Error</p>
+          <p className="mt-2">You do not have permission to view this page.</p>
+          <button 
+            onClick={() => navigate("/login")}
+            className={`mt-4 px-4 py-2 rounded-lg font-semibold transition-all duration-300 ${isDarkMode ? "bg-red-700 text-white hover:bg-red-600" : "bg-red-500 text-white hover:bg-red-400"}`}
+          >
+            Login
+          </button>
         </div>
       </div>
     );
@@ -82,11 +73,20 @@ const Job = ({ isDarkMode }) => {
 
   if (error || !job) {
     return (
-      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
-        <p className="text-xl text-red-500">Error: {error || "Job not found"}</p>
+      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
+        <div className="bg-red-100 dark:bg-red-900 p-4 rounded-lg">
+          <p className="text-red-700 dark:text-red-200">Error: {error}</p>
+          <p className="mt-2">Please try again later or contact support.</p>
+        </div>
       </div>
     );
   }
+
+  // Function to safely render HTML content
+  const renderHTML = (htmlContent) => {
+    if (!htmlContent) return null;
+    return { __html: htmlContent };
+  };
 
   return (
     <div className={`flex h-full ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
@@ -107,32 +107,77 @@ const Job = ({ isDarkMode }) => {
           </div>
         </div>
 
+        {/* Job Description with HTML rendering */}
         <div className="mb-6">
           <h2 className="text-xl font-bold mb-2">Job Description</h2>
-          <p className={`whitespace-pre-wrap ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}>
-            {job.jobDescription}
-          </p>
+          <div 
+            className={`job-description-content ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
+            dangerouslySetInnerHTML={renderHTML(job.jobDescription)}
+          />
         </div>
 
+        {/* Detailed Job Information - Preserved as requested by the user */}
         <div className="mb-6">
-          <h2 className="text-xl font-bold mb-2">Details</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h3 className="font-semibold">Location</h3>
-              <p>{job.location}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Salary Range</h3>
-              <p>{job.salary}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Remote/Onsite</h3>
-              <p>{job.remoteOrOnsite}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Number of Positions</h3>
-              <p>{job.numberOfPositions || "Not specified"}</p>
-            </div>
+          <div>
+            <strong>Job Title: </strong> {job.jobTitle}
+          </div>
+          <div>
+            <strong>Description: </strong> 
+            <div dangerouslySetInnerHTML={renderHTML(job.jobDescription)}></div>
+          </div>
+          <div>
+            <strong>Category: </strong> {job.category}
+          </div>
+          <div>
+            <strong>Employment Type: </strong> {job.employmentType}
+          </div>
+          <div>
+            <strong>Experience Level: </strong> {job.experienceLevel}
+          </div>
+          <div>
+            <strong className="flex ">Skills: </strong> {job.skills}
+          </div>
+          <div>
+            <strong>Type: </strong>{job.remoteOrOnsite}
+          </div>
+          <div>
+            <strong>Equity: </strong>{job.equity}
+          </div>
+          <div>
+            <strong>Sponsorship: </strong>{job.sponsorship}
+          </div>
+          <div>
+            <strong>Status:</strong>{" "}
+            {job.status === "active" ? (
+              <FaCheckCircle className="inline text-green-500" />
+            ) : (
+              <FaTimesCircle className="inline text-red-500" />
+            )}
+          </div>
+          <div>
+            <strong>Number Of Positions: </strong> {job.numberOfPositions}
+          </div>
+          <div>
+            <strong>Salary:</strong> {job.salary}
+          </div>
+          <div>
+            <strong>Location:</strong> {job.location}
+          </div>
+          <div>
+            <strong className="flex ">Recruitment Process: </strong> 
+            <div dangerouslySetInnerHTML={renderHTML(job.recruitmentProcess)}></div>
+          </div>
+          <div>
+            <strong className="flex ">Responsibilities: </strong>
+            <div dangerouslySetInnerHTML={renderHTML(job.responsibilities)}></div>
+          </div>
+          <div>
+            <strong className="flex ">Eligibility: </strong> 
+            <div dangerouslySetInnerHTML={renderHTML(job.eligibility)}></div>
+          </div>
+          <div>
+            <strong className="flex ">Benefits: </strong>
+            <div dangerouslySetInnerHTML={renderHTML(job.benefits)}></div>
           </div>
         </div>
 
@@ -154,10 +199,15 @@ const Job = ({ isDarkMode }) => {
               >
                 <div className="flex flex-col md:flex-row justify-between">
                   <div className="mb-3 md:mb-0">
-                    <h3 className="text-lg font-semibold">{applicant.applicantName}</h3>
-                    <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-                      Applied on: {new Date(applicant.createdAt).toLocaleDateString()}
-                    </p>
+                    {/* Fix: Wrap the adjacent JSX elements with a fragment or div */}
+                    <div>
+                      <div className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-800"}`}>
+                        {applicant.applicantName}
+                      </div>
+                      <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        Applied on: {new Date(applicant.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
                     {applicant.testScore && (
                       <div className="mt-1">
                         <span className="font-medium">Test Score: </span>

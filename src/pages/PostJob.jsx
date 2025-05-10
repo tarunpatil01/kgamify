@@ -11,6 +11,7 @@ import {
   TextareaAutosize,
 } from "@mui/material";
 import { createJob } from "../api";
+import QuillEditor from '../components/QuillEditor'; // Added import for QuillEditor
 
 const jobTitles = [
   "Software Engineer",
@@ -181,17 +182,11 @@ export default function PostJob({ isDarkMode, email }) {
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block">Job Description</label>
-              <TextareaAutosize
-                name="jobDescription"
+              <QuillEditor
                 value={formData.jobDescription}
-                onChange={handleChange}
-                minRows={5}
-                className={`w-full p-2 border rounded focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode
-                    ? "border-gray-600 bg-gray-700 text-white"
-                    : "border-gray-400 bg-white text-black"
-                }`}
-                style={{ width: "100%" }}
+                onChange={(content) => setFormData({...formData, jobDescription: content})}
+                isDarkMode={isDarkMode}
+                placeholder="Enter detailed job description..."
               />
             </div>
             <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">

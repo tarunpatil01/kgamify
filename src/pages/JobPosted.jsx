@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { FaEdit, FaTrashAlt, FaEye } from "react-icons/fa";
 import { getJobs, deleteJob } from "../api";
 
 const JobPosted = ({ isDarkMode, email }) => {
@@ -61,8 +62,15 @@ const JobPosted = ({ isDarkMode, email }) => {
     }
   };
 
+  // Function to safely render HTML content
+  const renderHTML = (htmlContent) => {
+    return { __html: htmlContent };
+  };
+
   return (
-    <div className={`flex flex-col p-4 sm:p-6 h-full ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
+    <div className={`p-4 sm:p-8 ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"} min-h-screen`}>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6">Posted Jobs</h1>
+      
       {notification && (
         <div className="bg-green-500 text-white p-2 rounded mb-4">
           {notification}
