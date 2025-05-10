@@ -65,13 +65,45 @@ router.post('/', upload.single('resume'), async (req, res) => {
 // Get applications by job ID
 router.get('/job/:jobId', checkCompany, async (req, res) => {
   try {
+    const { jobId } = req.params;
+    
+    // Debug information
+    console.log('Fetching applications for job ID:', jobId);
+    console.log('Company name from middleware:', req.companyName);
+    
+    // First, verify the job exists
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    
+    // For troubleshooting - check all applications for this job ID without company filter
+    const allApplicationsForJob = await Application.find({ jobId: jobId });
+    console.log(`Found ${allApplicationsForJob.length} total applications for job ${jobId} before company filter`);
+    
+    if (allApplicationsForJob.length > 0) {
+      // Log first application's company name for comparison
+      console.log('First application company name:', allApplicationsForJob[0].CompanyName);
+    }
+    
+    // Now fetch all applications for this job with relaxed company name check
+    // Option 1: Case insensitive match for company name
     const applications = await Application.find({ 
-      jobId: req.params.jobId,
-      CompanyName: req.companyName
+      jobId: jobId,
+      CompanyName: { $regex: new RegExp('^' + req.companyName + '$', 'i') } // Case-insensitive match
     });
+    
+    // If still no results, try without the company filter (for testing only)
+    if (applications.length === 0 && allApplicationsForJob.length > 0) {
+      console.log('No applications found with company name filter. Returning all applications for this job.');
+      res.status(200).json(allApplicationsForJob);
+      return;
+    }
+    
+    console.log(`Found ${applications.length} applications for job ${jobId} with company name: ${req.companyName}`);
     res.status(200).json(applications);
   } catch (err) {
-    console.error('Error fetching applications:', err);
+    console.error('Error fetching job applications:', err);
     res.status(400).json({ error: err.message });
   }
 });

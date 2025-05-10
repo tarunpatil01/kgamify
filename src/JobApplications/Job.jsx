@@ -1,35 +1,61 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { FaFileAlt, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
-import axios from "axios";
+import { getJobById, getApplicationsByJobId } from "../api";
 
 const Job = ({ isDarkMode }) => {
   const { jobId } = useParams();
   const [job, setJob] = useState(null);
+  const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchJobDetails = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/job/${jobId}`);
-        setJob(response.data);
+        setLoading(true);
+        // Fetch job details
+        const jobData = await getJobById(jobId);
+        setJob(jobData);
+        
+        // Fetch applications for this job separately
+        try {
+          const applicationsData = await getApplicationsByJobId(jobId);
+          console.log("Applications data received:", applicationsData);
+          setApplications(applicationsData);
+        } catch (appError) {
+          console.error("Error fetching applications:", appError);
+          // Don't fail the whole page if just applications fail
+        }
+        
         setLoading(false);
       } catch (err) {
-        setError(err.message);
+        console.error("Error fetching job details:", err);
+        setError(err.message || "Failed to fetch job details");
         setLoading(false);
       }
     };
 
-    fetchJobDetails();
+    fetchData();
   }, [jobId]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
+        <p className="text-xl">Loading job details...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
+        <div className="bg-red-100 dark:bg-red-900 p-4 rounded-lg">
+          <p className="text-red-700 dark:text-red-200">Error: {error}</p>
+          <p className="mt-2">Please try again later or contact support.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -102,38 +128,64 @@ const Job = ({ isDarkMode }) => {
         <div className={`text-xl font-semibold mb-4 mt-6 ${isDarkMode ? "text-white" : "text-[#E82561]"}`}>
           Applicants
         </div>
-        <table className={`w-full mt-4 border-collapse border ${isDarkMode ? "border-gray-700" : "border-gray-200"} shadow-lg rounded-lg`}>
-          <thead>
-            <tr className={`${isDarkMode ? "bg-gray-600" : "bg-[#F2AE66]"} rounded-t-lg`}>
-              <th className={`border p-4 text-left ${isDarkMode ? "border-gray-600" : "border-gray-300"} rounded-tl-lg`}>
-                Name
-              </th>
-              <th className={`border p-4 text-left ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>Resume</th>
-              <th className={`border p-4 text-left ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>Test Score</th>
-              <th className={`border p-4 text-left ${isDarkMode ? "border-gray-600" : "border-gray-300"} rounded-tr-lg`}>
-                Skills
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {job.applicants.map((applicant, index) => (
-              <tr
-                key={index}
-                className={`transition duration-300 ${isDarkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-white hover:bg-gray-50"} ${
-                  index === job.applicants.length - 1 ? "rounded-b-lg" : ""
-                }`}
-              >
-                <td className={`border p-4 ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>{applicant.name}</td>
-                <td className={`border p-4 ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
-                  <FaFileAlt className="inline mr-2" />
-                  {applicant.resume}
-                </td>
-                <td className={`border p-4 ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>{applicant.testScore}</td>
-                <td className={`border p-4 ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>{applicant.skills.join(", ")}</td>
+        
+        {applications.length === 0 ? (
+          <div className={`p-4 rounded-lg text-center ${isDarkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-500"}`}>
+            No applicants for this job yet
+          </div>
+        ) : (
+          <table className={`w-full mt-4 border-collapse border ${isDarkMode ? "border-gray-700" : "border-gray-200"} shadow-lg rounded-lg`}>
+            <thead>
+              <tr className={`${isDarkMode ? "bg-gray-600" : "bg-[#F2AE66]"} rounded-t-lg`}>
+                <th className={`border p-4 text-left ${isDarkMode ? "border-gray-600" : "border-gray-300"} rounded-tl-lg`}>
+                  Name
+                </th>
+                <th className={`border p-4 text-left ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>Resume</th>
+                <th className={`border p-4 text-left ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>Test Score</th>
+                <th className={`border p-4 text-left ${isDarkMode ? "border-gray-600" : "border-gray-300"} rounded-tr-lg`}>
+                  Skills
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {applications.map((applicant, index) => (
+                <tr
+                  key={applicant._id || index}
+                  className={`transition duration-300 ${isDarkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-white hover:bg-gray-50"} ${
+                    index === applications.length - 1 ? "rounded-b-lg" : ""
+                  }`}
+                >
+                  <td className={`border p-4 ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
+                    {applicant.applicantName}
+                  </td>
+                  <td className={`border p-4 ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
+                    {applicant.resume ? (
+                      <a 
+                        href={applicant.resume} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={`flex items-center ${isDarkMode ? "text-blue-400" : "text-blue-600"} hover:underline`}
+                      >
+                        <FaFileAlt className="mr-2" />
+                        View Resume
+                      </a>
+                    ) : (
+                      <span className="text-gray-500">No resume</span>
+                    )}
+                  </td>
+                  <td className={`border p-4 ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
+                    {applicant.testScore || 'N/A'}
+                  </td>
+                  <td className={`border p-4 ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
+                    {applicant.skills && Array.isArray(applicant.skills)
+                      ? applicant.skills.join(", ")
+                      : 'No skills listed'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
