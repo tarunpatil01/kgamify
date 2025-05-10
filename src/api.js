@@ -2,6 +2,16 @@ import axios from 'axios';
 
 const API_URL = 'https://job-portal-backend-629b.onrender.com/api';
 
+// Create a custom axios instance with default settings
+const apiClient = axios.create({
+  baseURL: API_URL,
+  timeout: 30000, // 30 seconds timeout
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true // Include credentials in cross-origin requests
+});
+
 export const registerCompany = async (formData) => {
   try {
     // Log the FormData contents for debugging
@@ -35,7 +45,17 @@ export const registerCompany = async (formData) => {
 export const loginCompany = async (loginData) => {
   try {
     console.log("Login request with data:", loginData.email);
-    const response = await axios.post(`${API_URL}/companies/login`, loginData);
+    
+    // Add a pre-flight check to verify CORS is working
+    try {
+      const corsTest = await axios.get(`${API_URL.replace('/api', '')}/api/cors-test`);
+      console.log("CORS test successful:", corsTest.data);
+    } catch (corsError) {
+      console.warn("CORS test failed:", corsError.message);
+      // Continue with login attempt anyway
+    }
+    
+    const response = await apiClient.post('/companies/login', loginData);
     console.log("Login response:", response.data);
     
     // Store the company type in localStorage
@@ -47,7 +67,14 @@ export const loginCompany = async (loginData) => {
     }
     return response.data;
   } catch (error) {
-    console.error('Login error details:', error.response?.data || error);
+    // Improve error logging with more details
+    console.error('Login error details:', error);
+    if (error.code === 'ERR_NETWORK') {
+      console.error('Network error - possible CORS issue or server unavailable');
+      throw { error: 'Network error. Please check your connection or try again later.' };
+    }
+    
+    // Continue with existing error handling
     if (error.response?.status === 403) {
       throw { error: 'Your company is not approved by Admin yet' };
     } else if (error.response?.status === 401) {

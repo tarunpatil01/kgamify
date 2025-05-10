@@ -15,4 +15,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      // Add proxy for API requests in development
+      '/api': {
+        target: 'https://job-portal-backend-629b.onrender.com',
+        changeOrigin: true,
+        secure: false,
+        xfwd: true
+      }
+    },
+    cors: true
+  }
 })
