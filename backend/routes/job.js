@@ -71,12 +71,19 @@ router.post('/', async (req, res) => {
 // Get a specific job by ID
 router.get('/:id', async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id);
+    // Update to populate the applicants field
+    const job = await Job.findById(req.params.id).populate('applicants');
+    
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
+    
+    // Log the populated job for debugging
+    console.log(`Found job with ${job.applicants ? job.applicants.length : 0} applicants`);
+    
     res.status(200).json(job);
   } catch (err) {
+    console.error('Error fetching job details:', err);
     res.status(400).json({ error: err.message });
   }
 });

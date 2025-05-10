@@ -308,3 +308,17 @@ export const resetPassword = async (token, email, password) => {
     throw error.response?.data || error;
   }
 };
+
+export const getApplicationsByJobId = async (jobId) => {
+  try {
+    // Use the email from localStorage for authorization check on backend
+    const email = localStorage.getItem("rememberedEmail");
+    const response = await axios.get(`${API_URL}/application/job/${jobId}`, {
+      params: { email }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching applications for job:', error);
+    throw error;
+  }
+};
