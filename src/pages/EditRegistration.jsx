@@ -23,7 +23,10 @@ function EditRegistration({ isDarkMode }) {
     yearEstablished: "",
     documents: null,
     description: "",
-    socialMediaLinks: "",
+    instagram: "",
+    twitter: "",
+    linkedin: "",
+    youtube: "",
     password: "", // Password will be empty initially
     newPassword: "", // Add field for new password
   });
@@ -49,13 +52,25 @@ function EditRegistration({ isDarkMode }) {
         setLoading(true);
         const companyData = await getCompanyInfo(email);
         
+        // Parse socialMediaLinks if it exists
+        let socialLinks = { instagram: '', twitter: '', linkedin: '', youtube: '' };
+        if (companyData.socialMediaLinks) {
+          try {
+            socialLinks = typeof companyData.socialMediaLinks === 'string' 
+              ? JSON.parse(companyData.socialMediaLinks)
+              : companyData.socialMediaLinks;
+          } catch (error) {
+            console.error("Error parsing social media links:", error);
+          }
+        }
+        
         // Set the form data with the fetched company information
         setFormData({
           companyName: companyData.companyName || "",
           website: companyData.website || "",
           industry: companyData.industry || "",
-          type: companyData.type || "",
-          size: companyData.size || "",
+          type: companyData.type || "", // Matches type field in Company model
+          size: companyData.size || "", // Matches size field in Company model
           contactName: companyData.contactName || "",
           email: companyData.email || "",
           phone: companyData.phone || "",
@@ -63,9 +78,13 @@ function EditRegistration({ isDarkMode }) {
           registrationNumber: companyData.registrationNumber || "",
           yearEstablished: companyData.yearEstablished || "",
           description: companyData.description || "",
-          socialMediaLinks: companyData.socialMediaLinks || "",
+          instagram: socialLinks.instagram || "",
+          twitter: socialLinks.twitter || "",
+          linkedin: socialLinks.linkedin || "",
+          youtube: socialLinks.youtube || "",
           password: "", // Don't set password from server response
           newPassword: "", // Initialize new password field
+          confirmPassword: "", // Initialize confirm password field
         });
         
         // Store the current logo and documents URLs
@@ -123,32 +142,24 @@ function EditRegistration({ isDarkMode }) {
     try {
       // Append form data - similar to Register.jsx approach
       Object.keys(formData).forEach(key => {
+        // Skip fields that should not be sent
+        if (['password', 'confirmPassword', 'newPassword'].includes(key)) {
+          return;
+        }
+        
         if (key === 'logo' || key === 'documents') {
           // Only append files if they've been changed
           if (formData[key] && formData[key] instanceof File) {
             formDataToSend.append(key, formData[key]);
           }
-        } else if (key === 'password') {
-          // Skip the original password field
-        } else if (key === 'newPassword' && formData[key]) {
-          // If new password is provided, send it as 'password'
-          formDataToSend.append('password', formData[key]);
-        } else if (key === 'confirmPassword') {
-          // Skip confirmPassword field
         } else if (formData[key] !== null && formData[key] !== undefined) {
           formDataToSend.append(key, formData[key]);
         }
       });
-
-      // Add social media links as JSON if they exist
-      if (formData.instagram || formData.twitter || formData.linkedin || formData.youtube) {
-        const socialMediaLinks = {
-          instagram: formData.instagram || "",
-          twitter: formData.twitter || "",
-          linkedin: formData.linkedin || "",
-          youtube: formData.youtube || "",
-        };
-        formDataToSend.append('socialMediaLinks', JSON.stringify(socialMediaLinks));
+      
+      // Handle password separately
+      if (formData.newPassword) {
+        formDataToSend.append('password', formData.newPassword);
       }
 
       // Log the FormData contents for debugging (optional)
@@ -438,13 +449,46 @@ function EditRegistration({ isDarkMode }) {
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block text-gray-700 dark:text-gray-300">Social Media Links</label>
-              <input
-                type="url"
-                name="socialMediaLinks"
-                value={formData.socialMediaLinks}
-                onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
-              />
+              <div className="mb-4 sm:mb-6">
+                <label className="block text-gray-700 dark:text-gray-300">Instagram</label>
+                <input
+                  type="url"
+                  name="instagram"
+                  value={formData.instagram || ""}
+                  onChange={handleChange}
+                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block text-gray-700 dark:text-gray-300">Twitter</label>
+                <input
+                  type="url"
+                  name="twitter"
+                  value={formData.twitter || ""}
+                  onChange={handleChange}
+                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block text-gray-700 dark:text-gray-300">LinkedIn</label>
+                <input
+                  type="url"
+                  name="linkedin"
+                  value={formData.linkedin || ""}
+                  onChange={handleChange}
+                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block text-gray-700 dark:text-gray-300">YouTube</label>
+                <input
+                  type="url"
+                  name="youtube"
+                  value={formData.youtube || ""}
+                  onChange={handleChange}
+                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                />
+              </div>
             </div>
           </div>
           {errorMessage && (
