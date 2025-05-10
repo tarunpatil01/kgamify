@@ -284,3 +284,27 @@ export const updateCompanyProfile = async (email, formData) => {
     throw error;
   }
 };
+
+export const requestPasswordReset = async (email) => {
+  try {
+    const response = await axios.post(`${API_URL}/auth/forgot-password`, { email });
+    return response.data;
+  } catch (error) {
+    console.error('Error requesting password reset:', error);
+    throw error.response?.data || error;
+  }
+};
+
+export const resetPassword = async (token, email, password) => {
+  try {
+    const response = await axios.post(`${API_URL}/auth/reset-password`, { 
+      token, 
+      email, 
+      password 
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    throw error.response?.data || error;
+  }
+};

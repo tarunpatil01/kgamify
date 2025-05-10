@@ -23,6 +23,7 @@ import AdminPortal from "./pages/AdminPortal"; // Import AdminPortal component
 import AdminLogin from "./pages/AdminLogin"; // Import AdminLogin component
 import EditJob from "./pages/EditJob";
 import Job from "./JobApplications/Job.jsx";
+import ResetPassword from "./pages/ResetPassword";
 
 function AppContent() {
   const location = useLocation();
@@ -179,6 +180,10 @@ function AppContent() {
             <Route
               path="/forgot-password"
               element={<ForgotPassword isDarkMode={isDarkMode} />}
+            />
+            <Route
+              path="/reset-password"
+              element={<ResetPassword isDarkMode={isDarkMode} />}
             />
             <Route
               path="/Edit-Registration"
