@@ -1,0 +1,61 @@
+/* ...existing css... */
+
+/* React Quill improvements to avoid warnings */
+.quill-wrapper {
+  position: relative;
+}
+
+.quill-wrapper .quill {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+}
+
+.quill-wrapper .ql-container {
+  height: auto;
+  min-height: 150px;
+  flex: 1;
+  font-size: 16px;
+}
+
+/* Maintain dark mode styling */
+.react-quill-dark .ql-toolbar {
+  background-color: #374151;
+  border-color: #4B5563;
+}
+
+.react-quill-dark .ql-container {
+  background-color: #1F2937;
+  border-color: #4B5563;
+}
+
+.react-quill-dark .ql-editor {
+  color: white;
+}
+
+.react-quill-dark .ql-stroke {
+  stroke: #D1D5DB;
+}
+
+.react-quill-dark .ql-fill {
+  fill: #D1D5DB;
+}
+
+.react-quill-dark .ql-picker-label {
+  color: #D1D5DB;
+}
+
+.react-quill-dark .ql-picker-options {
+  background-color: #374151;
+}
+
+/* Override editor container to prevent findDOMNode warnings */
+.ql-container.ql-snow {
+  position: relative; 
+  min-height: 150px;
+}
+
+/* Add spacing for the editor to prevent layout jumps */
+.quill {
+  margin-bottom: 50px;
+}

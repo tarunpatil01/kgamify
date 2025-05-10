@@ -8,21 +8,27 @@ const Job = require('../models/Job');
 
 // Modified middleware to check logged-in company
 const checkCompany = async (req, res, next) => {
-  // Get email from query params, body, or headers
+  // Get email from query params, body, or headers (added company-email header)
   const email = req.query.email || req.body.email || req.headers['company-email'];
   
   try {
     if (!email) {
-      return res.status(400).json({ error: 'Company email is required' });
+      console.error('Missing company email in request');
+      return res.status(400).json({ error: 'Company email is required for authentication' });
     }
     
+    console.log(`Authenticating company with email: ${email}`);
     const company = await Company.findOne({ email });
     if (!company) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      console.error(`No company found with email: ${email}`);
+      return res.status(401).json({ error: 'Unauthorized - company not found' });
     }
+    
+    console.log(`Company authenticated: ${company.companyName}`);
     req.companyName = company.companyName;
     next();
   } catch (err) {
+    console.error('Error in company authentication middleware:', err);
     res.status(400).json({ error: err.message });
   }
 };
@@ -34,6 +40,18 @@ router.post('/', upload.single('resume'), async (req, res) => {
     const applicationData = {
       ...req.body,
     };
+
+    // Get the job details to ensure company email is included
+    if (req.body.jobId) {
+      try {
+        const job = await Job.findById(req.body.jobId);
+        if (job && job.companyEmail && !applicationData.companyEmail) {
+          applicationData.companyEmail = job.companyEmail;
+        }
+      } catch (err) {
+        console.error("Error fetching job details:", err);
+      }
+    }
 
     // Handle resume file if uploaded
     if (req.file) {
@@ -67,42 +85,71 @@ router.get('/job/:jobId', checkCompany, async (req, res) => {
   try {
     const { jobId } = req.params;
     
-    // Debug information
+    // Enhanced debugging info
+    console.log('-------------------------------------');
     console.log('Fetching applications for job ID:', jobId);
     console.log('Company name from middleware:', req.companyName);
+    console.log('Company email from request:', req.query.email || req.body.email || req.headers['company-email']);
     
     // First, verify the job exists
     const job = await Job.findById(jobId);
     if (!job) {
+      console.log(`Job with ID ${jobId} not found`);
       return res.status(404).json({ error: 'Job not found' });
     }
     
-    // Check if the requesting company owns this job
-    if (job.companyName.toLowerCase() !== req.companyName.toLowerCase()) {
-      console.log(`Access denied: ${req.companyName} attempting to access job owned by ${job.companyName}`);
-      return res.status(403).json({ error: 'You do not have permission to view applications for this job' });
+    console.log('Found job:', job.jobTitle);
+    console.log('Job company name:', job.companyName);
+    console.log('Job company email:', job.companyEmail);
+    
+    // Check applications with multiple matching options
+    let applications;
+    
+    // Try company name match first (case insensitive)
+    applications = await Application.find({
+      jobId: jobId,
+      CompanyName: { $regex: new RegExp(req.companyName, 'i') }
+    });
+    console.log(`Found ${applications.length} applications matching company name: ${req.companyName}`);
+    
+    // If no results, try by company email if available in job record
+    if (applications.length === 0 && job.companyEmail) {
+      console.log('Trying to match by company email:', job.companyEmail);
+      applications = await Application.find({
+        jobId: jobId,
+        $or: [
+          { companyEmail: job.companyEmail },
+          { CompanyEmail: job.companyEmail },
+          { companyEmail: { $exists: false } } // Include applications with no companyEmail field
+        ]
+      });
+      console.log(`Found ${applications.length} applications by company email or missing email field`);
     }
     
-    // Case-insensitive match for company name to avoid casing issues
-    const applications = await Application.find({ 
-      jobId: jobId,
-      CompanyName: { $regex: new RegExp('^' + req.companyName + '$', 'i') } 
-    });
+    // Last resort: if company owns the job, return all applications for this job
+    if (applications.length === 0 && 
+        job.companyName.toLowerCase() === req.companyName.toLowerCase()) {
+      console.log('Company owns job - returning all applications');
+      applications = await Application.find({ jobId: jobId });
+      console.log(`Found total of ${applications.length} applications for job`);
+    }
     
-    console.log(`Found ${applications.length} applications for job ${jobId}`);
-    
-    // Return formatted applications data
+    // Format application data for response
     const formattedApplications = applications.map(app => ({
       _id: app._id,
       jobId: app.jobId,
       applicantName: app.applicantName,
       companyName: app.CompanyName,
+      companyEmail: app.companyEmail || job.companyEmail || '',
       resume: app.resume,
       resumePublicId: app.resumePublicId,
       testScore: app.testScore,
       skills: app.skills || [],
       createdAt: app.createdAt
     }));
+    
+    console.log(`Returning ${formattedApplications.length} applications`);
+    console.log('-------------------------------------');
     
     res.status(200).json(formattedApplications);
   } catch (err) {

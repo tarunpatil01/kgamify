@@ -4,6 +4,7 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { getCompanyInfo, updateCompanyProfile } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import QuillEditor from '../components/QuillEditor'; // Replace ReactQuill import
 
 function EditRegistration({ isDarkMode }) {
   const navigate = useNavigate();
@@ -339,6 +340,14 @@ function EditRegistration({ isDarkMode }) {
                 />
               </div>
             </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-gray-700 dark:text-gray-300">Description</label>
+              <QuillEditor
+                value={formData.description}
+                onChange={(content) => setFormData({...formData, description: content})}
+                isDarkMode={isDarkMode}
+              />
+            </div>
           </div>
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-[#ff8200]">
@@ -520,16 +529,7 @@ function EditRegistration({ isDarkMode }) {
           </div>
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-[#ff8200]">Other</h2>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-gray-700 dark:text-gray-300">Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
-                rows={4}
-              ></textarea>
-            </div>
+            
             <div className="mb-4 sm:mb-6">
               <label className="block text-gray-700 dark:text-gray-300">Social Media Links</label>
               <div className="mb-4 sm:mb-6">
