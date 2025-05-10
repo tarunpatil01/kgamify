@@ -102,36 +102,54 @@ router.get('/job/:jobId', checkCompany, async (req, res) => {
     console.log('Job company name:', job.companyName);
     console.log('Job company email:', job.companyEmail);
     
-    // Check applications with multiple matching options
-    let applications;
-    
-    // Try company name match first (case insensitive)
-    applications = await Application.find({
-      jobId: jobId,
-      CompanyName: { $regex: new RegExp(req.companyName, 'i') }
+    // Check for ALL applications first - for debugging
+    const allApplications = await Application.find({ jobId: jobId });
+    console.log(`DEBUG: Found ${allApplications.length} total applications for this job ID`);
+    allApplications.forEach(app => {
+      console.log(`Application: ${app._id}, Company: ${app.CompanyName}, Email: ${app.companyEmail}`);
     });
-    console.log(`Found ${applications.length} applications matching company name: ${req.companyName}`);
     
-    // If no results, try by company email if available in job record
-    if (applications.length === 0 && job.companyEmail) {
-      console.log('Trying to match by company email:', job.companyEmail);
-      applications = await Application.find({
-        jobId: jobId,
-        $or: [
-          { companyEmail: job.companyEmail },
-          { CompanyEmail: job.companyEmail },
-          { companyEmail: { $exists: false } } // Include applications with no companyEmail field
-        ]
-      });
-      console.log(`Found ${applications.length} applications by company email or missing email field`);
-    }
+    // Unified approach - try all reasonable queries at once
+    const companyEmail = req.query.email || req.headers['company-email'];
+    const applications = await Application.find({
+      jobId: jobId,
+      $or: [
+        // Match by company name (case insensitive)
+        { CompanyName: { $regex: new RegExp(req.companyName, 'i') } },
+        // Match by company name as companyName field (some docs might use this format)
+        { companyName: { $regex: new RegExp(req.companyName, 'i') } },
+        // Match by email (various possible field names)
+        { companyEmail: companyEmail },
+        { CompanyEmail: companyEmail },
+        { company_email: companyEmail },
+        // If this job's email matches the auth email, return all applications
+        ...(job.companyEmail === companyEmail ? [{}] : [])
+      ]
+    });
     
-    // Last resort: if company owns the job, return all applications for this job
-    if (applications.length === 0 && 
-        job.companyName.toLowerCase() === req.companyName.toLowerCase()) {
-      console.log('Company owns job - returning all applications');
-      applications = await Application.find({ jobId: jobId });
-      console.log(`Found total of ${applications.length} applications for job`);
+    console.log(`Found ${applications.length} applications after all matching criteria`);
+    
+    // If still no applications, check if the job is owned by this company and return all
+    if (applications.length === 0 && job.companyEmail === companyEmail) {
+      console.log('Last resort: company owns job - returning all applications');
+      const allForJob = await Application.find({ jobId: jobId });
+      console.log(`Found total of ${allForJob.length} applications for job`);
+      
+      // Format application data for response
+      const formattedApplications = allForJob.map(app => ({
+        _id: app._id,
+        jobId: app.jobId,
+        applicantName: app.applicantName,
+        companyName: app.CompanyName || app.companyName || 'Unknown',
+        companyEmail: app.companyEmail || app.CompanyEmail || job.companyEmail || '',
+        resume: app.resume,
+        resumePublicId: app.resumePublicId,
+        testScore: app.testScore,
+        skills: app.skills || [],
+        createdAt: app.createdAt
+      }));
+      
+      return res.status(200).json(formattedApplications);
     }
     
     // Format application data for response
@@ -139,8 +157,8 @@ router.get('/job/:jobId', checkCompany, async (req, res) => {
       _id: app._id,
       jobId: app.jobId,
       applicantName: app.applicantName,
-      companyName: app.CompanyName,
-      companyEmail: app.companyEmail || job.companyEmail || '',
+      companyName: app.CompanyName || app.companyName || 'Unknown',
+      companyEmail: app.companyEmail || app.CompanyEmail || job.companyEmail || '',
       resume: app.resume,
       resumePublicId: app.resumePublicId,
       testScore: app.testScore,
