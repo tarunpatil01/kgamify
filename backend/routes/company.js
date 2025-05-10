@@ -50,8 +50,20 @@ router.post('/', upload.fields([
       return res.status(400).json({ error: 'Email already registered' });
     }
 
+    // Parse socialMediaLinks if it's provided as a string
+    let companyData = { ...req.body };
+    if (companyData.socialMediaLinks && typeof companyData.socialMediaLinks === 'string') {
+      try {
+        companyData.socialMediaLinks = JSON.parse(companyData.socialMediaLinks);
+        console.log('Parsed socialMediaLinks:', companyData.socialMediaLinks);
+      } catch (error) {
+        console.error('Error parsing socialMediaLinks:', error);
+        return res.status(400).json({ error: 'Invalid socialMediaLinks format' });
+      }
+    }
+
     const newCompany = new Company({
-      ...req.body,
+      ...companyData,
       logo: req.files?.logo ? req.files.logo[0].path : null,
       documents: req.files?.documents ? req.files.documents[0].path : null,
       approved: false
