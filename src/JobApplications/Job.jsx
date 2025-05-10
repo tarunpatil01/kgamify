@@ -117,7 +117,7 @@ const Job = ({ isDarkMode }) => {
         </div>
 
         {/* Detailed Job Information - Preserved as requested by the user */}
-        <div className="mb-6">
+        <div className="mb-6 bg-orange-400 rounded-xl p-4 shadow-md">
           <div>
             <strong>Job Title: </strong> {job.jobTitle}
           </div>
