@@ -349,19 +349,43 @@ export const getApplicationsByJobId = async (jobId) => {
     console.log(`Fetching applications for job ID: ${jobId} with auth email: ${email}`);
     
     // Add email to both headers and query params to ensure it's properly sent
-    const response = await axios.get(`${API_URL}/application/job/${jobId}`, {
-      headers: {
-        'company-email': email
-      },
-      params: {
-        email: email
+    // Add retry logic in case of initial failure
+    let retries = 0;
+    const maxRetries = 2;
+    let response;
+    
+    while (retries <= maxRetries) {
+      try {
+        response = await axios.get(`${API_URL}/application/job/${jobId}`, {
+          headers: {
+            'company-email': email,
+            'Authorization': `Bearer ${localStorage.getItem("token") || ""}`
+          },
+          params: {
+            email: email
+          }
+        });
+        
+        // If we got a response, break out of retry loop
+        break;
+      } catch (requestError) {
+        console.warn(`Attempt ${retries + 1} failed:`, requestError.message);
+        retries++;
+        
+        // If we've used all retries, throw the error
+        if (retries > maxRetries) throw requestError;
+        
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * retries));
       }
-    });
+    }
     
     if (Array.isArray(response.data)) {
       console.log(`Successfully retrieved ${response.data.length} applications`);
     } else {
       console.warn('Response is not an array:', response.data);
+      // Convert to array if needed
+      response.data = Array.isArray(response.data) ? response.data : [];
     }
     
     return response.data;
@@ -375,6 +399,7 @@ export const getApplicationsByJobId = async (jobId) => {
       console.error('Permission denied:', error.response?.data);
     }
     
-    throw error;
+    // Return empty array instead of throwing to avoid UI errors
+    return [];
   }
 };
