@@ -60,12 +60,55 @@ export const loginCompany = async (loginData) => {
   }
 };
 
-export const createApplication = (applicationData) => {
-  return axios.post(`${API_URL}/application`, applicationData);
+export const createApplication = async (applicationData) => {
+  try {
+    // Check if applicationData is FormData or regular object
+    let dataToSend;
+    
+    // If it contains a file, we need to use FormData
+    if (applicationData.resume instanceof File) {
+      dataToSend = new FormData();
+      
+      // Add all fields to FormData
+      Object.keys(applicationData).forEach(key => {
+        dataToSend.append(key, applicationData[key]);
+      });
+      
+      // Log the FormData contents for debugging
+      for (let pair of dataToSend.entries()) {
+        const value = pair[1] instanceof File 
+          ? `File: ${pair[1].name} (${pair[1].type})`
+          : pair[1];
+        console.log(`${pair[0]}: ${value}`);
+      }
+      
+      const response = await axios.post(`${API_URL}/application`, dataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      });
+      return response.data;
+    } else {
+      // Regular JSON submission (no files)
+      const response = await axios.post(`${API_URL}/application`, applicationData);
+      return response.data;
+    }
+  } catch (error) {
+    console.error('Error creating application:', error);
+    throw error;
+  }
 };
 
-export const getApplicationsByJobId = (jobId, email) => {
-  return axios.get(`${API_URL}/application/job/${jobId}`, { data: { email } });
+export const getApplication = async (id, email) => {
+  try {
+    const response = await axios.get(`${API_URL}/application/${id}`, {
+      params: { email }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching application:', error);
+    throw error;
+  }
 };
 
 export const createJob = async (jobData) => {

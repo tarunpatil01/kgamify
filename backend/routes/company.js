@@ -171,6 +171,30 @@ router.put('/update/:email', upload.fields([
       return res.status(404).json({ error: 'Company not found' });
     }
 
+    // Create social media links object from individual fields
+    if (updateData.instagram || updateData.twitter || updateData.linkedin || updateData.youtube) {
+      updateData.socialMediaLinks = {
+        instagram: updateData.instagram || '',
+        twitter: updateData.twitter || '',
+        linkedin: updateData.linkedin || '',
+        youtube: updateData.youtube || ''
+      };
+      
+      // Remove individual fields to avoid duplicating data
+      delete updateData.instagram;
+      delete updateData.twitter;
+      delete updateData.linkedin;
+      delete updateData.youtube;
+    }
+    // If socialMediaLinks is passed as JSON string, parse it
+    else if (updateData.socialMediaLinks && typeof updateData.socialMediaLinks === 'string') {
+      try {
+        updateData.socialMediaLinks = JSON.parse(updateData.socialMediaLinks);
+      } catch (error) {
+        console.error('Error parsing socialMediaLinks:', error);
+      }
+    }
+
     // Handle password update separately
     if (updateData.password) {
       // Only update password if it's different from what's already there

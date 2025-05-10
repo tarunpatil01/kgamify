@@ -1,28 +1,39 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
+// Create a separate schema for social media links
+const socialMediaLinksSchema = new mongoose.Schema({
+  instagram: { type: String, default: '' },
+  twitter: { type: String, default: '' },
+  linkedin: { type: String, default: '' },
+  youtube: { type: String, default: '' }
+}, { _id: false });
+
 const companySchema = new mongoose.Schema({
   companyName: { type: String, required: true },
   logo: {
-    type: String, // Now storing Cloudinary URL
+    type: String, // Cloudinary URL
     required: false
   },
   website: { type: String },
   industry: { type: String },
-  type: { type: String, required: true },
-  size: { type: String },
+  type: { type: String, required: true }, // Company type (e.g. Private Limited)
+  size: { type: String }, // Company size (e.g. 10-50 employees)
   contactName: { type: String, required: true },
-  email: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
   phone: { type: String, required: true },
   address: { type: String },
   registrationNumber: { type: String, required: true },
   yearEstablished: { type: String, required: true },
   documents: {
-    type: String, // Now storing Cloudinary URL
+    type: String, // Cloudinary URL
     required: false
   },
-  description: { type: String },
-  socialMediaLinks: { type: String },
+  description: { type: String, default: 'No description provided' },
+  socialMediaLinks: {
+    type: socialMediaLinksSchema,
+    default: () => ({})
+  },
   password: { type: String, required: true },
   approved: { type: Boolean, default: false }
 }, { toJSON: { getters: true } });
@@ -52,5 +63,4 @@ companySchema.methods.comparePassword = async function(candidatePassword) {
   }
 };
 
-const Company = mongoose.model('Company', companySchema);
-module.exports = Company;
+module.exports = mongoose.model('Company', companySchema);
