@@ -104,6 +104,27 @@ export default function PostJob({ isDarkMode, email }) {
     setOpenSnackbar(false);
   };
 
+  // Custom styling for Material-UI components in dark mode
+  const darkModeStyles = {
+    input: {
+      color: isDarkMode ? 'white' : 'inherit',
+      '&::placeholder': {
+        color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'inherit',
+      }
+    },
+    select: {
+      color: isDarkMode ? 'white' : 'inherit',
+      '& .MuiSelect-icon': {
+        color: isDarkMode ? 'white' : 'inherit',
+      }
+    },
+    menuItem: {
+      '&.MuiMenuItem-root': {
+        color: 'black', // Always black to ensure visibility on white background dropdown
+      }
+    }
+  };
+
   return (
     <div
       className={`flex p-4 sm:p-10 justify-center items-center h-fit ${
@@ -140,6 +161,20 @@ export default function PostJob({ isDarkMode, email }) {
                     onChange={handleChange}
                     fullWidth
                     className="focus:border-blue-500"
+                    inputProps={{
+                      ...params.inputProps,
+                      style: { color: isDarkMode ? 'white' : 'inherit' }
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.23)',
+                        }
+                      }
+                    }}
                   />
                 )}
               />
@@ -167,7 +202,20 @@ export default function PostJob({ isDarkMode, email }) {
                   value={formData.employmentType}
                   onChange={handleChange}
                   fullWidth
-                  className="focus:border-blue-500"
+                  sx={{
+                    color: isDarkMode ? 'white' : 'inherit',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                    },
+                    '& .MuiSvgIcon-root': {
+                      color: isDarkMode ? 'white' : 'inherit',
+                    }
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { backgroundColor: 'white' } // White background for dropdown
+                    }
+                  }}
                 >
                   <MenuItem value="">Select Employment Type</MenuItem>
                   <MenuItem value="freelance">Freelance</MenuItem>
@@ -184,7 +232,20 @@ export default function PostJob({ isDarkMode, email }) {
                   value={formData.experienceLevel}
                   onChange={handleChange}
                   fullWidth
-                  className="focus:border-blue-500"
+                  sx={{
+                    color: isDarkMode ? 'white' : 'inherit',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                    },
+                    '& .MuiSvgIcon-root': {
+                      color: isDarkMode ? 'white' : 'inherit',
+                    }
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { backgroundColor: 'white' } // White background for dropdown
+                    }
+                  }}
                 >
                   <MenuItem value="">Select Experience Level</MenuItem>
                   <MenuItem value="junior">Junior</MenuItem>
@@ -201,7 +262,20 @@ export default function PostJob({ isDarkMode, email }) {
                   value={formData.remoteOrOnsite}
                   onChange={handleChange}
                   fullWidth
-                  className="focus:border-blue-500"
+                  sx={{
+                    color: isDarkMode ? 'white' : 'inherit',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                    },
+                    '& .MuiSvgIcon-root': {
+                      color: isDarkMode ? 'white' : 'inherit',
+                    }
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { backgroundColor: 'white' }
+                    }
+                  }}
                 >
                   <MenuItem value="">Select Option</MenuItem>
                   <MenuItem value="remote">Remote</MenuItem>
@@ -216,7 +290,16 @@ export default function PostJob({ isDarkMode, email }) {
                   value={formData.location}
                   onChange={handleChange}
                   fullWidth
-                  className="focus:border-blue-500"
+                  inputProps={{
+                    style: { color: isDarkMode ? 'white' : 'inherit' }
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '& fieldset': {
+                        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                      }
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -228,7 +311,20 @@ export default function PostJob({ isDarkMode, email }) {
                   value={formData.salary}
                   onChange={handleChange}
                   fullWidth
-                  className="focus:border-blue-500"
+                  sx={{
+                    color: isDarkMode ? 'white' : 'inherit',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                    },
+                    '& .MuiSvgIcon-root': {
+                      color: isDarkMode ? 'white' : 'inherit',
+                    }
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: { backgroundColor: 'white' }
+                    }
+                  }}
                 >
                   <MenuItem value="">Select Salary Range</MenuItem>
                   {salaryOptions.map((option) => (
@@ -246,11 +342,18 @@ export default function PostJob({ isDarkMode, email }) {
                 value={formData.relocationBenefits}
                 onChange={handleChange}
                 fullWidth
-                className="focus:border-blue-500"
+                inputProps={{
+                  style: { color: isDarkMode ? 'white' : 'inherit' }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                    }
+                  }
+                }}
               />
             </div>
-            {/* Other fields remain unchanged */}
-
             <div className="mb-4 sm:mb-6">
               <label className="block">Recruitment Process</label>
               <TextareaAutosize
@@ -363,7 +466,20 @@ export default function PostJob({ isDarkMode, email }) {
                 value={formData.status}
                 onChange={handleChange}
                 fullWidth
-                className="focus:border-blue-500"
+                sx={{
+                  color: isDarkMode ? 'white' : 'inherit',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: isDarkMode ? 'white' : 'inherit',
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: { backgroundColor: 'white' }
+                  }
+                }}
               >
                 <MenuItem value="">Select Status</MenuItem>
                 <MenuItem value="active">Active</MenuItem>
@@ -383,7 +499,16 @@ export default function PostJob({ isDarkMode, email }) {
                   }
                 }}
                 fullWidth
-                className="focus:border-blue-500"
+                inputProps={{
+                  style: { color: isDarkMode ? 'white' : 'inherit' }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                    }
+                  }
+                }}
               />
             </div>
             <div className="mb-4 sm:mb-6">
@@ -415,9 +540,22 @@ export default function PostJob({ isDarkMode, email }) {
                       }
                     }}
                     fullWidth
-                    className="focus:border-blue-500"
+                    inputProps={{
+                      ...params.inputProps,
+                      style: { color: isDarkMode ? 'white' : 'inherit' }
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                        }
+                      }
+                    }}
                   />
                 )}
+                PaperProps={{
+                  sx: { backgroundColor: 'white' } // White background for dropdown
+                }}
               />
             </div>
             <div className="mb-4 sm:mb-6">
@@ -427,7 +565,16 @@ export default function PostJob({ isDarkMode, email }) {
                 value={formData.tags}
                 onChange={handleChange}
                 fullWidth
-                className="focus:border-blue-500"
+                inputProps={{
+                  style: { color: isDarkMode ? 'white' : 'inherit' }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                    }
+                  }
+                }}
               />
             </div>
           </div>

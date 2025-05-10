@@ -311,14 +311,43 @@ export const resetPassword = async (token, email, password) => {
 
 export const getApplicationsByJobId = async (jobId) => {
   try {
-    // Use the email from localStorage for authorization check on backend
+    // Get email from localStorage for authentication
     const email = localStorage.getItem("rememberedEmail");
+    
+    if (!email) {
+      console.error('No authentication email found in localStorage');
+      throw new Error('Authentication required to view applications');
+    }
+    
+    console.log(`Fetching applications for job ID: ${jobId} with auth email: ${email}`);
+    
+    // Add email to both headers and query params to ensure it's properly sent
     const response = await axios.get(`${API_URL}/application/job/${jobId}`, {
-      params: { email }
+      headers: {
+        'company-email': email
+      },
+      params: {
+        email: email
+      }
     });
+    
+    if (Array.isArray(response.data)) {
+      console.log(`Successfully retrieved ${response.data.length} applications`);
+    } else {
+      console.warn('Response is not an array:', response.data);
+    }
+    
     return response.data;
   } catch (error) {
     console.error('Error fetching applications for job:', error);
+    
+    // More helpful error message based on error type
+    if (error.response?.status === 400) {
+      console.error('Authentication error:', error.response?.data);
+    } else if (error.response?.status === 403) {
+      console.error('Permission denied:', error.response?.data);
+    }
+    
     throw error;
   }
 };

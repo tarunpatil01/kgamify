@@ -4,6 +4,7 @@ import { FaEye, FaEyeSlash, FaSpinner, FaCloudUploadAlt } from "react-icons/fa";
 import { registerCompany } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import QuillEditor from '../components/QuillEditor'; // Replace ReactQuill import
 
 // Expanded list of Indian states and cities
 const statesAndCities = {
@@ -315,8 +316,8 @@ function Register({ isDarkMode }) {
         submissionData.append("documents", formData.documents);
       }
 
-      // Add description and social media links as JSON
-      const description = formData.description || "No description provided";
+      // Ensure HTML content from ReactQuill is properly handled
+      const description = formData.description || "<p>No description provided</p>";
       submissionData.append("description", description);
 
       const socialMediaLinks = {
@@ -425,15 +426,23 @@ function Register({ isDarkMode }) {
                   name="industry"
                   value={formData.industry}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 text-white"
                   required
                 >
-                  <option value="">Select Industry</option>
-                  <option value="IT">IT</option>
-                  <option value="Finance">Finance</option>
-                  <option value="Healthcare">Healthcare</option>
-                  <option value="Education">Education</option>
+                  <option className="text-black" value="">Select Industry</option>
+                  <option className="text-black" value="IT">IT</option>
+                  <option className="text-black" value="Finance">Finance</option>
+                  <option className="text-black" value="Healthcare">Healthcare</option>
+                  <option className="text-black" value="Education">Education</option>
                 </select>
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">Company Description</label>
+                <QuillEditor
+                  value={formData.description}
+                  onChange={(content) => setFormData({...formData, description: content})}
+                  isDarkMode={isDarkMode}
+                />
               </div>
             </>
           )}
@@ -701,6 +710,7 @@ function Register({ isDarkMode }) {
                   className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
                 />
               </div>
+              
             </>
           )}
 
