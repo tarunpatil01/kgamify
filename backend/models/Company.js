@@ -35,7 +35,11 @@ const companySchema = new mongoose.Schema({
     default: () => ({})
   },
   password: { type: String, required: true },
-  approved: { type: Boolean, default: false }
+  approved: { type: Boolean, default: false },
+  
+  // Add fields for password reset functionality
+  resetToken: String,
+  resetTokenExpiry: Date,
 }, { toJSON: { getters: true } });
 
 // Pre-save hook to hash password before saving
