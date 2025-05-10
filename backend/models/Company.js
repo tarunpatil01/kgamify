@@ -23,7 +23,7 @@ const companySchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   phone: { type: String, required: true },
   address: { type: String },
-  registrationNumber: { type: String, required: true },
+  Username: { type: String, required: true },
   yearEstablished: { type: String, required: true },
   documents: {
     type: String, // Cloudinary URL
