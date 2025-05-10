@@ -18,8 +18,12 @@ function EditRegistration({ isDarkMode }) {
     contactName: "",
     email: "",
     phone: "",
-    address: "",
-    registrationNumber: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    pinCode: "",
+    username: "", // Added username field
     yearEstablished: "",
     documents: null,
     description: "",
@@ -29,6 +33,7 @@ function EditRegistration({ isDarkMode }) {
     youtube: "",
     password: "", // Password will be empty initially
     newPassword: "", // Add field for new password
+    confirmPassword: "" // For password confirmation
   });
   const [currentLogo, setCurrentLogo] = useState(null);
   const [currentDocuments, setCurrentDocuments] = useState(null);
@@ -36,7 +41,6 @@ function EditRegistration({ isDarkMode }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [confirmPassword, setConfirmPassword] = useState("");
 
   // Fetch company data on component mount
   useEffect(() => {
@@ -51,6 +55,38 @@ function EditRegistration({ isDarkMode }) {
 
         setLoading(true);
         const companyData = await getCompanyInfo(email);
+        
+        // Parse address into components
+        let addressComponents = {
+          addressLine1: "",
+          addressLine2: "",
+          city: "",
+          state: "",
+          pinCode: ""
+        };
+        
+        if (companyData.address) {
+          try {
+            // Split address by commas and trim each part
+            const parts = companyData.address.split(',').map(part => part.trim());
+            
+            if (parts.length >= 4) {
+              // If we have enough parts, try to reconstruct the address components
+              addressComponents = {
+                addressLine1: parts[0] || "",
+                addressLine2: parts.length > 4 ? parts[1] : "",
+                city: parts.length > 4 ? parts[2] : parts[1],
+                state: parts.length > 4 ? parts[3] : parts[2],
+                pinCode: parts[parts.length-1] || ""
+              };
+            } else {
+              // If address doesn't have enough parts, use the whole address as addressLine1
+              addressComponents.addressLine1 = companyData.address;
+            }
+          } catch (error) {
+            console.error("Error parsing address:", error);
+          }
+        }
         
         // Parse socialMediaLinks if it exists
         let socialLinks = { instagram: '', twitter: '', linkedin: '', youtube: '' };
@@ -69,13 +105,18 @@ function EditRegistration({ isDarkMode }) {
           companyName: companyData.companyName || "",
           website: companyData.website || "",
           industry: companyData.industry || "",
-          type: companyData.type || "", // Matches type field in Company model
-          size: companyData.size || "", // Matches size field in Company model
+          type: companyData.type || "",
+          size: companyData.size || "",
           contactName: companyData.contactName || "",
           email: companyData.email || "",
           phone: companyData.phone || "",
-          address: companyData.address || "",
-          registrationNumber: companyData.registrationNumber || "",
+          // Use parsed address components
+          addressLine1: addressComponents.addressLine1,
+          addressLine2: addressComponents.addressLine2,
+          city: addressComponents.city,
+          state: addressComponents.state,
+          pinCode: addressComponents.pinCode,
+          username: companyData.registrationNumber || "", // Use registration number as username
           yearEstablished: companyData.yearEstablished || "",
           description: companyData.description || "",
           instagram: socialLinks.instagram || "",
@@ -140,10 +181,15 @@ function EditRegistration({ isDarkMode }) {
     setIsSubmitting(true);
     
     try {
-      // Append form data - similar to Register.jsx approach
+      // Combine address components into a single address string
+      const combinedAddress = `${formData.addressLine1}, ${
+        formData.addressLine2 ? formData.addressLine2 + ", " : ""
+      }${formData.city}, ${formData.state}, ${formData.pinCode}`;
+      
+      // Append form data
       Object.keys(formData).forEach(key => {
         // Skip fields that should not be sent
-        if (['password', 'confirmPassword', 'newPassword'].includes(key)) {
+        if (['password', 'confirmPassword', 'newPassword', 'addressLine1', 'addressLine2', 'city', 'state', 'pinCode'].includes(key)) {
           return;
         }
         
@@ -157,17 +203,15 @@ function EditRegistration({ isDarkMode }) {
         }
       });
       
+      // Add the combined address
+      formDataToSend.append('address', combinedAddress);
+      
+      // Send username as registrationNumber for backend compatibility
+      formDataToSend.append('registrationNumber', formData.username);
+      
       // Handle password separately
       if (formData.newPassword) {
         formDataToSend.append('password', formData.newPassword);
-      }
-
-      // Log the FormData contents for debugging (optional)
-      for (let pair of formDataToSend.entries()) {
-        const value = pair[1] instanceof File 
-          ? `File: ${pair[1].name} (${pair[1].type})`
-          : pair[1];
-        console.log(`${pair[0]}: ${value}`);
       }
 
       const response = await updateCompanyProfile(formData.email, formDataToSend);
@@ -336,42 +380,81 @@ function EditRegistration({ isDarkMode }) {
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Address</label>
+                <label className="block text-gray-700 dark:text-gray-300">Username</label>
                 <input
                   type="text"
-                  name="address"
-                  value={formData.address}
+                  name="username"
+                  value={formData.username}
                   onChange={handleChange}
                   className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
                 />
               </div>
+            </div>
+            {/* Address fields */}
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-gray-700 dark:text-gray-300">Address Line 1</label>
+              <input
+                type="text"
+                name="addressLine1"
+                value={formData.addressLine1}
+                onChange={handleChange}
+                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+              />
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-gray-700 dark:text-gray-300">Address Line 2</label>
+              <input
+                type="text"
+                name="addressLine2"
+                value={formData.addressLine2}
+                onChange={handleChange}
+                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+              />
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-gray-700 dark:text-gray-300">State</label>
+              <input
+                type="text"
+                name="state"
+                value={formData.state}
+                onChange={handleChange}
+                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+              />
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-gray-700 dark:text-gray-300">City</label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+              />
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-gray-700 dark:text-gray-300">Pin Code</label>
+              <input
+                type="text"
+                name="pinCode"
+                value={formData.pinCode}
+                onChange={handleChange}
+                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+              />
             </div>
           </div>
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-[#ff8200]">
               Registration
             </h2>
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
-              <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Registration Number</label>
-                <input
-                  type="text"
-                  name="registrationNumber"
-                  value={formData.registrationNumber}
-                  onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
-                />
-              </div>
-              <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Year Established</label>
-                <input
-                  type="text"
-                  name="yearEstablished"
-                  value={formData.yearEstablished}
-                  onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
-                />
-              </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-gray-700 dark:text-gray-300">Year Established</label>
+              <input
+                type="text"
+                name="yearEstablished"
+                value={formData.yearEstablished}
+                onChange={handleChange}
+                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+              />
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block text-gray-700 dark:text-gray-300">Documents</label>
