@@ -2,9 +2,7 @@ import {
   BrowserRouter as Router,
   Route,
   Routes,
-  useNavigate,
   useLocation,
-  Navigate,
 } from "react-router-dom";
 import "./App.css";
 import Register from "./pages/Register";
@@ -16,45 +14,41 @@ import EditRegistration from "./pages/EditRegistration";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import Footer from "./components/Footer";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { useState, useEffect } from "react";
-import { loginCompany, getCompanyInfo } from "./api"; // Make sure this import is correct
+import { getCompanyInfo } from "./api";
 import Login from "./pages/Login";
-import AdminPortal from "./pages/AdminPortal"; // Import AdminPortal component
-import AdminLogin from "./pages/AdminLogin"; // Import AdminLogin component
+import AdminPortal from "./pages/AdminPortal";
+import AdminLogin from "./pages/AdminLogin";
 import EditJob from "./pages/EditJob";
 import Job from "./JobApplications/Job.jsx";
 import ResetPassword from "./pages/ResetPassword";
 
 function AppContent() {
   const location = useLocation();
-  const isLoginPage = location.pathname === "/";
-  const showNavbar =
-    location.pathname !== "/" &&
-    location.pathname !== "/register" &&
-    location.pathname !== "/forgot-password" &&
-    location.pathname !== "/admin-login";
-  const showSidebar =
-    location.pathname !== "/" &&
-    location.pathname !== "/register" &&
-    location.pathname !== "/forgot-password" &&
-    location.pathname !== "/admin-login";
+  const isLoginPage = location.pathname === "/" || 
+                      location.pathname === "/register" || 
+                      location.pathname === "/forgot-password" || 
+                      location.pathname === "/reset-password" ||
+                      location.pathname === "/admin-login";
+  
+  const showNavbar = !isLoginPage;
+  const showSidebar = !isLoginPage;
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem("theme") === "dark";
   });
   const [loggedInEmail, setLoggedInEmail] = useState(() => {
-    // Load email from localStorage on startup
     return localStorage.getItem("rememberedEmail") || "";
   });
   const [loggedInCompany, setLoggedInCompany] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
 
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       setIsMobileView(window.innerWidth < 768);
-      // Auto-close sidebar on small screens when resizing
       if (window.innerWidth < 768) {
         setIsSidebarOpen(false);
       }
@@ -81,40 +75,27 @@ function AppContent() {
   useEffect(() => {
     const fetchCompanyData = async () => {
       if (!loggedInEmail) {
-        console.log("No logged in email found, skipping company data fetch");
         return;
       }
 
-      setIsLoading(true);
       try {
-        console.log("Fetching company info for:", loggedInEmail);
-
-        // Try to get from localStorage first
         const cachedCompanyData = localStorage.getItem("companyData");
         if (cachedCompanyData) {
           try {
             const parsedData = JSON.parse(cachedCompanyData);
             if (parsedData.email === loggedInEmail) {
-              console.log("Using cached company data");
               setLoggedInCompany(parsedData);
-              setIsLoading(false);
               return;
             }
           } catch (parseError) {
-            console.error("Error parsing cached company data:", parseError);
             // Continue with API fetch if parsing fails
           }
         }
 
-        // If we reach here, we need to fetch from API
         const response = await getCompanyInfo(loggedInEmail);
-        console.log("Company data received:", response);
         setLoggedInCompany(response);
       } catch (error) {
-        console.error("Error fetching company data:", error);
-        // Don't set company to null if fetch fails to prevent Navbar errors
-      } finally {
-        setIsLoading(false);
+        // Handle error silently
       }
     };
 
@@ -122,95 +103,124 @@ function AppContent() {
   }, [loggedInEmail]);
 
   return (
-    <div
-      className={`flex flex-col md:flex-row ${
-        isDarkMode ? "dark bg-gray-900 " : ""
-      }`}
-    >
-      {showSidebar && !isLoginPage && (
-        <div className={`${isMobileView ? "fixed z-30" : "relative"}`}>
-          <Sidebar
-            onToggle={setIsSidebarOpen}
-            onThemeToggle={handleThemeToggle}
-            isDarkMode={isDarkMode}
-          />
-        </div>
-      )}
-      <div
-        className={`flex-grow transition-all duration-300 ${
-          showSidebar && !isMobileView && !isLoginPage
-            ? isSidebarOpen
-              ? "md:ml-0 ml-0"
-              : "md:ml-0 ml-15"
-            : "ml-"
-        }`}
-      >
-        {showNavbar && !isLoginPage && (
-          <Navbar
-            isSidebarOpen={isSidebarOpen}
-            onThemeToggle={handleThemeToggle}
-            isDarkMode={isDarkMode}
-            userCompany={loggedInCompany || {}} // Provide empty object fallback
-          />
+    <ErrorBoundary showDetails={process.env.NODE_ENV === 'development'}>
+      <div className={`min-h-screen ${isDarkMode ? "dark bg-gray-900" : "bg-gray-50"}`}>
+        {/* Login/Auth pages - full width layout */}
+        {isLoginPage ? (
+          <div className="w-full min-h-screen">
+            <Routes>
+              <Route
+                path="/"
+                element={<Login setLoggedInEmail={setLoggedInEmail} />}
+              />
+              <Route
+                path="/register"
+                element={<Register isDarkMode={isDarkMode} />}
+              />
+              <Route
+                path="/forgot-password"
+                element={<ForgotPassword isDarkMode={isDarkMode} />}
+              />
+              <Route
+                path="/reset-password"
+                element={<ResetPassword isDarkMode={isDarkMode} />}
+              />
+              <Route path="/admin-login" element={<AdminLogin />} />
+            </Routes>
+          </div>
+        ) : (
+          /* Dashboard layout with sidebar and main content */
+          <div className="flex h-screen">
+            {/* Mobile Sidebar Overlay */}
+            {isMobileView && isSidebarOpen && (
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                onClick={() => setIsSidebarOpen(false)}
+              ></div>
+            )}
+            
+            {/* Sidebar - Fixed width */}
+            {showSidebar && (
+              <div className={`${
+                isMobileView 
+                  ? "fixed top-0 left-0 h-full z-50" 
+                  : "relative"
+              } ${
+                isSidebarOpen 
+                  ? "w-60" 
+                  : "w-16"
+              } transition-all duration-300 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700`}>
+                <Sidebar
+                  onToggle={setIsSidebarOpen}
+                  isOpen={isSidebarOpen}
+                />
+              </div>
+            )}
+            
+            {/* Main Content Area - Flexible width */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Navbar */}
+              {showNavbar && (
+                <div className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                  <Navbar
+                    onSidebarToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onThemeToggle={handleThemeToggle}
+                    isDarkMode={isDarkMode}
+                    userCompany={loggedInCompany || {}}
+                    email={loggedInEmail}
+                  />
+                </div>
+              )}
+              
+              {/* Page Content */}
+              <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+                <Routes>
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <Dashboard isDarkMode={isDarkMode} email={loggedInEmail} />
+                    }
+                  />
+                  <Route
+                    path="/post-job"
+                    element={
+                      <PostJob isDarkMode={isDarkMode} email={loggedInEmail} />
+                    }
+                  />
+                  <Route
+                    path="/job-posted"
+                    element={
+                      <JobPosted isDarkMode={isDarkMode} email={loggedInEmail} />
+                    }
+                  />
+                  <Route
+                    path="/Edit-Registration"
+                    element={<EditRegistration isDarkMode={isDarkMode} />}
+                  />
+                  <Route
+                    path="/admin"
+                    element={<AdminPortal isDarkMode={isDarkMode} />}
+                  />
+                  <Route
+                    path="/edit-job/:jobId"
+                    element={<EditJob isDarkMode={isDarkMode} />}
+                  />
+                  <Route
+                    path="/job/:jobId"
+                    element={<Job isDarkMode={isDarkMode} />}
+                  />
+                </Routes>
+              </div>
+              
+              {/* Footer */}
+              <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                <Footer isDarkMode={isDarkMode} />
+              </div>
+            </div>
+          </div>
         )}
-        <div className={`${isLoginPage ? "" : "min-h-[calc(100vh-64px)]"}`}>
-          <Routes>
-            <Route
-              path="/register"
-              element={<Register isDarkMode={isDarkMode} />}
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <Dashboard isDarkMode={isDarkMode} email={loggedInEmail} />
-              }
-            />
-            <Route
-              path="/post-job"
-              element={
-                <PostJob isDarkMode={isDarkMode} email={loggedInEmail} />
-              }
-            />
-            <Route
-              path="/job-posted"
-              element={
-                <JobPosted isDarkMode={isDarkMode} email={loggedInEmail} />
-              }
-            />
-            <Route
-              path="/forgot-password"
-              element={<ForgotPassword isDarkMode={isDarkMode} />}
-            />
-            <Route
-              path="/reset-password"
-              element={<ResetPassword isDarkMode={isDarkMode} />}
-            />
-            <Route
-              path="/Edit-Registration"
-              element={<EditRegistration isDarkMode={isDarkMode} />}
-            />
-            <Route
-              path="/admin"
-              element={<AdminPortal isDarkMode={isDarkMode} />}
-            />
-            <Route path="/admin-login" element={<AdminLogin />} />
-            <Route
-              path="/edit-job/:jobId"
-              element={<EditJob isDarkMode={isDarkMode} />}
-            />
-            <Route
-              path="/job/:jobId"
-              element={<Job isDarkMode={isDarkMode} />}
-            />
-            <Route
-              path="/"
-              element={<Login setLoggedInEmail={setLoggedInEmail} />}
-            />
-          </Routes>
-        </div>
-        {!isLoginPage && <Footer isDarkMode={isDarkMode} />}
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }
 

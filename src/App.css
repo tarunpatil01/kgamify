@@ -1,4 +1,30 @@
+/*
+#ff8200 main color
+#1e2938 footer 
+#f5f5f5 for overlays or background
+#ee5f0f for elements (buttons)
+*/
 @import "tailwindcss";
+
+/* Prevent horizontal overflow */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Fix viewport height issues on mobile */
+.min-h-screen {
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for better mobile support */
+}
+
+/* Ensure proper scrolling on mobile */
+@media (max-height: 700px) {
+  .min-h-screen {
+    min-height: 100%;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+}
 
 .bg-blur {
   position: relative;
@@ -35,4 +61,309 @@
 
 .hover\:border-orange-primary:hover {
   border-color: #ff8200;
+}
+
+/* Input field styling for Kgamify design system */
+.input-kgamify {
+  width: 100%;
+  padding: 10px 14px; /* Slightly reduced padding for mobile */
+  border: 2px solid rgba(209, 213, 219, 0.8);
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s ease;
+  color: #111827;
+  background-color: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  font-size: 16px; /* Prevent zoom on iOS */
+}
+
+.input-kgamify.has-icon {
+  padding-right: 44px; /* Slightly reduced for mobile */
+}
+
+/* Responsive input adjustments */
+@media (min-width: 640px) {
+  .input-kgamify {
+    padding: 12px 16px;
+  }
+  
+  .input-kgamify.has-icon {
+    padding-right: 48px;
+  }
+}
+
+.input-kgamify::placeholder {
+  color: #6b7280;
+}
+
+.input-kgamify:focus {
+  border-color: #ff8200;
+  box-shadow: 0 0 0 3px rgba(255, 130, 0, 0.1);
+}
+
+.input-kgamify:hover {
+  border-color: rgba(255, 130, 0, 0.5);
+}
+
+/* Primary button styling for Kgamify design system */
+.btn-primary {
+  width: 100%;
+  padding: 10px 20px; /* Reduced for mobile */
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  outline: none;
+  background: linear-gradient(135deg, #ee5f0f, #e74094);
+  color: white;
+  border: 2px solid transparent;
+  box-shadow: 0 4px 12px rgba(238, 95, 15, 0.3);
+  cursor: pointer;
+}
+
+/* Responsive button adjustments */
+@media (min-width: 640px) {
+  .btn-primary {
+    padding: 12px 24px;
+  }
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d54e0a, #d63384);
+  box-shadow: 0 6px 16px rgba(238, 95, 15, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(238, 95, 15, 0.3);
+}
+
+.btn-primary:focus {
+  box-shadow: 0 0 0 4px rgba(238, 95, 15, 0.2);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Secondary button styling */
+.btn-secondary {
+  width: 100%;
+  padding: 10px 20px; /* Reduced for mobile */
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  outline: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #374151;
+  border: 2px solid rgba(209, 213, 219, 0.8);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+}
+
+/* Update secondary button responsive sizing */
+@media (min-width: 640px) {
+  .btn-secondary {
+    padding: 12px 24px;
+  }
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: #ff8200;
+  color: #ff8200;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(255, 130, 0, 0.1);
+}
+
+.btn-secondary:focus {
+  box-shadow: 0 0 0 4px rgba(156, 163, 175, 0.2);
+}
+
+/* Button layout utilities */
+.btn-primary.half-width,
+.btn-secondary.half-width {
+  width: calc(50% - 8px);
+  margin: 0 4px;
+}
+
+.btn-primary.ml-auto {
+  margin-left: auto;
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 640px) {
+  .container {
+    padding: 8px;
+  }
+  
+  /* Reduce form padding on mobile */
+  .bg-white\/95 {
+    padding: 16px !important;
+  }
+  
+  /* Ensure proper mobile spacing */
+  .space-y-4 > * + * {
+    margin-top: 12px;
+  }
+  
+  /* Add proper spacing between dashboard elements */
+  .dashboard-spacing > * + * {
+    margin-top: 8px;
+  }
+  
+  /* Mobile button optimization */
+  .btn-primary,
+  .btn-secondary {
+    padding: 10px 16px;
+    font-size: 15px;
+  }
+  
+  /* Mobile input optimization */
+  .input-kgamify {
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+  
+  /* Mobile card optimization */
+  .card-kgamify {
+    padding: 12px !important;
+    margin-bottom: 8px;
+  }
+  
+  /* Mobile table improvements */
+  .lg:hidden .space-y-3 > * + * {
+    margin-top: 8px;
+  }
+  
+  /* Reduce mobile spacing for job cards */
+  .lg:hidden .p-4 {
+    padding: 12px !important;
+  }
+  
+  /* Mobile sidebar adjustments */
+  .mobile-sidebar {
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    z-index: 50 !important;
+  }
+  
+  /* Mobile content adjustment when sidebar is open */
+  .mobile-content-shift {
+    margin-left: 0 !important;
+  }
+}
+
+/* Card styling for Kgamify design system */
+.card-kgamify {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(209, 213, 219, 0.8);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+.card-kgamify:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Dark mode card styling */
+.dark .card-kgamify {
+  background: rgba(31, 41, 55, 0.95);
+  border: 1px solid rgba(75, 85, 99, 0.8);
+  color: white;
+}
+
+/* Text color utilities for Kgamify colors */
+.text-kgamify-500 {
+  color: #ff8200;
+}
+
+.text-kgamify-pink-500 {
+  color: #e74094;
+}
+
+/* Background color utilities for Kgamify colors */
+.bg-kgamify-100 {
+  background-color: #ffedd5;
+}
+
+.bg-kgamify-500 {
+  background-color: #ff8200;
+}
+
+.bg-kgamify-pink-100 {
+  background-color: #fce7f3;
+}
+
+.bg-kgamify-pink-500 {
+  background-color: #e74094;
+}
+
+.bg-kgamify-900 {
+  background-color: #7c2d12;
+}
+
+.bg-kgamify-pink-900 {
+  background-color: #831843;
+}
+
+.bg-kgamify-footer-900 {
+  background-color: #1e2938;
+}
+
+/* Element color for buttons and interactive elements */
+.bg-kgamify-element {
+  background-color: #ee5f0f;
+}
+
+.text-kgamify-element {
+  color: #ee5f0f;
+}
+
+.border-kgamify-element {
+  border-color: #ee5f0f;
+}
+
+/* Overlay/background color utility */
+.bg-kgamify-overlay {
+  background-color: #f5f5f5;
+}
+
+/* Dark mode background utilities */
+.dark .bg-kgamify-900 {
+  background-color: #7c2d12;
+}
+
+.dark .bg-kgamify-pink-900 {
+  background-color: #831843;
+}
+
+/* Hover and focus states for Kgamify colors */
+.hover\:text-kgamify-500:hover {
+  color: #ff8200;
+}
+
+.hover\:text-kgamify-600:hover {
+  color: #ea580c;
+}
+
+.hover\:border-kgamify-300:hover {
+  border-color: #fdba74;
+}
+
+.hover\:border-kgamify-600:hover {
+  border-color: #ea580c;
+}
+
+.dark .hover\:border-kgamify-600:hover {
+  border-color: #ea580c;
 }

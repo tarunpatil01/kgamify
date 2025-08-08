@@ -9,13 +9,14 @@ dotenv.config({ path: './src/pages/.env' })
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(),],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
   server: {
+    port: 3000,
     proxy: {
       // Add proxy for API requests in development
       '/api': {
@@ -26,5 +27,23 @@ export default defineConfig({
       }
     },
     cors: true
-  }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          ui: ['@mui/material', '@mui/icons-material'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+  },
+  preview: {
+    port: 3000,
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
+  },
 })

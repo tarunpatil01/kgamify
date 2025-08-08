@@ -5,6 +5,7 @@ import { registerCompany } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import QuillEditor from '../components/QuillEditor'; // Replace ReactQuill import
+import backgroundImage from '../assets/background.jpg';
 
 // Expanded list of Indian states and cities
 const statesAndCities = {
@@ -360,35 +361,43 @@ function Register({ isDarkMode }) {
 
   return (
     <div
-      className={`flex p-4 sm:p-12 justify-center items-center h-full ${
-        isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"
-      }`}
+      className="min-h-screen flex p-4 sm:p-12 justify-center items-center relative"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
+      }}
     >
-      <div
-        className={`p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-3xl ${
-          isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"
-        }`}
-      >
-        <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">
+      {/* Background Overlay */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-kgamify-500/20 via-transparent to-kgamify-pink-500/20"></div>
+      
+      {/* Content Container */}
+      <div className="relative z-10 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-4 sm:p-8 w-full max-w-3xl">
+        <h1 className="text-2xl sm:text-4xl font-heading font-bold mb-4 sm:mb-8 text-center text-gray-800">
           Company Registration
         </h1>
 
         <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
           {currentStep === 1 && (
             <>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
-                Basic Info
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 border-b border-gray-200 pb-3">
+                📝 Basic Info
               </h2>
               <div className="mb-4 sm:mb-6">
                 <label className="block">
-                  Company Name <span className="text-red-500">*</span>
+                  <span className="font-medium text-gray-800">
+                    Company Name <span className="text-red-500">*</span>
+                  </span>
                 </label>
                 <input
                   type="text"
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify mt-2"
                   required
                 />
               </div>
@@ -400,7 +409,7 @@ function Register({ isDarkMode }) {
                   type="file"
                   name="logo"
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   accept=".png, .jpeg"
                   required
                 />
@@ -414,7 +423,7 @@ function Register({ isDarkMode }) {
                   name="website"
                   value={formData.website}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 />
               </div>
@@ -461,7 +470,7 @@ function Register({ isDarkMode }) {
                   name="contactName"
                   value={formData.contactName}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 />
               </div>
@@ -474,7 +483,7 @@ function Register({ isDarkMode }) {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 />
               </div>
@@ -487,7 +496,7 @@ function Register({ isDarkMode }) {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 />
               </div>
@@ -500,7 +509,7 @@ function Register({ isDarkMode }) {
                   name="addressLine1"
                   value={formData.addressLine1}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 />
               </div>
@@ -511,7 +520,7 @@ function Register({ isDarkMode }) {
                   name="addressLine2"
                   value={formData.addressLine2}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                 />
               </div>
               <div className="mb-4 sm:mb-6">
@@ -522,7 +531,7 @@ function Register({ isDarkMode }) {
                   name="state"
                   value={formData.state}
                   onChange={handleStateChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 >
                   <option value="">Select State</option>
@@ -541,7 +550,7 @@ function Register({ isDarkMode }) {
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                   disabled={!formData.state}
                 >
@@ -563,7 +572,7 @@ function Register({ isDarkMode }) {
                   name="pinCode"
                   value={formData.pinCode}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 />
               </div>
@@ -583,7 +592,7 @@ function Register({ isDarkMode }) {
                   name="companyType"
                   value={formData.companyType}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 >
                   <option value="">Select Company Type</option>
@@ -603,7 +612,7 @@ function Register({ isDarkMode }) {
                   type="file"
                   name="documents"
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   accept=".pdf"
                   required
                 />
@@ -616,7 +625,7 @@ function Register({ isDarkMode }) {
                   name="companySize"
                   value={formData.companySize}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 >
                   <option value="">Select Company Size</option>
@@ -638,7 +647,7 @@ function Register({ isDarkMode }) {
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 />
               </div>
@@ -651,7 +660,7 @@ function Register({ isDarkMode }) {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
                   title="Must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters"
                   required
@@ -666,7 +675,7 @@ function Register({ isDarkMode }) {
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                   required
                 />
               </div>
@@ -677,7 +686,7 @@ function Register({ isDarkMode }) {
                   name="instagram"
                   value={formData.instagram}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                 />
               </div>
               <div className="mb-4 sm:mb-6">
@@ -687,7 +696,7 @@ function Register({ isDarkMode }) {
                   name="twitter"
                   value={formData.twitter}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                 />
               </div>
               <div className="mb-4 sm:mb-6">
@@ -697,7 +706,7 @@ function Register({ isDarkMode }) {
                   name="linkedin"
                   value={formData.linkedin}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                 />
               </div>
               <div className="mb-4 sm:mb-6">
@@ -707,7 +716,7 @@ function Register({ isDarkMode }) {
                   name="youtube"
                   value={formData.youtube}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2"
+                  className="input-kgamify"
                 />
               </div>
               
@@ -719,7 +728,7 @@ function Register({ isDarkMode }) {
               <button
                 type="button"
                 onClick={handlePrevious}
-                className="p-2 sm:p-4 bg-gray-500 text-white rounded hover:bg-gray-600"
+                className="btn-secondary half-width"
               >
                 Previous
               </button>
@@ -728,14 +737,14 @@ function Register({ isDarkMode }) {
               <button
                 type="button"
                 onClick={handleNext}
-                className="p-2 sm:p-4 bg-[#ff8200] text-white rounded hover:bg-[#e57400]"
+                className={`btn-primary ${currentStep > 1 ? 'half-width' : ''}`}
               >
                 Next
               </button>
             ) : (
               <button
                 type="submit"
-                className="p-2 sm:p-4 bg-green-500 text-white rounded hover:bg-green-600"
+                className={`btn-primary ${currentStep > 1 ? 'half-width' : ''}`}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (

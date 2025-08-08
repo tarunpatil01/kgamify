@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import backgroundImage from "../assets/background.jpg";
 import { resetPassword } from "../api";
+import logo from "../assets/KLOGO.png";
+import PropTypes from 'prop-types';
 
 const ResetPassword = ({ isDarkMode }) => {
   const navigate = useNavigate();
@@ -74,97 +76,108 @@ const ResetPassword = ({ isDarkMode }) => {
     }
   };
 
+  const overlayTone = isDarkMode ? 'bg-black/50' : 'bg-black/30';
+
   return (
     <div
-      className="flex justify-center items-center h-screen bg-cover bg-center p-4 sm:p-8"
-      style={{ backgroundImage: `url(${backgroundImage})` }}
+      className="min-h-screen flex items-center justify-center p-4 sm:p-8 relative"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed'
+      }}
     >
-      <div className="bg-white bg-opacity-90 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+      {/* Background overlays */}
+      <div className={`absolute inset-0 ${overlayTone} backdrop-blur-[1px]`}></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-kgamify-500/20 via-transparent to-kgamify-pink-500/20"></div>
+
+      {/* Card */}
+      <div className="relative z-10 bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-2xl shadow-2xl border border-white/20 w-full max-w-md">
+        {/* Header */}
         <button
           onClick={() => navigate("/")}
-          className="mb-4 bg-gray-300 text-gray-700 p-2 rounded hover:bg-gray-400 transition duration-300"
+          className="mb-4 w-full text-center text-gray-600 hover:text-gray-800 transition-colors"
         >
-          Back to Login
+          ← Back to Login
         </button>
-        <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">
-          Set New Password
-        </h1>
-        <p className="text-gray-600 mb-6 text-center">
-          Enter your new password below.
-        </p>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-6">
+
+        <div className="text-center mb-6">
+          <img src={logo} alt="Kgamify" className="mx-auto h-14 w-14 rounded-full shadow-md" />
+          <h1 className="mt-3 text-2xl sm:text-3xl font-heading font-bold text-gray-800">
+            Set New Password
+          </h1>
+          <p className="text-gray-600 mt-1">Enter your new password below.</p>
+        </div>
+
+        {/* Message */}
+        {message && (
+          <div className={`mb-4 p-3 rounded-lg ${
+            messageType === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"
+          }`}
+          >
+            {message}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
             <label className="block text-gray-700 font-semibold mb-2">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-kgamify"
               required
               readOnly
               disabled
             />
           </div>
 
-          <div className="mb-6 relative">
-            <label className="block text-gray-700 font-semibold mb-2">
-              New Password
-            </label>
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">New Password</label>
             <div className="relative">
               <input
                 type={passwordVisible ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                className="input-kgamify has-icon"
                 required
                 placeholder="Enter new password"
                 disabled={resetComplete}
-                pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
+                pattern="(?=.*\\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
                 title="Must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters"
               />
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
               >
                 {passwordVisible ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
           </div>
 
-          <div className="mb-6 relative">
-            <label className="block text-gray-700 font-semibold mb-2">
-              Confirm New Password
-            </label>
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">Confirm New Password</label>
             <input
               type={passwordVisible ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input-kgamify"
               required
               placeholder="Confirm new password"
               disabled={resetComplete}
             />
           </div>
 
-          <p className="text-sm text-gray-600 mb-4">
-            Password must contain at least one number, one uppercase letter, one lowercase letter, and be at least 8 characters long.
-          </p>
-          
-          {message && (
-            <div className={`p-3 rounded-lg mb-4 ${
-              messageType === "success" 
-                ? "bg-green-100 text-green-700" 
-                : "bg-red-100 text-red-700"
-            }`}>
-              {message}
-            </div>
-          )}
-          
+          <p className="text-xs text-gray-600">Password must contain at least one number, one uppercase letter, one lowercase letter, and be at least 8 characters long.</p>
+
           <button
             type="submit"
             disabled={isSubmitting || resetComplete}
-            className={`w-full ${resetComplete ? 'bg-green-500' : 'bg-[#ff8200]'} text-white p-3 rounded-full hover:${resetComplete ? 'bg-green-600' : 'bg-[#e57400]'} transition duration-300 font-semibold ${(resetComplete || isSubmitting) ? 'opacity-70 cursor-not-allowed' : ''}`}
+            className={resetComplete ? "btn-primary" : "btn-primary"}
           >
             {isSubmitting ? "Resetting..." : resetComplete ? "Password Reset Successful" : "Reset Password"}
           </button>
@@ -172,6 +185,10 @@ const ResetPassword = ({ isDarkMode }) => {
       </div>
     </div>
   );
+}
+
+ResetPassword.propTypes = {
+  isDarkMode: PropTypes.bool,
 };
 
 export default ResetPassword;
