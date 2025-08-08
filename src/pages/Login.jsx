@@ -155,7 +155,7 @@ const Login = ({ setLoggedInEmail }) => {
         {/* Logo Section */}
         <div className="text-center mb-4 sm:mb-6">
           <div className="relative">
-            <div className="absolute -inset-3 bg-white/10 backdrop-blur-md rounded-full"></div>
+            <div className="absolute -inset-4 bg-white/10 backdrop-blur-md rounded-full"></div>
             <img
               src={Klogo}
               alt="Kgamify Logo"
