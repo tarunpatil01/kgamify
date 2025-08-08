@@ -9,6 +9,7 @@ lerna-debug.log*
 
 # Environment variables and secrets
 .env
+.env.*
 .env.local
 .env.development.local
 .env.test.local
@@ -16,6 +17,22 @@ lerna-debug.log*
 .env.*.local
 config.json
 secrets.json
+*.key
+*.pem
+*.p12
+*.crt
+*.cert
+auth.json
+credentials.json
+firebase-config.js
+aws-config.js
+
+# API Keys and Configuration files
+**/config/keys.js
+**/config/database.js
+**/config/auth.js
+apikeys.json
+tokens.json
 
 # Dependencies
 node_modules
