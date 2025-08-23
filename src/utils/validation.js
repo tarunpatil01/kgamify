@@ -2,7 +2,7 @@ import * as yup from 'yup';
 
 // Common validation patterns
 const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
-const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+const phoneRegex = /^[+]?[1-9][\d]{0,15}$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 // Company registration validation schema

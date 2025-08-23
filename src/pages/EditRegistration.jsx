@@ -184,7 +184,7 @@ function EditRegistration({ isDarkMode }) {
     try {
       // Combine address components into a single address string
       const combinedAddress = `${formData.addressLine1}, ${
-        formData.addressLine2 ? formData.addressLine2 + ", " : ""
+        formData.addressLine2 ? `${formData.addressLine2  }, ` : ""
       }${formData.city}, ${formData.state}, ${formData.pinCode}`;
       
       // Append form data
@@ -257,8 +257,16 @@ function EditRegistration({ isDarkMode }) {
   }
 
   return (
-    <div className={`flex p-4 sm:p-12 justify-center items-center h-full ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
-      <div className={`p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-3xl ${isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"}`}>
+    <div
+      className={`px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-[calc(100vh-4rem)] ${
+        isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"
+      }`}
+    >
+      <div
+        className={`p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-3xl mx-auto ${
+          isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"
+        }`}
+      >
         <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">Edit Company Profile</h1>
         <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
           <div>

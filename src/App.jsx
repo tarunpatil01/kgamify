@@ -5,24 +5,28 @@ import {
   useLocation,
 } from "react-router-dom";
 import "./App.css";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import PostJob from "./pages/PostJob";
-import JobPosted from "./pages/JobPosted";
-import ForgotPassword from "./pages/ForgetPassword";
-import EditRegistration from "./pages/EditRegistration";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import Footer from "./components/Footer";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { getCompanyInfo } from "./api";
-import Login from "./pages/Login";
-import AdminPortal from "./pages/AdminPortal";
-import AdminLogin from "./pages/AdminLogin";
-import EditJob from "./pages/EditJob";
-import Job from "./JobApplications/Job.jsx";
-import ResetPassword from "./pages/ResetPassword";
+import { PageLoadingFallback } from "./utils/lazyLoading";
+
+// Lazy load all pages for better performance
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const PostJob = lazy(() => import("./pages/PostJob"));
+const JobPosted = lazy(() => import("./pages/JobPosted"));
+const ForgotPassword = lazy(() => import("./pages/ForgetPassword"));
+const EditRegistration = lazy(() => import("./pages/EditRegistration"));
+const AdminPortal = lazy(() => import("./pages/AdminPortal"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const EditJob = lazy(() => import("./pages/EditJob"));
+const Job = lazy(() => import("./JobApplications/Job.jsx"));
+const JobApplication = lazy(() => import("./pages/JobApplication"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 function AppContent() {
   const location = useLocation();
@@ -32,8 +36,10 @@ function AppContent() {
                       location.pathname === "/reset-password" ||
                       location.pathname === "/admin-login";
   
-  const showNavbar = !isLoginPage;
-  const showSidebar = !isLoginPage;
+  const isAdminPage = location.pathname === "/admin";
+  
+  const showNavbar = !isLoginPage && !isAdminPage;
+  const showSidebar = !isLoginPage && !isAdminPage;
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -87,14 +93,14 @@ function AppContent() {
               setLoggedInCompany(parsedData);
               return;
             }
-          } catch (parseError) {
+          } catch {
             // Continue with API fetch if parsing fails
           }
         }
 
         const response = await getCompanyInfo(loggedInEmail);
         setLoggedInCompany(response);
-      } catch (error) {
+      } catch {
         // Handle error silently
       }
     };
@@ -102,66 +108,104 @@ function AppContent() {
     fetchCompanyData();
   }, [loggedInEmail]);
 
+  // Lock body scroll when mobile drawer is open for better UX
+  useEffect(() => {
+    if (isMobileView && isSidebarOpen) {
+      const previous = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = previous;
+      };
+    }
+  }, [isMobileView, isSidebarOpen]);
+
   return (
-    <ErrorBoundary showDetails={process.env.NODE_ENV === 'development'}>
+    <ErrorBoundary showDetails={import.meta.env.MODE === 'development'}>
       <div className={`min-h-screen ${isDarkMode ? "dark bg-gray-900" : "bg-gray-50"}`}>
         {/* Login/Auth pages - full width layout */}
         {isLoginPage ? (
           <div className="w-full min-h-screen">
-            <Routes>
-              <Route
-                path="/"
-                element={<Login setLoggedInEmail={setLoggedInEmail} />}
-              />
-              <Route
-                path="/register"
-                element={<Register isDarkMode={isDarkMode} />}
-              />
-              <Route
-                path="/forgot-password"
-                element={<ForgotPassword isDarkMode={isDarkMode} />}
-              />
-              <Route
-                path="/reset-password"
-                element={<ResetPassword isDarkMode={isDarkMode} />}
-              />
-              <Route path="/admin-login" element={<AdminLogin />} />
-            </Routes>
+            <Suspense fallback={<PageLoadingFallback type="form" />}>
+              <Routes>
+                <Route
+                  path="/"
+                  element={<Login setLoggedInEmail={setLoggedInEmail} />}
+                />
+                <Route
+                  path="/register"
+                  element={<Register isDarkMode={isDarkMode} />}
+                />
+                <Route
+                  path="/forgot-password"
+                  element={<ForgotPassword isDarkMode={isDarkMode} />}
+                />
+                <Route
+                  path="/reset-password"
+                  element={<ResetPassword isDarkMode={isDarkMode} />}
+                />
+                <Route path="/admin-login" element={<AdminLogin />} />
+              </Routes>
+            </Suspense>
           </div>
         ) : (
           /* Dashboard layout with sidebar and main content */
-          <div className="flex h-screen">
+          <div className="flex h-screen overflow-hidden md:overflow-visible">
             {/* Mobile Sidebar Overlay */}
             {isMobileView && isSidebarOpen && (
-              <div 
-                className="fixed inset-0 bg-black bg-opacity-50 z-40"
+              <div
+                className="fixed inset-0 bg-black bg-opacity-40 z-80 md:hidden"
                 onClick={() => setIsSidebarOpen(false)}
-              ></div>
+                aria-hidden="true"
+              />
             )}
             
             {/* Sidebar - Fixed width */}
             {showSidebar && (
-              <div className={`${
-                isMobileView 
-                  ? "fixed top-0 left-0 h-full z-50" 
-                  : "relative"
-              } ${
-                isSidebarOpen 
-                  ? "w-60" 
-                  : "w-16"
-              } transition-all duration-300 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700`}>
-                <Sidebar
-                  onToggle={setIsSidebarOpen}
-                  isOpen={isSidebarOpen}
-                />
+              <div
+                className={`${
+                  isMobileView
+                    ? // Mobile: off-canvas below navbar (top-16) and full height minus navbar
+                      "fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 z-60 transform transition-transform md:hidden"
+                    : // Desktop: static width, collapsible
+                      `${isSidebarOpen ? "w-64" : "w-20"} relative z-[1000] hidden md:block`
+                }`}
+                style={{ willChange: "transform" }}
+              >
+                {/* Mobile translate for off-canvas */}
+                {isMobileView && (
+                  <div
+                    className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} h-full transition-transform duration-300`}
+                  >
+                    <Sidebar
+                      onToggle={setIsSidebarOpen}
+                      isOpen={isSidebarOpen}
+                      isDarkMode={isDarkMode}
+                    />
+                  </div>
+                )}
+                {/* Desktop Sidebar */}
+                {!isMobileView && (
+                  <div className="h-full overflow-visible z-50 relative">
+                    <Sidebar
+                      onToggle={setIsSidebarOpen}
+                      isOpen={isSidebarOpen}
+                      isDarkMode={isDarkMode}
+                    />
+                  </div>
+                )}
               </div>
             )}
             
             {/* Main Content Area - Flexible width */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div
+              className={`flex-1 flex flex-col overflow-hidden min-w-0 md:ml-4 transform transition-transform duration-300 ${
+                isMobileView && isSidebarOpen ? "translate-x-64" : "translate-x-0"
+              }`}
+              aria-hidden={isMobileView && isSidebarOpen ? "true" : "false"}
+            >
               {/* Navbar */}
               {showNavbar && (
-                <div className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                <div className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 relative z-20">
                   <Navbar
                     onSidebarToggle={() => setIsSidebarOpen(!isSidebarOpen)}
                     onThemeToggle={handleThemeToggle}
@@ -173,47 +217,57 @@ function AppContent() {
               )}
               
               {/* Page Content */}
-              <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
-                <Routes>
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <Dashboard isDarkMode={isDarkMode} email={loggedInEmail} />
-                    }
-                  />
-                  <Route
-                    path="/post-job"
-                    element={
-                      <PostJob isDarkMode={isDarkMode} email={loggedInEmail} />
-                    }
-                  />
-                  <Route
-                    path="/job-posted"
-                    element={
-                      <JobPosted isDarkMode={isDarkMode} email={loggedInEmail} />
-                    }
-                  />
-                  <Route
-                    path="/Edit-Registration"
-                    element={<EditRegistration isDarkMode={isDarkMode} />}
-                  />
-                  <Route
-                    path="/admin"
-                    element={<AdminPortal isDarkMode={isDarkMode} />}
-                  />
-                  <Route
-                    path="/edit-job/:jobId"
-                    element={<EditJob isDarkMode={isDarkMode} />}
-                  />
-                  <Route
-                    path="/job/:jobId"
-                    element={<Job isDarkMode={isDarkMode} />}
-                  />
-                </Routes>
+              <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 z-0 relative">
+                <Suspense fallback={<PageLoadingFallback type="dashboard" />}>
+                  <Routes>
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <Dashboard 
+                          isDarkMode={isDarkMode} 
+                          email={loggedInEmail}
+                          userCompany={loggedInCompany}
+                        />
+                      }
+                    />
+                    <Route
+                      path="/post-job"
+                      element={
+                        <PostJob isDarkMode={isDarkMode} email={loggedInEmail} />
+                      }
+                    />
+                    <Route
+                      path="/job-posted"
+                      element={
+                        <JobPosted isDarkMode={isDarkMode} email={loggedInEmail} />
+                      }
+                    />
+                    <Route
+                      path="/Edit-Registration"
+                      element={<EditRegistration isDarkMode={isDarkMode} />}
+                    />
+                    <Route
+                      path="/admin"
+                      element={<AdminPortal isDarkMode={isDarkMode} />}
+                    />
+                    <Route
+                      path="/edit-job/:jobId"
+                      element={<EditJob isDarkMode={isDarkMode} />}
+                    />
+                    <Route
+                      path="/job/:jobId"
+                      element={<Job isDarkMode={isDarkMode} />}
+                    />
+                    <Route
+                      path="/apply/:jobId"
+                      element={<JobApplication />}
+                    />
+                  </Routes>
+                </Suspense>
               </div>
               
               {/* Footer */}
-              <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+              <div className="bg-transparent border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <Footer isDarkMode={isDarkMode} />
               </div>
             </div>

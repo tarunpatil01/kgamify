@@ -70,10 +70,13 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
     switch (location.pathname) {
       case "/dashboard": return "Dashboard";
       case "/post-job": return "Post Job";
-      case "/job-posted": return "Job Posted";
+      case "/job-posted": return "Job Posted"; 
       case "/applications": return "Job Applications";
-      case "/edit-registration": return "Edit Profile";
-      default: return "Kgamify";
+      case "/Edit-Registration": return "Edit Registration";
+      case "/edit-registration": return "Edit Registration";
+      case "/settings": return "Settings";
+      case "/admin": return "Admin Portal";
+      default: return "Kgamify Job Portal";
     }
   };
 
@@ -123,12 +126,18 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
                   e.target.src = Klogo;
                 }}
               />
-              <div className="hidden sm:block">
-                <h1 className="text-xl font-heading font-bold text-kgamify-500">
+              <div className="block min-w-0">
+                <h1
+                  className="font-heading font-bold title-strong text-base sm:text-lg md:text-xl truncate max-w-[45vw] md:max-w-none"
+                  style={{ color: isDarkMode ? '#f3f4f6' : '#111827' }}
+                >
                   {getPageTitle()}
                 </h1>
                 {userCompany?.companyName && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p
+                    className="text-xs sm:text-sm subtitle-muted font-medium truncate max-w-[45vw] md:max-w-none"
+                    style={{ color: isDarkMode ? '#d1d5db' : '#374151' }}
+                  >
                     {userCompany.companyName}
                   </p>
                 )}
@@ -140,7 +149,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
           <div className="hidden md:flex flex-1 max-w-md mx-8">
             <form onSubmit={handleSearch} className="w-full">
               <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 h-4 w-4" />
                 <input
                   type="text"
                   placeholder="Search jobs, applications..."
@@ -162,7 +171,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
             {/* Theme Toggle */}
             <button
               onClick={onThemeToggle}
-              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
               aria-label="Toggle theme"
             >
               {isDarkMode ? (
@@ -176,10 +185,10 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
             <div className="relative" ref={notificationDropdownRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="relative p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 aria-label="Notifications"
               >
-                <FaBell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                <FaBell className="h-5 w-5 text-gray-800 dark:text-gray-300" />
                 {unreadNotifications > 0 && (
                   <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                     {unreadNotifications}
@@ -189,25 +198,31 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
 
               {/* Notifications Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
+                <div
+                  className={`absolute right-0 mt-2 w-80 rounded-lg shadow-lg border z-50 ${
+                    isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <h3 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Notifications</h3>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
                     {notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className={`p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                          notification.unread ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                        }`}
+                        className={`p-4 border-b transition-colors ${
+                          isDarkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-100 hover:bg-gray-50'
+                        } ${notification.unread ? (isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50') : ''}`}
                       >
-                        <p className="text-sm text-gray-900 dark:text-white">{notification.message}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{notification.time}</p>
+                        <p className={`text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>{notification.message}</p>
+                        <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{notification.time}</p>
                       </div>
                     ))}
                   </div>
-                  <div className="p-3 text-center border-t border-gray-200 dark:border-gray-700">
-                    <button className="text-sm text-kgamify-500 hover:text-kgamify-600 font-medium">
+                  <div className={`p-3 text-center border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <button className={`text-sm font-medium ${
+                      isDarkMode ? 'text-kgamify-500 hover:text-kgamify-400' : 'text-kgamify-500 hover:text-kgamify-600'
+                    }`}>
                       View all notifications
                     </button>
                   </div>
@@ -219,7 +234,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
             <div className="relative" ref={userDropdownRef}>
               <button
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 aria-label="User menu"
               >
                 <div className="h-8 w-8 bg-kgamify-500 rounded-full flex items-center justify-center">
@@ -229,21 +244,25 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
                   <p className="text-sm font-medium text-kgamify-500 dark:text-kgamify-500">
                     {userCompany?.companyName || "Company"}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-gray-800 dark:text-gray-200">
                     {email}
                   </p>
                 </div>
-                <FaChevronDown className="h-3 w-3 text-gray-400" />
+                <FaChevronDown className="h-3 w-3 text-gray-700 dark:text-gray-300" />
               </button>
 
               {/* User Dropdown Menu */}
               {showUserDropdown && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                  <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-                    <p className="font-medium text-kgamify-500 dark:text-kgamify-500">
+                <div
+                  className={`absolute right-0 mt-2 w-56 rounded-lg shadow-lg border z-50 ${
+                    isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  <div className={`p-3 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <p className="font-medium text-kgamify-500">
                       {userCompany?.companyName || "Company"}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{email}</p>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{email}</p>
                   </div>
                   <div className="py-1">
                     <button
@@ -251,7 +270,9 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
                         navigate('/edit-registration');
                         setShowUserDropdown(false);
                       }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className={`flex items-center w-full px-4 py-2 text-sm ${
+                        isDarkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                     >
                       <FaEdit className="mr-3 h-4 w-4" />
                       Edit Profile
@@ -261,15 +282,19 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
                         navigate('/settings');
                         setShowUserDropdown(false);
                       }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className={`flex items-center w-full px-4 py-2 text-sm ${
+                        isDarkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+                      }`}
                     >
                       <FaCog className="mr-3 h-4 w-4" />
                       Settings
                     </button>
-                    <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                    <div className={`border-t my-1 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}></div>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      className={`flex items-center w-full px-4 py-2 text-sm ${
+                        isDarkMode ? 'text-red-400 hover:bg-red-900/20' : 'text-red-600 hover:bg-red-50'
+                      }`}
                     >
                       <FaSignOutAlt className="mr-3 h-4 w-4" />
                       Sign Out

@@ -29,7 +29,7 @@ const ResumeViewer = ({ resumeUrl, applicantName }) => {
         </div>
         
         <div className="flex-grow text-center sm:text-left">
-          <h3 className="font-medium">{applicantName}'s Resume</h3>
+          <h3 className="font-medium">{applicantName}&apos;s Resume</h3>
           <p className="text-sm text-gray-500 truncate max-w-xs">
             {resumeUrl.split('/').pop()}
           </p>

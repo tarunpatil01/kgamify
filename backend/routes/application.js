@@ -1,9 +1,10 @@
+/* eslint-disable no-console */
 // filepath: /backend/routes/application.js
 const express = require('express');
 const router = express.Router();
 const Application = require('../models/Application');
 const Company = require('../models/Company');
-const { upload, cloudinary } = require('../config/cloudinary');
+const { upload } = require('../config/cloudinary');
 const Job = require('../models/Job');
 
 // Modified middleware to check logged-in company
@@ -17,14 +18,12 @@ const checkCompany = async (req, res, next) => {
       return res.status(400).json({ error: 'Company email is required for authentication' });
     }
     
-    console.log(`Authenticating company with email: ${email}`);
     const company = await Company.findOne({ email });
     if (!company) {
       console.error(`No company found with email: ${email}`);
       return res.status(401).json({ error: 'Unauthorized - company not found' });
     }
     
-    console.log(`Company authenticated: ${company.companyName}`);
     req.companyName = company.companyName;
     next();
   } catch (err) {
@@ -45,11 +44,29 @@ router.post('/', upload.single('resume'), async (req, res) => {
     if (req.body.jobId) {
       try {
         const job = await Job.findById(req.body.jobId);
-        if (job && job.companyEmail && !applicationData.companyEmail) {
-          applicationData.companyEmail = job.companyEmail;
+        if (job) {
+          if (job.companyEmail && !applicationData.companyEmail) {
+            applicationData.companyEmail = job.companyEmail;
+          }
+          // Ensure required CompanyName is present (Application schema requires capitalized CompanyName)
+          if (!applicationData.CompanyName && (job.companyName || job.company)) {
+            applicationData.CompanyName = job.companyName || job.company;
+          }
         }
       } catch (err) {
         console.error("Error fetching job details:", err);
+      }
+    }
+
+    // If still missing CompanyName but we have companyEmail, try to resolve via Company collection
+    if (!applicationData.CompanyName && applicationData.companyEmail) {
+      try {
+        const companyDoc = await Company.findOne({ email: applicationData.companyEmail });
+        if (companyDoc?.companyName) {
+          applicationData.CompanyName = companyDoc.companyName;
+        }
+      } catch {
+        // continue without blocking
       }
     }
 
@@ -59,7 +76,6 @@ router.post('/', upload.single('resume'), async (req, res) => {
       applicationData.resumePublicId = req.file.filename || 
         (req.file.public_id ? req.file.public_id : `resume_${Date.now()}`);
       
-      console.log('Resume uploaded to Cloudinary:', applicationData.resume);
     }
 
     const newApplication = new Application(applicationData);
@@ -86,40 +102,28 @@ router.get('/job/:jobId', checkCompany, async (req, res) => {
     const { jobId } = req.params;
     
     // Enhanced debugging info
-    console.log('-------------------------------------');
-    console.log('Fetching applications for job ID:', jobId);
-    console.log('Company name from middleware:', req.companyName);
-    console.log('Company email from request:', req.query.email || req.body.email || req.headers['company-email']);
     
     // First, verify the job exists
     const job = await Job.findById(jobId);
     if (!job) {
-      console.log(`Job with ID ${jobId} not found`);
       return res.status(404).json({ error: 'Job not found' });
     }
     
-    console.log('Found job:', job.jobTitle);
-    console.log('Job company name:', job.companyName);
-    console.log('Job company email:', job.companyEmail);
     
-    // Check for ALL applications first - for debugging
-    const allApplications = await Application.find({ jobId: jobId });
-    console.log(`DEBUG: Found ${allApplications.length} total applications for this job ID`);
-    allApplications.forEach(app => {
-      console.log(`Application: ${app._id}, Company: ${app.CompanyName}, Email: ${app.companyEmail}`);
-    });
+  // Check for ALL applications first - for debugging (removed unused loop)
+  await Application.find({ jobId });
     
     // Unified approach - try all reasonable queries at once
     const companyEmail = req.query.email || req.headers['company-email'];
     const applications = await Application.find({
-      jobId: jobId,
+      jobId,
       $or: [
         // Match by company name (case insensitive)
         { CompanyName: { $regex: new RegExp(req.companyName, 'i') } },
         // Match by company name as companyName field (some docs might use this format)
         { companyName: { $regex: new RegExp(req.companyName, 'i') } },
         // Match by email (various possible field names)
-        { companyEmail: companyEmail },
+        { companyEmail },
         { CompanyEmail: companyEmail },
         { company_email: companyEmail },
         // If this job's email matches the auth email, return all applications
@@ -127,13 +131,10 @@ router.get('/job/:jobId', checkCompany, async (req, res) => {
       ]
     });
     
-    console.log(`Found ${applications.length} applications after all matching criteria`);
     
     // If still no applications, check if the job is owned by this company and return all
     if (applications.length === 0 && job.companyEmail === companyEmail) {
-      console.log('Last resort: company owns job - returning all applications');
-      const allForJob = await Application.find({ jobId: jobId });
-      console.log(`Found total of ${allForJob.length} applications for job`);
+      const allForJob = await Application.find({ jobId });
       
       // Format application data for response
       const formattedApplications = allForJob.map(app => ({
@@ -166,8 +167,6 @@ router.get('/job/:jobId', checkCompany, async (req, res) => {
       createdAt: app.createdAt
     }));
     
-    console.log(`Returning ${formattedApplications.length} applications`);
-    console.log('-------------------------------------');
     
     res.status(200).json(formattedApplications);
   } catch (err) {

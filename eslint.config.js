@@ -43,6 +43,27 @@ export default [
       'no-var': 'error',
       'object-shorthand': 'error',
       'prefer-template': 'error',
+      'react/prop-types': 'warn',
+    },
+  },
+  // Jest/Testing configuration
+  {
+    files: ['**/*.test.{js,jsx}', '**/setupTests.js', '**/__tests__/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.jest,
+      },
+    },
+  },
+  // Service Worker configuration
+  {
+    files: ['**/sw.js', '**/service-worker.js'],
+    languageOptions: {
+      globals: {
+        ...globals.serviceworker,
+      },
     },
   },
 ]

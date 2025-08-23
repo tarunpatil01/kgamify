@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import PropTypes from 'prop-types';
 
 const QuillEditor = ({ value, onChange, isDarkMode, placeholder = "Enter description..." }) => {
   const quillRef = useRef(null);
@@ -11,7 +12,7 @@ const QuillEditor = ({ value, onChange, isDarkMode, placeholder = "Enter descrip
     if (value !== editorContent) {
       setEditorContent(value || '');
     }
-  }, [value]);
+  }, [value, editorContent]);
 
   // Handle internal editor changes then propagate to parent
   const handleEditorChange = (content) => {
@@ -33,9 +34,6 @@ const QuillEditor = ({ value, onChange, isDarkMode, placeholder = "Enter descrip
     clipboard: {
       // Disable paste formatting by default to avoid DOM mutations
       matchVisual: false
-    },
-    keyboard: {
-      bindings: {} // Use empty bindings to avoid some deprecated event listeners
     }
   };
   
@@ -67,6 +65,13 @@ const QuillEditor = ({ value, onChange, isDarkMode, placeholder = "Enter descrip
       />
     </div>
   );
+};
+
+QuillEditor.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func,
+  isDarkMode: PropTypes.bool,
+  placeholder: PropTypes.string
 };
 
 export default QuillEditor;

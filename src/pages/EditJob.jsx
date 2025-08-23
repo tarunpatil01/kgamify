@@ -119,6 +119,11 @@ export default function EditJob({ isDarkMode }) {
                     onChange={handleChange}
                     fullWidth
                     className="focus:border-blue-500"
+                    InputProps={{
+                      ...params.InputProps,
+                      style: isDarkMode ? { color: '#e5e7eb' } : undefined
+                    }}
+                    InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
                     size="small"
                     required
                   />
@@ -145,6 +150,12 @@ export default function EditJob({ isDarkMode }) {
                   className="focus:border-blue-500"
                   size="small"
                   required
+                  sx={isDarkMode ? {
+                    color: '#e5e7eb',
+                    '.MuiOutlinedInput-notchedOutline': { borderColor: '#4b5563' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6b7280' },
+                    '.MuiSvgIcon-root': { color: '#9ca3af' }
+                  } : {}}
                 >
                   <MenuItem value="">Select Employment Type</MenuItem>
                   <MenuItem value="full-time">Full-time</MenuItem>
@@ -163,6 +174,12 @@ export default function EditJob({ isDarkMode }) {
                   className="focus:border-blue-500"
                   size="small"
                   required
+                  sx={isDarkMode ? {
+                    color: '#e5e7eb',
+                    '.MuiOutlinedInput-notchedOutline': { borderColor: '#4b5563' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6b7280' },
+                    '.MuiSvgIcon-root': { color: '#9ca3af' }
+                  } : {}}
                 >
                   <MenuItem value="">Select Experience Level</MenuItem>
                   <MenuItem value="entry">Entry Level</MenuItem>
@@ -186,6 +203,12 @@ export default function EditJob({ isDarkMode }) {
                   className="focus:border-blue-500"
                   size="small"
                   required
+                  sx={isDarkMode ? {
+                    color: '#e5e7eb',
+                    '.MuiOutlinedInput-notchedOutline': { borderColor: '#4b5563' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6b7280' },
+                    '.MuiSvgIcon-root': { color: '#9ca3af' }
+                  } : {}}
                 >
                   <MenuItem value="">Select Option</MenuItem>
                   <MenuItem value="remote">Remote</MenuItem>
@@ -201,6 +224,8 @@ export default function EditJob({ isDarkMode }) {
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  InputProps={{ style: isDarkMode ? { color: '#e5e7eb' } : undefined }}
+                  InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
                   size="small"
                   required
                 />
@@ -223,6 +248,8 @@ export default function EditJob({ isDarkMode }) {
                   }}
                   fullWidth
                   className="focus:border-blue-500"
+                  InputProps={{ style: isDarkMode ? { color: '#e5e7eb' } : undefined }}
+                  InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
                   size="small"
                   required
                 />
@@ -235,6 +262,8 @@ export default function EditJob({ isDarkMode }) {
                   onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  InputProps={{ style: isDarkMode ? { color: '#e5e7eb' } : undefined }}
+                  InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
                   size="small"
                 />
               </div>
@@ -248,6 +277,8 @@ export default function EditJob({ isDarkMode }) {
                 onChange={handleChange}
                 fullWidth
                 className="focus:border-blue-500"
+                InputProps={{ style: isDarkMode ? { color: '#e5e7eb' } : undefined }}
+                InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
                 size="small"
               />
             </div>
@@ -274,6 +305,12 @@ export default function EditJob({ isDarkMode }) {
                 className="focus:border-blue-500"
                 size="small"
                 required
+                sx={isDarkMode ? {
+                  color: '#e5e7eb',
+                  '.MuiOutlinedInput-notchedOutline': { borderColor: '#4b5563' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#6b7280' },
+                  '.MuiSvgIcon-root': { color: '#9ca3af' }
+                } : {}}
               >
                 <MenuItem value="">Select Status</MenuItem>
                 <MenuItem value="active">Active</MenuItem>
@@ -296,6 +333,8 @@ export default function EditJob({ isDarkMode }) {
                 }}
                 fullWidth
                 className="focus:border-blue-500"
+                InputProps={{ style: isDarkMode ? { color: '#e5e7eb' } : undefined }}
+                InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
                 size="small"
                 type="number"
                 required
@@ -323,6 +362,11 @@ export default function EditJob({ isDarkMode }) {
                     }}
                     fullWidth
                     className="focus:border-blue-500"
+                    InputProps={{
+                      ...params.InputProps,
+                      style: isDarkMode ? { color: '#e5e7eb' } : undefined
+                    }}
+                    InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
                     size="small"
                   />
                 )}
@@ -337,6 +381,8 @@ export default function EditJob({ isDarkMode }) {
                 onChange={handleChange}
                 fullWidth
                 className="focus:border-blue-500"
+                InputProps={{ style: isDarkMode ? { color: '#e5e7eb' } : undefined }}
+                InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
                 size="small"
               />
             </div>

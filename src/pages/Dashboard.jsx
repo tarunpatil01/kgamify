@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import PropTypes from 'prop-types';
+import { useSelector, useDispatch } from 'react-redux';
 import { 
   FaCheckCircle, 
   FaTimesCircle,
@@ -11,27 +12,38 @@ import {
   FaEye,
   FaMapMarkerAlt,
   FaDollarSign,
-  FaCalendarAlt,
-  FaSortUp,
-  FaSortDown,
-  FaSort
+  FaCalendarAlt
 } from "react-icons/fa";
 import DashboardImage from "../assets/dashboard.png";
-import { getJobs } from "../api";
+import { fetchJobs, setSortBy } from "../store/slices/jobsSlice";
+import { 
+  selectJobs, 
+  selectJobsLoading, 
+  selectJobsError,
+  selectSortBy,
+  selectSortOrder
+} from "../store/slices/jobsSlice";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { getJobs } from "../api"; // Add direct API import for testing
 
-const Dashboard = ({ isDarkMode, email = null }) => {
-  const [jobs, setJobs] = useState([]);
+const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const jobs = useSelector(selectJobs);
+  const loading = useSelector(selectJobsLoading);
+  const error = useSelector(selectJobsError);
+  const sortBy = useSelector(selectSortBy);
+  const sortOrder = useSelector(selectSortOrder);
+  
+  // Local state for filtering and search
   const [filteredJobs, setFilteredJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [companyJobs, setCompanyJobs] = useState([]);
+  const [directAPIJobs, setDirectAPIJobs] = useState([]); // Test direct API like JobPosted
 
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("datePosted");
-  const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
 
   // Pagination State
@@ -39,54 +51,57 @@ const Dashboard = ({ isDarkMode, email = null }) => {
   const [itemsPerPage] = useState(10);
 
   useEffect(() => {
-    const fetchJobs = async () => {
-      setLoading(true);
+    // Fetch jobs when component mounts
+    dispatch(fetchJobs({ page: 1, limit: 50 }));
+  }, [dispatch]);
+
+  // Test direct API call like JobPosted does
+  useEffect(() => {
+    const testDirectAPI = async () => {
       try {
-        console.log("Fetching jobs with email:", email);
-        
-        // If email is available, fetch company-specific jobs first
-        if (email) {
-          console.log("Making API call to fetch jobs with company email:", email);
-          const companyJobsResponse = await getJobs({email});
-          console.log("Company jobs received:", companyJobsResponse);
-          
-          if (companyJobsResponse && companyJobsResponse.length > 0) {
-            setError(null);
-            setCompanyJobs(companyJobsResponse);
-            // Also set these as general jobs for the recent jobs list
-            setJobs(companyJobsResponse);
-          } else {
-            console.log("No jobs found for this company email");
-            setCompanyJobs([]);
-            setError("No listed jobs were found by your company");
-            
-            // Get all jobs for the recent jobs list if no company jobs
-            const allJobsResponse = await getJobs();
-            console.log("All jobs received:", allJobsResponse);
-            setJobs(allJobsResponse || []);
-          }
-        } else {
-          // No email - get all jobs
-          const allJobsResponse = await getJobs();
-          console.log("All jobs received:", allJobsResponse);
-          setJobs(allJobsResponse || []);
-        }
-      } catch (error) {
-        console.error("Error fetching jobs:", error);
-        setError("Error connecting to server. Please try again.");
-        setJobs([]);
-        setCompanyJobs([]);
-      } finally {
-        setLoading(false);
+        // Try the same approach as JobPosted
+        const response = await getJobs(email ? { email } : {});
+        setDirectAPIJobs(response || []);
+      } catch {
+        // ignore
       }
     };
-
-    fetchJobs();
+    testDirectAPI();
   }, [email]);
+
+  useEffect(() => {
+    // Filter company-specific jobs if email is provided
+    if (email && jobs && jobs.length > 0) {
+      const companySpecificJobs = jobs.filter(job => 
+        job.company?.email === email || job.createdBy === email
+      );
+      setCompanyJobs(companySpecificJobs);
+    }
+  }, [jobs, email]);
 
   // Filter and search logic
   useEffect(() => {
-    let filtered = email ? companyJobs : jobs;
+    // Choose data source: use direct API if Redux is empty
+    let baseJobs;
+    
+    if (email) {
+      // For company dashboard, filter jobs by company email
+      if (companyJobs && companyJobs.length > 0) {
+        baseJobs = companyJobs;
+      } else if (directAPIJobs && directAPIJobs.length > 0) {
+        // Filter direct API jobs by company email - use correct field
+        baseJobs = directAPIJobs.filter(job => {
+          return job.companyEmail === email;
+        });
+      } else {
+        baseJobs = [];
+      }
+    } else {
+      // For general dashboard, show all jobs
+      baseJobs = (jobs && jobs.length > 0) ? jobs : (directAPIJobs || []);
+    }
+    
+    let filtered = [...baseJobs]; // Always start with base jobs
 
     // Apply search filter
     if (searchQuery) {
@@ -141,35 +156,26 @@ const Dashboard = ({ isDarkMode, email = null }) => {
     });
 
     setFilteredJobs(filtered);
-  }, [jobs, companyJobs, email, searchQuery, statusFilter, typeFilter, sortBy, sortOrder]);
+  }, [jobs, companyJobs, directAPIJobs, email, searchQuery, statusFilter, typeFilter, sortBy, sortOrder]);
+
+  // Safety checks for arrays
+  const safeFilteredJobs = filteredJobs || [];
+  const safeJobs = jobs || [];
+  const safeCompanyJobs = companyJobs || [];
 
   // Get unique employment types for filter dropdown
-  const employmentTypes = [...new Set((email ? companyJobs : jobs).map(job => job.employmentType).filter(Boolean))];
+  const employmentTypes = [...new Set((email ? safeCompanyJobs : safeJobs).map(job => job.employmentType).filter(Boolean))];
+
+  // Use filteredJobs as the primary source (now includes direct API fallback)
+  const displayJobs = safeFilteredJobs;
+  
+  const totalJobs = displayJobs.length;
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentJobs = filteredJobs.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
-
-  // Handle sorting
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-  };
-
-  const getSortIcon = (field) => {
-    if (sortBy !== field) return <FaSort className="ml-1 opacity-50" />;
-    return sortOrder === "asc" ? <FaSortUp className="ml-1" /> : <FaSortDown className="ml-1" />;
-  };
-
-  // Use filteredJobs for statistics when search/filter is active
-  const displayJobs = filteredJobs.length > 0 || searchQuery || statusFilter !== "all" || typeFilter !== "all" ? filteredJobs : (email ? companyJobs : jobs);
-  const totalJobs = displayJobs.length;
+  const currentJobs = displayJobs.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(displayJobs.length / itemsPerPage);
   
   // Only count applications for displayed jobs
   const totalApplications = displayJobs.reduce(
@@ -188,9 +194,11 @@ const Dashboard = ({ isDarkMode, email = null }) => {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
-        <p className="text-xl">Loading dashboard data...</p>
-      </div>
+      <LoadingSpinner 
+        fullScreen 
+        text="Loading dashboard data..." 
+        className={isDarkMode ? "bg-gray-900" : "bg-gray-100"} 
+      />
     );
   }
 
@@ -199,21 +207,23 @@ const Dashboard = ({ isDarkMode, email = null }) => {
     
     <div className={`flex flex-col p-1 sm:p-2 md:p-4 min-h-screen dashboard-spacing ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
       <div className="flex-0">
-        <div className={`rounded-lg flex flex-col md:flex-row justify-between items-center p-2 sm:p-3 md:p-5 ${isDarkMode ? "bg-gray-800 text-white" : "bg-kgamify-500 text-white"}`}>
-          <div className="text-center md:text-left mb-2 md:mb-0 md:ml-5">
+        <div className={`rounded-lg flex md:flex-row justify-between items-center p-2 sm:p-3 md:p-5 ${isDarkMode ? "bg-gray-800 text-white" : "bg-kgamify-500 text-white"}`}>
+          <div className="flex flex-col text-center md:text-left mb-2 md:mb-0 md:ml-5">
             <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-light">Welcome To kgamify Job Portal</h1>
-            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-light">Company Name</h1>
+            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-light">
+              {userCompany?.companyName || "Company Dashboard"}
+            </h1>
           </div>
           <img className="w-20 sm:w-24 md:w-32 lg:w-64 h-16 sm:h-20 md:h-24 lg:h-48 rounded-xl md:mr-5" src={DashboardImage} alt="Dashboard" />
         </div>
       </div>
 
       {/* Job Statistics */}
-      <div className="mt-2 sm:mt-4 md:mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
+      <div className="mt-2 sm:mt-4 md:mt-6 grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
         <div className="card-kgamify p-3 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Total Jobs</p>
+              <p className=" text-xs sm:text-sm font-semibold">Total Jobs</p>
               <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-kgamify-500">{totalJobs}</h2>
             </div>
             <div className="p-2 sm:p-3 bg-kgamify-100 dark:bg-kgamify-900 rounded-full">
@@ -225,7 +235,7 @@ const Dashboard = ({ isDarkMode, email = null }) => {
         <div className="card-kgamify p-3 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Total Applications</p>
+              <p className="text-xs sm:text-sm font-semibold">Total Applications</p>
               <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-kgamify-pink-500">{totalApplications}</h2>
             </div>
             <div className="p-2 sm:p-3 bg-kgamify-pink-100 dark:bg-kgamify-pink-900 rounded-full">
@@ -237,7 +247,7 @@ const Dashboard = ({ isDarkMode, email = null }) => {
         <div className="card-kgamify p-3 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">Active Jobs</p>
+              <p className="text-xs sm:text-sm font-semibold">Active Jobs</p>
               <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-green-500">{activeJobs}</h2>
             </div>
             <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-full">
@@ -249,7 +259,7 @@ const Dashboard = ({ isDarkMode, email = null }) => {
         <div className="card-kgamify p-3 sm:p-4 md:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-400 text-xs sm:text-sm">This Week</p>
+              <p className="text-xs sm:text-sm font-semibold">This Week</p>
               <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-blue-500">{recentJobs}</h2>
             </div>
             <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
@@ -262,13 +272,13 @@ const Dashboard = ({ isDarkMode, email = null }) => {
       {/* Recent Job Posts */}
       <div className="card-kgamify mt-2 sm:mt-4 md:mt-6 p-3 sm:p-4 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4">
-          <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-0">Recent Job Posts</h2>
+          <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-0 ">Recent Job Posts</h2>
           
           {/* Search and Filter Controls */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="pt-5 flex sm:flex-row gap-4">
             {/* Search Bar */}
             <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 h-4 w-4" />
               <input
                 type="text"
                 placeholder="Search jobs..."
@@ -330,8 +340,7 @@ const Dashboard = ({ isDarkMode, email = null }) => {
                   value={`${sortBy}-${sortOrder}`}
                   onChange={(e) => {
                     const [field, order] = e.target.value.split('-');
-                    setSortBy(field);
-                    setSortOrder(order);
+                    dispatch(setSortBy({ sortBy: field, sortOrder: order }));
                   }}
                   className="input-kgamify w-full text-sm"
                 >
@@ -352,8 +361,7 @@ const Dashboard = ({ isDarkMode, email = null }) => {
                   setSearchQuery("");
                   setStatusFilter("all");
                   setTypeFilter("all");
-                  setSortBy("datePosted");
-                  setSortOrder("desc");
+                  dispatch(setSortBy({ sortBy: "datePosted", sortOrder: "desc" }));
                 }}
                 className="text-sm text-kgamify-500 hover:text-kgamify-600"
               >
@@ -364,8 +372,8 @@ const Dashboard = ({ isDarkMode, email = null }) => {
         )}
 
         {/* Results Summary */}
-        <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Showing {currentJobs.length} of {filteredJobs.length} jobs
+  <div className="mb-4 text-sm font-semibold">
+          Showing {currentJobs.length} of {displayJobs.length} jobs
           {searchQuery && ` matching "${searchQuery}"`}
         </div>
         {error && (
@@ -373,7 +381,7 @@ const Dashboard = ({ isDarkMode, email = null }) => {
             <p className="text-red-500 dark:text-red-400 text-sm sm:text-base">{error}</p>
             {error.includes("No listed jobs") && (
               <div className="mt-2">
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-xs sm:text-sm ">
                   It appears that some jobs in the database may be missing the company email field.
                   Contact your administrator to run the fix-jobs script.
                 </p>
@@ -389,20 +397,20 @@ const Dashboard = ({ isDarkMode, email = null }) => {
           </div>
         )}
 
-        {!error && filteredJobs.length === 0 && !searchQuery && statusFilter === "all" && typeFilter === "all" && (
+        {!error && displayJobs.length === 0 && !searchQuery && statusFilter === "all" && typeFilter === "all" && (
           <div className="text-center py-8">
-            <FaBriefcase className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <p className="text-gray-500 dark:text-gray-400 mb-4">No jobs posted yet.</p>
+            <FaBriefcase className="mx-auto h-12 w-12 text-gray-500 dark:text-gray-400 mb-4" />
+            <p className=" mb-4 font-medium">No jobs posted yet.</p>
             <Link to="/post-job">
               <button className="btn-primary">Post Your First Job</button>
             </Link>
           </div>
         )}
 
-        {!error && filteredJobs.length === 0 && (searchQuery || statusFilter !== "all" || typeFilter !== "all") && (
+        {!error && displayJobs.length === 0 && (searchQuery || statusFilter !== "all" || typeFilter !== "all") && (
           <div className="text-center py-8">
-            <FaSearch className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <p className="text-gray-500 dark:text-gray-400 mb-2">No jobs match your search criteria</p>
+            <FaSearch className="mx-auto h-12 w-12 text-gray-500 dark:text-gray-400 mb-4" />
+            <p className="text-gray-700 dark:text-gray-300 mb-2 font-medium">No jobs match your search criteria</p>
             <button
               onClick={() => {
                 setSearchQuery("");
@@ -416,185 +424,109 @@ const Dashboard = ({ isDarkMode, email = null }) => {
           </div>
         )}
 
-        {!error && filteredJobs.length > 0 && (
+        {!error && displayJobs.length > 0 && (
           <>
-            {/* Mobile view - Enhanced card layout */}
-            <div className="lg:hidden space-y-2 sm:space-y-3">
+            {/* Unified responsive grid so laptop and mobile both show jobs */}
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
               {currentJobs.map((job) => (
-                <div 
-                  key={`job-mobile-${job._id}`} 
-                  className="p-3 sm:p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-kgamify-300 dark:hover:border-kgamify-600 transition-colors cursor-pointer"
-                  onClick={() => window.location.href = `/job/${job._id}`}
+                <div
+                  key={`job-${job._id}`}
+                  className="card-kgamify transition-all duration-200 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-kgamify-300 dark:hover:border-kgamify-600 hover:shadow-md md:hover:shadow-lg cursor-pointer p-4 md:p-6 bg-white hover:bg-gray-50 dark:bg-gray-800/95 dark:hover:bg-gray-800"
+                  onClick={() => navigate(`/job/${job._id}`)}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-sm sm:text-base text-kgamify-500 dark:text-kgamify-500">{job.jobTitle}</h3>
-                    <span className="flex items-center">
-                      {job.status === "active" ? (
-                        <FaCheckCircle className="text-green-500 h-4 w-4" />
-                      ) : (
-                        <FaTimesCircle className="text-red-500 h-4 w-4" />
+                  {/* Header */}
+                  <div className="flex justify-between items-start mb-3 md:mb-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-base md:text-lg text-kgamify-500 dark:text-kgamify-500 hover:text-kgamify-600 line-clamp-2">
+                        {job.jobTitle}
+                      </h3>
+                      {job.category && (
+                        <span className="inline-block px-2 py-1 text-[11px] md:text-xs rounded bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 mt-2">
+                          {job.category}
+                        </span>
                       )}
-                    </span>
+                    </div>
+                    <div className="ml-4">
+                      {job.status === "active" ? (
+                        <span className="flex items-center text-green-600 dark:text-green-400">
+                          <FaCheckCircle className="h-4 w-4 md:h-5 md:w-5" />
+                        </span>
+                      ) : (
+                        <span className="flex items-center text-red-600 dark:text-red-400">
+                          <FaTimesCircle className="h-4 w-4 md:h-5 md:w-5" />
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+
+                  {/* Job Details */}
+                  <div className="space-y-2 md:space-y-3 mb-3 md:mb-4">
+                    <div className="flex items-center font-medium">
+                      <FaMapMarkerAlt className="h-3 w-3 md:h-4 md:w-4 mr-2 md:mr-3 text-gray-600 dark:text-gray-400" />
+                      <span className="text-sm">{job.location}</span>
+                    </div>
+                    <div className="flex items-center font-medium">
+                      <FaBriefcase className="h-3 w-3 md:h-4 md:w-4 mr-2 md:mr-3 text-gray-600 dark:text-gray-400" />
+                      <span className="px-2 py-0.5 md:py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-[11px] md:text-xs">
+                        {job.employmentType}
+                      </span>
+                    </div>
+                    <div className="flex items-center font-medium">
+                      <FaDollarSign className="h-3 w-3 md:h-4 md:w-4 mr-2 md:mr-3 text-gray-600 dark:text-gray-400" />
+                      <span className="text-sm font-medium">{job.salary}</span>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex items-center">
-                      <FaMapMarkerAlt className="h-3 w-3 mr-2" />
-                      <span>{job.location}</span>
+                      <FaUsers className="h-3 w-3 md:h-4 md:w-4 mr-2 text-gray-600 dark:text-gray-400" />
+                      <span className="text-xs md:text-sm font-medium">{job.applicants?.length || 0} applications</span>
                     </div>
-                    
                     <div className="flex items-center">
-                      <FaBriefcase className="h-3 w-3 mr-2" />
-                      <span>{job.employmentType}</span>
+                      <FaCalendarAlt className="h-3 w-3 mr-2 text-gray-600 dark:text-gray-400" />
+                      <span className="text-xs">{new Date(job.createdAt || job.datePosted).toLocaleDateString()}</span>
                     </div>
-                    
-                    <div className="flex items-center">
-                      <FaDollarSign className="h-3 w-3 mr-2" />
-                      <span>{job.salary}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <FaUsers className="h-3 w-3 mr-2" />
-                        <span>{job.applicants?.length || 0} applications</span>
-                      </div>
-                      <div className="flex items-center">
-                        <FaCalendarAlt className="h-3 w-3 mr-2" />
-                        <span>{new Date(job.createdAt || job.datePosted).toLocaleDateString()}</span>
-                      </div>
-                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <div className="mt-3 md:mt-4 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/job/${job._id}`);
+                      }}
+                      className="w-full px-4 py-2 bg-kgamify-500 hover:bg-kgamify-600 text-white rounded-md transition-colors duration-200 flex items-center justify-center"
+                    >
+                      <FaEye className="h-4 w-4 mr-2" />
+                      View
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/apply/${job._id}`);
+                      }}
+                      className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors duration-200"
+                    >
+                      Apply Now
+                    </button>
                   </div>
                 </div>
               ))}
-            </div>
-            
-            {/* Desktop view - Enhanced table layout */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                    <th 
-                      className="text-left p-3 font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => handleSort('title')}
-                    >
-                      <div className="flex items-center">
-                        Job Title
-                        {getSortIcon('title')}
-                      </div>
-                    </th>
-                    <th className="text-left p-3 font-medium text-gray-900 dark:text-white">Type</th>
-                    <th 
-                      className="text-left p-3 font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => handleSort('location')}
-                    >
-                      <div className="flex items-center">
-                        Location
-                        {getSortIcon('location')}
-                      </div>
-                    </th>
-                    <th className="text-left p-3 font-medium text-gray-900 dark:text-white">Salary</th>
-                    <th 
-                      className="text-left p-3 font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => handleSort('applications')}
-                    >
-                      <div className="flex items-center">
-                        Applications
-                        {getSortIcon('applications')}
-                      </div>
-                    </th>
-                    <th className="text-left p-3 font-medium text-gray-900 dark:text-white">Status</th>
-                    <th 
-                      className="text-left p-3 font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                      onClick={() => handleSort('datePosted')}
-                    >
-                      <div className="flex items-center">
-                        Date Posted
-                        {getSortIcon('datePosted')}
-                      </div>
-                    </th>
-                    <th className="text-left p-3 font-medium text-gray-900 dark:text-white">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentJobs.map((job) => (
-                    <tr
-                      key={`job-${job._id}`}
-                      className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      <td className="p-3">
-                        <div className="font-medium text-kgamify-500 dark:text-kgamify-500 hover:text-kgamify-600 cursor-pointer"
-                             onClick={() => window.location.href = `/job/${job._id}`}>
-                          {job.jobTitle}
-                        </div>
-                      </td>
-                      <td className="p-3 text-gray-600 dark:text-gray-400">
-                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-xs">
-                          {job.employmentType}
-                        </span>
-                      </td>
-                      <td className="p-3 text-gray-600 dark:text-gray-400">
-                        <div className="flex items-center">
-                          <FaMapMarkerAlt className="h-3 w-3 mr-2" />
-                          {job.location}
-                        </div>
-                      </td>
-                      <td className="p-3 text-gray-600 dark:text-gray-400">
-                        <div className="flex items-center">
-                          <FaDollarSign className="h-3 w-3 mr-2" />
-                          {job.salary}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center">
-                          <FaUsers className="h-3 w-3 mr-2 text-gray-400" />
-                          <span className="text-gray-900 dark:text-white font-medium">
-                            {job.applicants?.length || 0}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        {job.status === "active" ? (
-                          <span className="flex items-center text-green-600 dark:text-green-400">
-                            <FaCheckCircle className="h-4 w-4 mr-1" />
-                            Active
-                          </span>
-                        ) : (
-                          <span className="flex items-center text-red-600 dark:text-red-400">
-                            <FaTimesCircle className="h-4 w-4 mr-1" />
-                            Inactive
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3 text-gray-600 dark:text-gray-400 text-sm">
-                        {new Date(job.createdAt || job.datePosted).toLocaleDateString()}
-                      </td>
-                      <td className="p-3">
-                        <button 
-                          onClick={() => window.location.href = `/job/${job._id}`}
-                          className="text-kgamify-500 hover:text-kgamify-600 p-1"
-                          title="View Details"
-                        >
-                          <FaEye className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="mt-6 flex items-center justify-between">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredJobs.length)} of {filteredJobs.length} results
+                <div className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                  Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, displayJobs.length)} of {displayJobs.length} results
                 </div>
                 
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 text-gray-700 dark:text-gray-300"
                   >
                     Previous
                   </button>
@@ -610,10 +542,10 @@ const Dashboard = ({ isDarkMode, email = null }) => {
                         <button
                           key={pageNumber}
                           onClick={() => setCurrentPage(pageNumber)}
-                          className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md ${
+                          className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md transition-all duration-200 ${
                             currentPage === pageNumber
                               ? 'bg-kgamify-500 text-white border-kgamify-500'
-                              : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
                           }`}
                         >
                           {pageNumber}
@@ -631,7 +563,7 @@ const Dashboard = ({ isDarkMode, email = null }) => {
                   <button
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 text-gray-700 dark:text-gray-300"
                   >
                     Next
                   </button>
@@ -647,7 +579,8 @@ const Dashboard = ({ isDarkMode, email = null }) => {
 
 Dashboard.propTypes = {
   isDarkMode: PropTypes.bool.isRequired,
-  email: PropTypes.string
+  email: PropTypes.string,
+  userCompany: PropTypes.object
 };
 
 export default Dashboard;

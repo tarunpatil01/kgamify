@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { config } from './config/env.js';
 
-const API_URL = 'https://job-portal-backend-629b.onrender.com/api';
+const API_URL = config.API_URL;
 
 // Create a custom axios instance with default settings
 const apiClient = axios.create({
@@ -13,50 +14,27 @@ const apiClient = axios.create({
 });
 
 export const registerCompany = async (formData) => {
-  try {
-    // Log the FormData contents for debugging
-    for (let pair of formData.entries()) {
-      const value = pair[1] instanceof File 
-        ? `File: ${pair[1].name} (${pair[1].type})`
-        : pair[1];
-      console.log(`${pair[0]}: ${value}`);
-    }
-
-    const response = await axios.post(`${API_URL}/companies`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      validateStatus: function (status) {
-        return status < 500; // Accept all status codes less than 500
-      }
-    });
-
-    if (response.status === 400) {
-      throw new Error(response.data.error || 'Registration failed');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error details:', error.response?.data || error.message);
-    throw error;
+  const response = await axios.post(`${API_URL}/companies`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    validateStatus(status) { return status < 500; }
+  });
+  if (response.status === 400) {
+    throw new Error(response.data.error || 'Registration failed');
   }
+  return response.data;
 };
 
 export const loginCompany = async (loginData) => {
   try {
-    console.log("Login request with data:", loginData.email);
     
     // Add a pre-flight check to verify CORS is working
     try {
-      const corsTest = await axios.get(`${API_URL.replace('/api', '')}/api/cors-test`);
-      console.log("CORS test successful:", corsTest.data);
-    } catch (corsError) {
-      console.warn("CORS test failed:", corsError.message);
+      await axios.get(`${API_URL.replace('/api', '')}/api/cors-test`);
+    } catch {
       // Continue with login attempt anyway
     }
     
     const response = await apiClient.post('/companies/login', loginData);
-    console.log("Login response:", response.data);
     
     // Store the company type in localStorage
     if (response.data.success) {
@@ -67,10 +45,7 @@ export const loginCompany = async (loginData) => {
     }
     return response.data;
   } catch (error) {
-    // Improve error logging with more details
-    console.error('Login error details:', error);
     if (error.code === 'ERR_NETWORK') {
-      console.error('Network error - possible CORS issue or server unavailable');
       throw { error: 'Network error. Please check your connection or try again later.' };
     }
     
@@ -88,188 +63,89 @@ export const loginCompany = async (loginData) => {
 };
 
 export const createApplication = async (applicationData) => {
-  try {
-    // Check if applicationData is FormData or regular object
-    let dataToSend;
-    
-    // If it contains a file, we need to use FormData
-    if (applicationData.resume instanceof File) {
-      dataToSend = new FormData();
-      
-      // Add all fields to FormData
-      Object.keys(applicationData).forEach(key => {
-        dataToSend.append(key, applicationData[key]);
-      });
-      
-      // Log the FormData contents for debugging
-      for (let pair of dataToSend.entries()) {
-        const value = pair[1] instanceof File 
-          ? `File: ${pair[1].name} (${pair[1].type})`
-          : pair[1];
-        console.log(`${pair[0]}: ${value}`);
-      }
-      
-      const response = await axios.post(`${API_URL}/application`, dataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        }
-      });
-      return response.data;
-    } else {
-      // Regular JSON submission (no files)
-      const response = await axios.post(`${API_URL}/application`, applicationData);
-      return response.data;
-    }
-  } catch (error) {
-    console.error('Error creating application:', error);
-    throw error;
+  // If it contains a file, we need to use FormData
+  if (applicationData.resume instanceof File) {
+    const dataToSend = new FormData();
+    // Add all fields to FormData
+    Object.keys(applicationData).forEach(key => {
+      dataToSend.append(key, applicationData[key]);
+    });
+    const response = await axios.post(`${API_URL}/application`, dataToSend, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
   }
+  // Regular JSON submission (no files)
+  const response = await axios.post(`${API_URL}/application`, applicationData);
+  return response.data;
 };
 
 export const getApplication = async (id, email) => {
-  try {
-    const response = await axios.get(`${API_URL}/application/${id}`, {
-      params: { email }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching application:', error);
-    throw error;
-  }
+  const response = await axios.get(`${API_URL}/application/${id}`, { params: { email } });
+  return response.data;
 };
 
 export const createJob = async (jobData) => {
-  try {
-    const response = await axios.post(`${API_URL}/job`, jobData, {
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error creating job:', error);
-    throw error;
-  }
+  const response = await axios.post(`${API_URL}/job`, jobData, { headers: { 'Content-Type': 'application/json' } });
+  return response.data;
 };
 
 export const getJobs = async (filters = {}) => {
-  try {
-    // Build query parameters
-    let queryParams = '';
-    if (filters && filters.email) {
-      console.log("Adding email filter to jobs query:", filters.email);
-      queryParams = `?email=${encodeURIComponent(filters.email)}`;
-    }
-    
-    const requestUrl = `${API_URL}/job${queryParams}`;
-    console.log(`Making GET request to: ${requestUrl}`);
-    const response = await axios.get(requestUrl);
-    
-    if (filters && filters.email) {
-      console.log(`Received ${response.data.length} jobs for company email: ${filters.email}`);
-    } else {
-      console.log(`Received ${response.data.length} total jobs`);
-    }
-    
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching jobs:', error);
-    throw error;
-  }
+  const queryParams = filters?.email ? `?email=${encodeURIComponent(filters.email)}` : '';
+  const requestUrl = `${API_URL}/job${queryParams}`;
+  const response = await axios.get(requestUrl);
+  return response.data;
 };
 
 export const getJobById = async (jobId) => {
-  try {
-    const response = await axios.get(`${API_URL}/job/${jobId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching job:', error);
-    throw error;
-  }
+  const response = await axios.get(`${API_URL}/job/${jobId}`);
+  return response.data;
 };
 
 export const getCompanyInfo = async (email) => {
-  try {
-    if (!email) {
-      console.error("No email provided to getCompanyInfo");
-      throw new Error("Email is required");
-    }
-    
-    console.log("Fetching company info for email:", email);
-    
-    // Try to get from localStorage first for better performance
-    const cachedCompanyData = localStorage.getItem('companyData');
-    if (cachedCompanyData) {
+  if (!email) { throw new Error("Email is required"); }
+  // Try to get from localStorage first for better performance
+  const cachedCompanyData = localStorage.getItem('companyData');
+  if (cachedCompanyData) {
+    try {
       const parsedData = JSON.parse(cachedCompanyData);
       if (parsedData.email === email) {
-        console.log("Using cached company data");
         return parsedData;
       }
+    } catch {
+      // ignore parse errors
     }
-    
-    // If not in cache, fetch from API
-    const response = await axios.get(`${API_URL}/companies/info?email=${encodeURIComponent(email)}`);
-    console.log("Company info API response:", response.data);
-    
-    // Update the cache
-    localStorage.setItem('companyData', JSON.stringify(response.data));
-    
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching company details:", error);
-    throw error;
   }
+  // If not in cache, fetch from API
+  const response = await axios.get(`${API_URL}/companies/info?email=${encodeURIComponent(email)}`);
+  // Update the cache
+  localStorage.setItem('companyData', JSON.stringify(response.data));
+  return response.data;
 };
 
 export const editJob = async (jobId, jobData) => {
-  try {
-    const response = await axios.put(`${API_URL}/job/${jobId}`, jobData);
-    return response.data;
-  } catch (error) {
-    console.error('Error editing job:', error);
-    throw error;
-  }
+  const response = await axios.put(`${API_URL}/job/${jobId}`, jobData);
+  return response.data;
 };
 
 export const deleteJob = async (jobId) => {
-  try {
-    console.log('Deleting job with ID:', jobId); // Log the job ID
-    const response = await axios.delete(`${API_URL}/job/${jobId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting job:', error);
-    throw error;
-  }
+  const response = await axios.delete(`${API_URL}/job/${jobId}`);
+  return response.data;
 };
 
 export const getPendingCompanies = async () => {
-  try {
-    const response = await axios.get(`${API_URL}/admin/pending-companies`);
-    return response.data;
-  } catch (error) {
-    console.error('Error getting pending companies:', error);
-    throw error;
-  }
+  const response = await axios.get(`${API_URL}/admin/pending-companies`);
+  return response.data;
 };
 
 export const approveCompany = async (companyId) => {
-  try {
-    const response = await axios.post(`${API_URL}/admin/approve-company/${companyId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error approving company:', error);
-    throw error;
-  }
+  const response = await axios.post(`${API_URL}/admin/approve-company/${companyId}`);
+  return response.data;
 };
 
 export const denyCompany = async (companyId) => {
-  try {
-    const response = await axios.post(`${API_URL}/admin/deny-company/${companyId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error denying company:', error);
-    throw error;
-  }
+  const response = await axios.post(`${API_URL}/admin/deny-company/${companyId}`);
+  return response.data;
 };
 
 export const adminLogin = async (loginData) => {
@@ -277,61 +153,55 @@ export const adminLogin = async (loginData) => {
     const response = await axios.post(`${API_URL}/admin/login`, loginData);
     return response.data;
   } catch (error) {
-    console.error('Error logging in as admin:', error.response?.data?.message || error.message);
     throw error.response?.data || error;
   }
 };
 
 export const updateCompanyProfile = async (email, formData) => {
-  try {
-    // Log the FormData contents for debugging
-    for (let pair of formData.entries()) {
-      const value = pair[1] instanceof File 
-        ? `File: ${pair[1].name} (${pair[1].type})`
-        : pair[1];
-      console.log(`${pair[0]}: ${value}`);
-    }
-
-    const response = await axios.put(`${API_URL}/companies/update/${email}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      validateStatus: function (status) {
-        return status < 500; // Accept all status codes less than 500
-      }
-    });
-
-    if (response.status === 400) {
-      throw new Error(response.data.error || 'Update failed');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error details:', error.response?.data || error.message);
-    throw error;
+  const response = await axios.put(`${API_URL}/companies/update/${email}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    validateStatus(status) { return status < 500; }
+  });
+  if (response.status === 400) {
+    throw new Error(response.data.error || 'Update failed');
   }
+  return response.data;
 };
 
 export const requestPasswordReset = async (email) => {
-  try {
-    const response = await axios.post(`${API_URL}/auth/forgot-password`, { email });
-    return response.data;
-  } catch (error) {
-    console.error('Error requesting password reset:', error);
-    throw error.response?.data || error;
-  }
+  const response = await axios.post(`${API_URL}/auth/forgot-password`, { email });
+  return response.data;
+};
+
+// Verify OTP to obtain a short-lived reset token
+export const verifyOtp = async (email, code) => {
+  const response = await axios.post(`${API_URL}/auth/verify-otp`, { email, code });
+  return response.data;
 };
 
 export const resetPassword = async (token, email, password) => {
+  const response = await axios.post(`${API_URL}/auth/reset-password`, { token, email, password });
+  return response.data;
+};
+
+export const changeAdminPassword = async (currentPassword, newPassword) => {
   try {
-    const response = await axios.post(`${API_URL}/auth/reset-password`, { 
-      token, 
-      email, 
-      password 
-    });
+    const token = localStorage.getItem("adminToken");
+    if (!token) {
+      throw new Error("No authentication token found. Please login again.");
+    }
+    
+    const response = await axios.post(
+      `${API_URL}/admin-management/change-password`,
+      { currentPassword, newPassword },
+      {
+        headers: {
+          "x-auth-token": token
+        }
+      }
+    );
     return response.data;
   } catch (error) {
-    console.error('Error resetting password:', error);
     throw error.response?.data || error;
   }
 };
@@ -339,14 +209,17 @@ export const resetPassword = async (token, email, password) => {
 export const getApplicationsByJobId = async (jobId) => {
   try {
     // Get email from localStorage for authentication
-    const email = localStorage.getItem("rememberedEmail");
-    
+    let email = localStorage.getItem("rememberedEmail");
     if (!email) {
-      console.error('No authentication email found in localStorage');
-      throw new Error('Authentication required to view applications');
+      // Fallback to companyData if available
+      try {
+        const cd = JSON.parse(localStorage.getItem("companyData") || "null");
+        if (cd?.email) email = cd.email;
+      } catch { /* ignore */ }
     }
     
-    console.log(`Fetching applications for job ID: ${jobId} with auth email: ${email}`);
+  if (!email) { throw new Error('Authentication required to view applications'); }
+    
     
     // Add email to both headers and query params to ensure it's properly sent
     // Add retry logic in case of initial failure
@@ -354,7 +227,7 @@ export const getApplicationsByJobId = async (jobId) => {
     const maxRetries = 2;
     let response;
     
-    while (retries <= maxRetries) {
+  while (retries <= maxRetries) {
       try {
         response = await axios.get(`${API_URL}/application/job/${jobId}`, {
           headers: {
@@ -362,14 +235,13 @@ export const getApplicationsByJobId = async (jobId) => {
             'Authorization': `Bearer ${localStorage.getItem("token") || ""}`
           },
           params: {
-            email: email
+            email
           }
         });
         
         // If we got a response, break out of retry loop
         break;
-      } catch (requestError) {
-        console.warn(`Attempt ${retries + 1} failed:`, requestError.message);
+  } catch (requestError) {
         retries++;
         
         // If we've used all retries, throw the error
@@ -380,23 +252,19 @@ export const getApplicationsByJobId = async (jobId) => {
       }
     }
     
-    if (Array.isArray(response.data)) {
-      console.log(`Successfully retrieved ${response.data.length} applications`);
-    } else {
-      console.warn('Response is not an array:', response.data);
+  if (!Array.isArray(response?.data)) {
       // Convert to array if needed
-      response.data = Array.isArray(response.data) ? response.data : [];
+      response.data = Array.isArray(response?.data) ? response.data : [];
     }
     
     return response.data;
   } catch (error) {
-    console.error('Error fetching applications for job:', error);
     
     // More helpful error message based on error type
     if (error.response?.status === 400) {
-      console.error('Authentication error:', error.response?.data);
+      // Authentication error
     } else if (error.response?.status === 403) {
-      console.error('Permission denied:', error.response?.data);
+      // Permission denied
     }
     
     // Return empty array instead of throwing to avoid UI errors

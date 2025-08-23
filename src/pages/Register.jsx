@@ -299,7 +299,7 @@ function Register({ isDarkMode }) {
 
       // Combine address fields
       const address = `${formData.addressLine1}, ${
-        formData.addressLine2 ? formData.addressLine2 + ", " : ""
+        formData.addressLine2 ? `${formData.addressLine2  }, ` : ""
       }${formData.city}, ${formData.state}, ${formData.pinCode}`;
       submissionData.append("address", address);
 

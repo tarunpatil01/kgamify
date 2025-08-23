@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import backgroundImage from "../assets/background.jpg";
@@ -20,16 +20,16 @@ const ResetPassword = ({ isDarkMode }) => {
   const [resetComplete, setResetComplete] = useState(false);
 
   useEffect(() => {
-    // Get token and email from URL query parameters
+    // Get token from URL or localStorage (after OTP verify)
     const searchParams = new URLSearchParams(location.search);
-    const tokenParam = searchParams.get("token");
+    const tokenParam = searchParams.get("token") || localStorage.getItem('resetToken');
     const emailParam = searchParams.get("email");
 
     if (tokenParam) setToken(tokenParam);
-    if (emailParam) setEmail(emailParam);
+    if (emailParam) setEmail(emailParam || '');
 
     if (!tokenParam || !emailParam) {
-      setMessage("Invalid reset link. Please request a new password reset.");
+      setMessage("Missing token or email. Please request a new password reset.");
       setMessageType("error");
     }
   }, [location]);
@@ -58,11 +58,13 @@ const ResetPassword = ({ isDarkMode }) => {
     setMessage("");
 
     try {
-      const response = await resetPassword(token, email, password);
+  const response = await resetPassword(token, email, password);
       
       setMessage(response.message || "Password has been reset successfully");
       setMessageType("success");
       setResetComplete(true);
+  // Clear the stored token once used
+  localStorage.removeItem('resetToken');
       
       // Redirect to login page after successful reset
       setTimeout(() => {
@@ -130,8 +132,6 @@ const ResetPassword = ({ isDarkMode }) => {
               onChange={(e) => setEmail(e.target.value)}
               className="input-kgamify"
               required
-              readOnly
-              disabled
             />
           </div>
 
@@ -146,8 +146,9 @@ const ResetPassword = ({ isDarkMode }) => {
                 required
                 placeholder="Enter new password"
                 disabled={resetComplete}
-                pattern="(?=.*\\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
-                title="Must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters"
+                pattern="^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$"
+                title="Must contain at least one number, one uppercase and one lowercase letter, and be at least 8 characters long"
+                autoComplete="new-password"
               />
               <button
                 type="button"

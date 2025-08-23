@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // Create a separate schema for social media links
 const socialMediaLinksSchema = new mongoose.Schema({
@@ -40,6 +40,10 @@ const companySchema = new mongoose.Schema({
   // Add fields for password reset functionality
   resetToken: String,
   resetTokenExpiry: Date,
+
+  // OTP for forgot password (email-based)
+  otpCode: String,
+  otpExpiry: Date,
 }, { toJSON: { getters: true } });
 
 // Pre-save hook to hash password before saving
@@ -60,11 +64,7 @@ companySchema.pre('save', async function(next) {
 
 // Method to compare password for login
 companySchema.methods.comparePassword = async function(candidatePassword) {
-  try {
-    return await bcrypt.compare(candidatePassword, this.password);
-  } catch (error) {
-    throw error;
-  }
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
 module.exports = mongoose.model('Company', companySchema);

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Company = require('../models/Company');
 const { upload, cloudinary } = require('../config/cloudinary');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { getDocumentUrl, extractPublicId, getDocumentDownloadUrl } = require('../utils/documentHelper');
 
 // Middleware to authenticate company
@@ -34,8 +34,6 @@ router.post('/', upload.fields([
   { name: 'documents', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    console.log('Files received:', req.files);
-    console.log('Form data received:', req.body);
 
     // Check for existing company with same email
     const existingCompany = await Company.findOne({ email: req.body.email });
@@ -51,11 +49,10 @@ router.post('/', upload.fields([
     }
 
     // Parse socialMediaLinks if it's provided as a string
-    let companyData = { ...req.body };
+    const companyData = { ...req.body };
     if (companyData.socialMediaLinks && typeof companyData.socialMediaLinks === 'string') {
       try {
         companyData.socialMediaLinks = JSON.parse(companyData.socialMediaLinks);
-        console.log('Parsed socialMediaLinks:', companyData.socialMediaLinks);
       } catch (error) {
         console.error('Error parsing socialMediaLinks:', error);
         return res.status(400).json({ error: 'Invalid socialMediaLinks format' });
@@ -80,7 +77,6 @@ router.post('/', upload.fields([
 // Login a company (only regular companies now)
 router.post('/login', async (req, res) => {
   try {
-    console.log("Login attempt with:", req.body);
     const { email, password } = req.body;
     
     if (!email || !password) {
@@ -89,23 +85,19 @@ router.post('/login', async (req, res) => {
     
     // Check regular company collection
     const company = await Company.findOne({ email });
-    console.log("Found company:", company ? company.companyName : "none");
     
     if (!company) {
-      console.log("No company found with email:", email);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     // Check password match using the comparePassword method
     const isMatch = await company.comparePassword(password);
     if (!isMatch) {
-      console.log("Password mismatch for company");
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
     // Check if company is approved
     if (!company.approved) {
-      console.log("Company not approved yet");
       return res.status(403).json({ error: 'Your company is not approved by Admin yet' });
     }
     
@@ -113,7 +105,6 @@ router.post('/login', async (req, res) => {
     const companySafe = company.toObject();
     delete companySafe.password;
     
-    console.log("Company login successful");
     return res.status(200).json({ 
       success: true, 
       company: companySafe,
@@ -142,7 +133,6 @@ router.get('/details/:id', async (req, res) => {
 router.get('/info', async (req, res) => {
   try {
     const { email } = req.query;
-    console.log("Received request for company info with email:", email);
     
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
@@ -152,7 +142,6 @@ router.get('/info', async (req, res) => {
     const company = await Company.findOne({ email });
 
     if (!company) {
-      console.log("No company found with email:", email);
       return res.status(404).json({ error: 'Company not found' });
     }
 
@@ -160,7 +149,6 @@ router.get('/info', async (req, res) => {
     const companySafe = company.toObject();
     delete companySafe.password;
 
-    console.log("Found company:", company.companyName);
     res.status(200).json(companySafe);
   } catch (err) {
     console.error('Error fetching company info:', err);
@@ -178,7 +166,7 @@ router.put('/update/:email', upload.fields([
     const updateData = { ...req.body };
     
     // Find the company
-    let company = await Company.findOne({ email });
+    const company = await Company.findOne({ email });
     if (!company) {
       return res.status(404).json({ error: 'Company not found' });
     }
@@ -244,8 +232,8 @@ router.put('/update/:email', upload.fields([
         try {
           // Extract public_id correctly from the URL
           const publicId = company.documents.includes('/')
-            ? 'kgamify/' + company.documents.split('/').pop().split('.')[0]
-            : 'kgamify/' + company.documents;
+            ? `kgamify/${  company.documents.split('/').pop().split('.')[0]}`
+            : `kgamify/${  company.documents}`;
           
           await cloudinary.uploader.destroy(publicId);
         } catch (error) {
@@ -258,7 +246,6 @@ router.put('/update/:email', upload.fields([
       updateData.documents = uploadedDoc.path;
       
       // Log the document URL for debugging
-      console.log('Document uploaded to:', updateData.documents);
     }
 
     // Update the company data
@@ -289,7 +276,7 @@ router.get('/document', authenticateCompany, async (req, res) => {
     const documentUrl = getDocumentUrl(company.documents);
     
     res.status(200).json({ 
-      documentUrl: documentUrl,
+      documentUrl,
       message: 'Document URL retrieved successfully' 
     });
   } catch (error) {
@@ -384,8 +371,8 @@ router.get('/document/link/:id', async (req, res) => {
     const documentUrl = getDocumentUrl(company.documents);
     
     res.status(200).json({ 
-      documentUrl: documentUrl,
-      fileName: company.companyName + '-document',
+      documentUrl,
+      fileName: `${company.companyName  }-document`,
       message: 'Document URL retrieved successfully' 
     });
   } catch (error) {

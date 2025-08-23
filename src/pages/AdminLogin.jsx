@@ -5,12 +5,12 @@ import backgroundImage from "../assets/background.jpg"; // Import background ima
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState(""); // Add username state
+  const [email, setEmail] = useState(""); // Changed to email state
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleUsernameChange = (event) => {
-    setUsername(event.target.value);
+  const handleEmailChange = (event) => {
+    setEmail(event.target.value);
   };
 
   const handlePasswordChange = (event) => {
@@ -19,15 +19,32 @@ const AdminLogin = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setErrorMessage("");
+    
     try {
-      const response = await adminLogin({ username, password }); // Include username in the login request
-      if (response.message === "Login successful") {
+      // Make sure email and password are provided
+      if (!email || !password) {
+        setErrorMessage("Please provide both email and password");
+        return;
+      }
+      
+      const response = await adminLogin({ email, password }); // Changed to email for the login request
+      
+      if (response && response.token) {
+        // Store token in localStorage for authenticated requests
+        localStorage.setItem("adminToken", response.token);
+        localStorage.setItem("adminData", JSON.stringify(response.admin));
+        
+        // Navigate to admin dashboard
         navigate("/admin");
       } else {
         setErrorMessage("Invalid admin credentials");
       }
     } catch (error) {
-      setErrorMessage("Invalid admin credentials");
+      console.error("Login error:", error);
+      setErrorMessage(
+        error.message || "Invalid admin credentials. Please try again."
+      );
     }
   };
 
@@ -49,12 +66,12 @@ const AdminLogin = () => {
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-gray-700 font-semibold">
-              Username
+              Email Address
             </label>
             <input
-              type="text"
-              value={username}
-              onChange={handleUsernameChange}
+              type="email"
+              value={email}
+              onChange={handleEmailChange}
               className="w-full p-3 border border-gray-300 rounded-lg mt-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />

@@ -11,7 +11,7 @@ cloudinary.config({
 
 // Configure storage with improved document handling
 const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+  cloudinary,
   params: {
     folder: 'kgamify',
     allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
@@ -25,7 +25,7 @@ const storage = new CloudinaryStorage({
 
 // Create multer upload middleware with size limits
 const upload = multer({
-  storage: storage,
+  storage,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   }

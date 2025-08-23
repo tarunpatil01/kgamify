@@ -78,6 +78,13 @@ html, body {
   font-size: 16px; /* Prevent zoom on iOS */
 }
 
+/* Dark mode input styling */
+.dark .input-kgamify {
+  background-color: rgba(31, 41, 55, 0.9);
+  border-color: rgba(75, 85, 99, 0.8);
+  color: #e5e7eb; /* gray-200 */
+}
+
 .input-kgamify.has-icon {
   padding-right: 44px; /* Slightly reduced for mobile */
 }
@@ -95,6 +102,10 @@ html, body {
 
 .input-kgamify::placeholder {
   color: #6b7280;
+}
+
+.dark .input-kgamify::placeholder {
+  color: #9ca3af; /* gray-400 */
 }
 
 .input-kgamify:focus {
@@ -167,6 +178,13 @@ html, body {
   cursor: pointer;
 }
 
+/* Dark mode secondary button */
+.dark .btn-secondary {
+  background: rgba(31, 41, 55, 0.9);
+  color: #e5e7eb;
+  border-color: rgba(75, 85, 99, 0.8);
+}
+
 /* Update secondary button responsive sizing */
 @media (min-width: 640px) {
   .btn-secondary {
@@ -179,6 +197,12 @@ html, body {
   color: #ff8200;
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 4px 12px rgba(255, 130, 0, 0.1);
+}
+
+.dark .btn-secondary:hover:not(:disabled) {
+  background: rgba(55, 65, 81, 0.9); /* gray-700 */
+  border-color: #ea580c;
+  color: #ff8200;
 }
 
 .btn-secondary:focus {
@@ -269,6 +293,7 @@ html, body {
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   transition: all 0.2s ease;
+  color: #1f2937; /* Dark text in cards but not forced */
 }
 
 .card-kgamify:hover {
@@ -279,7 +304,7 @@ html, body {
 .dark .card-kgamify {
   background: rgba(31, 41, 55, 0.95);
   border: 1px solid rgba(75, 85, 99, 0.8);
-  color: white;
+  color: rgb(229, 231, 235); /* Light text in dark mode cards but not forced */
 }
 
 /* Text color utilities for Kgamify colors */
@@ -366,4 +391,66 @@ html, body {
 
 .dark .hover\:border-kgamify-600:hover {
   border-color: #ea580c;
+}
+
+/* AdminPortal tabs */
+.admin-tabs { background: transparent; }
+
+.admin-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem .5rem;
+  margin-bottom: -2px;          /* so the 2px border sits on the bottom edge */
+  border-bottom: 2px solid transparent;
+  color: #4b5563;               /* gray-600 */
+  background: transparent !important;
+}
+.dark .admin-tab { color: #d1d5db; }
+
+.admin-tab:hover { color: #111827; }
+.dark .admin-tab:hover { color: #fff; }
+
+.admin-tab--active {
+  color: #ff8200;
+  border-bottom-color: #ff8200;
+}
+
+/* Small badge next to label (doesn't color the whole button) */
+.admin-tab__badge {
+  margin-left: .5rem;
+  padding: .125rem .5rem;
+  font-weight: 600;
+  font-size: .75rem;
+  border-radius: .375rem;
+  background: #e5e7eb;          /* gray-200 */
+  color: #374151;               /* gray-700 */
+}
+.dark .admin-tab__badge { background: #374151; color: #e5e7eb; }
+.admin-tab__badge--active { background: #0f5132; color: #fff; }
+
+/* keep these guards */
+.admin-tabs button { background: transparent !important; }
+.admin-tabs button:focus { outline: none; }
+
+/* Strong title/subtitle overrides to avoid inherited color issues */
+.title-strong { color: #111827 !important; } /* gray-900 */
+.dark .title-strong { color: #f3f4f6 !important; } /* gray-100 */
+
+.subtitle-muted { color: #374151 !important; } /* gray-700 */
+.dark .subtitle-muted { color: #d1d5db !important; } /* gray-300 */
+
+/* Notification dropdown items */
+.notification-item {
+  background: transparent;
+  color: #111827;          /* gray-900 */
+}
+.dark .notification-item {
+  color: #e5e7eb;          /* gray-200 */
+}
+.notification-item:hover {
+  background: rgba(0,0,0,0.04);
+}
+.dark .notification-item:hover {
+  background: rgba(255,255,255,0.06);
 }

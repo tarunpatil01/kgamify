@@ -87,9 +87,7 @@ export default function PostJob({ isDarkMode, email }) {
         companyEmail: email, // Ensure this is always set
       };
 
-      console.log("Submitting job with email:", email);
       const response = await createJob(jobDataToSubmit);
-      console.log("Job posted successfully:", response);
       setOpenSnackbar(true);
 
       // Add navigation after successful post
@@ -548,8 +546,8 @@ export default function PostJob({ isDarkMode, email }) {
                     }}
                   />
                 )}
-                PaperProps={{
-                  sx: { backgroundColor: 'white' } // White background for dropdown
+                componentsProps={{
+                  paper: { sx: { backgroundColor: 'white' } } // White background for dropdown
                 }}
               />
             </div>

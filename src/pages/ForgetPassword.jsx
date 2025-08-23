@@ -1,25 +1,49 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import backgroundImage from '../assets/background.jpg';
 import logo from '../assets/KLOGO.png';
-import { requestPasswordReset } from '../api';
+import { requestPasswordReset, verifyOtp } from '../api';
 
 const ForgetPassword = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1); // 1: request OTP, 2: verify OTP
 
-  const handleSubmit = async (e) => {
+  const handleRequestOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
-
     try {
       const res = await requestPasswordReset(email);
-      const successMsg = res?.message || 'If this email is registered, a reset link has been sent.';
+      const successMsg = res?.message || 'If this email is registered, an OTP has been sent.';
       setMessage(successMsg);
+      setStep(2);
+  } catch {
+      // Show a friendly error instead of raw status text
+      setMessage('Error: Unable to send OTP right now. Please try again shortly.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+    try {
+      const res = await verifyOtp(email, code);
+      const token = res?.token;
+      if (token) {
+        localStorage.setItem('resetToken', token);
+        navigate(`/reset-password?email=${encodeURIComponent(email)}`);
+      } else {
+        setMessage('Invalid server response. Please request a new OTP.');
+      }
     } catch (error) {
-      const apiMsg = error?.error || error?.message || 'Error sending reset email. Please try again.';
+      const apiMsg = error?.error || error?.message || 'Invalid or expired OTP.';
       setMessage(`Error: ${apiMsg}`);
     } finally {
       setLoading(false);
@@ -52,13 +76,13 @@ const ForgetPassword = () => {
             Reset Your Password
           </h2>
           <p className="mt-2 text-sm text-gray-200">
-            Enter your email address and we&apos;ll send you a link to reset your password.
+            Enter your email address and we&apos;ll send you a 6-digit OTP to reset your password.
           </p>
         </div>
 
         {/* Form card */}
         <div className="backdrop-blur-md bg-white/95 p-8 rounded-2xl shadow-2xl border border-white/20">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-6" onSubmit={step === 1 ? handleRequestOtp : handleVerifyOtp}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
@@ -73,8 +97,36 @@ const ForgetPassword = () => {
                 placeholder="Enter your email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={step === 2}
               />
             </div>
+
+            {step === 2 && (
+              <div>
+                <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter OTP Code
+                </label>
+                <input
+                  id="code"
+                  name="code"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="^[0-9]{6}$"
+                  maxLength={6}
+                  title="Enter the 6-digit OTP code"
+                  required
+                  className="input-kgamify"
+                  placeholder="6-digit code"
+                  value={code}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setCode(digits);
+                  }}
+                />
+                <p className="mt-2 text-xs text-gray-600">We sent a 6-digit code to your email. It expires in 10 minutes.</p>
+              </div>
+            )}
 
             {message && (
               <div className={`p-4 rounded-lg text-sm ${
@@ -89,27 +141,22 @@ const ForgetPassword = () => {
             <div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (step === 2 && code.length !== 6)}
                 className="btn-primary"
               >
-                {loading ? 'Sending...' : 'Send Reset Link'}
+                {loading ? 'Processing...' : step === 1 ? 'Send OTP' : 'Verify OTP'}
               </button>
             </div>
 
             <div className="text-center space-y-3">
-              <Link
-                to="/login"
-                className="text-orange-600 hover:text-orange-700 text-sm font-medium transition-colors duration-200"
-              >
-                Back to Sign In
-              </Link>
+              
               <div className="text-sm text-gray-600">
                 Don&apos;t have an account?{' '}
                 <Link
                   to="/register"
                   className="text-orange-600 hover:text-orange-700 font-medium transition-colors duration-200"
                 >
-                  Sign up
+                  Register
                 </Link>
               </div>
             </div>

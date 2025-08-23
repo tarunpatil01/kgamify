@@ -1,4 +1,5 @@
 /* ...existing css... */
+@import './styles/mobile.css';
 
 /* React Quill improvements to avoid warnings */
 .quill-wrapper {

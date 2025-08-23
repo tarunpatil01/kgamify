@@ -19,9 +19,7 @@ const JobPosted = ({ isDarkMode, email }) => {
           return;
         }
         
-        console.log("Fetching jobs for company email:", email);
         const response = await getJobs({ email });
-        console.log(`Received ${response.length} jobs for company:`, email);
         setJobs(response);
         setFilteredJobs(response);
         
@@ -46,7 +44,6 @@ const JobPosted = ({ isDarkMode, email }) => {
   };
 
   const handleDelete = async (jobId) => {
-    console.log('Attempting to delete job with ID:', jobId);
     if (window.confirm("Are you sure you want to delete this job?")) {
       await deleteJob(jobId);
       const updatedJobs = await getJobs({ email });

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Service Worker</title>
+</head>
+<body>
+    <h1>Clearing Service Worker and Caches...</h1>
+    <div id="status">Starting cleanup...</div>
+    
+    <script>
+        async function clearEverything() {
+            const statusDiv = document.getElementById('status');
+            
+            try {
+                // Unregister all service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const registration of registrations) {
+                        await registration.unregister();
+                        statusDiv.innerHTML += '<br>Service worker unregistered';
+                    }
+                }
+                
+                // Clear all caches
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    for (const cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                        statusDiv.innerHTML += `<br>Cache ${cacheName} cleared`;
+                    }
+                }
+                
+                // Clear localStorage and sessionStorage
+                localStorage.clear();
+                sessionStorage.clear();
+                statusDiv.innerHTML += '<br>Storage cleared';
+                
+                statusDiv.innerHTML += '<br><br><strong>✅ Cleanup complete! You can now close this tab and refresh your app.</strong>';
+                
+            } catch (error) {
+                statusDiv.innerHTML += `<br>❌ Error: ${error.message}`;
+            }
+        }
+        
+        // Start cleanup when page loads
+        clearEverything();
+    </script>
+</body>
+</html>

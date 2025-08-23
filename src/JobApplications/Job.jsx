@@ -1,6 +1,18 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
 import { useParams, useNavigate } from "react-router-dom";
-import { FaFileAlt, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import {
+  FaCheckCircle,
+  FaTimesCircle,
+  FaMapMarkerAlt,
+  FaBriefcase,
+  FaClock,
+  FaMoneyBillWave,
+  FaBuilding,
+  FaGlobe,
+  FaBookmark,
+  FaShareAlt
+} from "react-icons/fa";
 import { getJobById, getApplicationsByJobId } from "../api";
 import ResumeViewer from "../components/ResumeViewer";
 
@@ -11,7 +23,7 @@ const Job = ({ isDarkMode }) => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [authError, setAuthError] = useState(false);
+  const [authError] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -19,26 +31,20 @@ const Job = ({ isDarkMode }) => {
         setLoading(true);
         
         // Fetch job details
-        console.log("Fetching job details for ID:", jobId);
         const jobData = await getJobById(jobId);
-        console.log("Job data received:", jobData);
         setJob(jobData);
         
         // Fetch applications for this job
-        console.log("Fetching applications for job ID:", jobId);
         try {
           const applicationsData = await getApplicationsByJobId(jobId);
-          console.log("Applications data received:", applicationsData);
           setApplications(Array.isArray(applicationsData) ? applicationsData : []);
-        } catch (appError) {
-          console.error("Error fetching applications:", appError);
+  } catch {
           setApplications([]);
         }
         
         setLoading(false);
-      } catch (err) {
-        console.error("Error fetching job details:", err);
-        setError(err.message || "Failed to fetch job details");
+      } catch (e) {
+        setError(e?.message || "Failed to fetch job details");
         setLoading(false);
       }
     };
@@ -48,8 +54,17 @@ const Job = ({ isDarkMode }) => {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
-        <p className="text-xl">Loading job details...</p>
+      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+        <div className="max-w-6xl mx-auto px-4 py-10">
+          <div className="animate-pulse space-y-6">
+            <div className={`h-8 w-1/3 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`}></div>
+            <div className={`h-4 w-1/5 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`}></div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className={`h-64 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}></div>
+              <div className={`h-64 rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}></div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -89,166 +104,240 @@ const Job = ({ isDarkMode }) => {
   };
 
   return (
-    <div className={`flex h-full ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
-      <div className={`flex-1 p-6 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"} min-h-screen`}>
+    <div className={`${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-black'}`}>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">{job.jobTitle}</h1>
-          <div className="mt-2 flex items-center">
-            <span className={`mr-2 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>at</span>
+          <h1 className="text-3xl font-bold tracking-tight">{job.jobTitle}</h1>
+          <div className="mt-2 flex items-center gap-2">
+            <FaBuilding className={`h-4 w-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
             <span className="text-[#ff8200] font-semibold">{job.companyName}</span>
           </div>
-          <div className="mt-2">
-            <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm mr-2">
-              {job.employmentType}
-            </span>
-            <span className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
-              {job.experienceLevel}
-            </span>
-          </div>
         </div>
 
-        {/* Job Description with HTML rendering */}
-        <div className="mb-6">
-          <h2 className="text-xl font-bold mb-2">Job Description</h2>
-          <div 
-            className={`job-description-content ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
-            dangerouslySetInnerHTML={renderHTML(job.jobDescription)}
-          />
-        </div>
+        {/* Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Job description */}
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
+              <h2 className="text-xl font-semibold mb-3">Job Description</h2>
+              <div
+                className={`prose max-w-none ${isDarkMode ? 'prose-invert' : ''}`}
+                dangerouslySetInnerHTML={renderHTML(job.jobDescription)}
+              />
+            </div>
 
-        {/* Detailed Job Information - Preserved as requested by the user */}
-        <div className="mb-6 bg-orange-400 rounded-xl p-4 shadow-md">
-          <div>
-            <strong>Job Title: </strong> {job.jobTitle}
-          </div>
-          <div>
-            <strong>Description: </strong> 
-            <div dangerouslySetInnerHTML={renderHTML(job.jobDescription)}></div>
-          </div>
-          <div>
-            <strong>Category: </strong> {job.category}
-          </div>
-          <div>
-            <strong>Employment Type: </strong> {job.employmentType}
-          </div>
-          <div>
-            <strong>Experience Level: </strong> {job.experienceLevel}
-          </div>
-          <div>
-            <strong className="flex ">Skills: </strong> {job.skills}
-          </div>
-          <div>
-            <strong>Type: </strong>{job.remoteOrOnsite}
-          </div>
-          <div>
-            <strong>Equity: </strong>{job.equity}
-          </div>
-          <div>
-            <strong>Sponsorship: </strong>{job.sponsorship}
-          </div>
-          <div>
-            <strong>Status:</strong>{" "}
-            {job.status === "active" ? (
-              <FaCheckCircle className="inline text-green-500" />
-            ) : (
-              <FaTimesCircle className="inline text-red-500" />
+            {/* Details cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
+                <h3 className="font-semibold mb-3">Role Details</h3>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center gap-2"><FaBriefcase className="text-blue-500" /> {job.employmentType || 'N/A'}</li>
+                  <li className="flex items-center gap-2"><FaClock className="text-purple-500" /> {job.experienceLevel || 'N/A'}</li>
+                  <li className="flex items-center gap-2"><FaGlobe className="text-teal-500" /> {job.remoteOrOnsite || 'N/A'}</li>
+                </ul>
+                {job.skills && (
+                  <div className="mt-4">
+                    <div className="text-sm font-medium mb-2">Skills</div>
+                    <div className="flex flex-wrap gap-2">
+                      {String(job.skills).split(',').map((s, i) => (
+                        <span key={i} className={`px-2 py-1 rounded text-xs ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>{s.trim()}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
+                <h3 className="font-semibold mb-3">Compensation & Location</h3>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center gap-2"><FaMoneyBillWave className="text-green-500" /> {job.salary || 'Not specified'}</li>
+                  <li className="flex items-center gap-2"><FaMapMarkerAlt className="text-red-500" /> {job.location || 'Not specified'}</li>
+                  {job.equity && <li className="flex items-center gap-2"><FaBookmark className="text-yellow-500" /> Equity: {job.equity}</li>}
+                  {job.sponsorship && <li className="flex items-center gap-2"><FaBookmark className="text-yellow-500" /> Sponsorship: {job.sponsorship}</li>}
+                </ul>
+              </div>
+            </div>
+
+            {/* Rich sections */}
+            {job.responsibilities && (
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
+                <h3 className="font-semibold mb-2">Responsibilities</h3>
+                <div dangerouslySetInnerHTML={renderHTML(job.responsibilities)} />
+              </div>
+            )}
+            {job.eligibility && (
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
+                <h3 className="font-semibold mb-2">Eligibility</h3>
+                <div dangerouslySetInnerHTML={renderHTML(job.eligibility)} />
+              </div>
+            )}
+            {job.benefits && (
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
+                <h3 className="font-semibold mb-2">Benefits</h3>
+                <div dangerouslySetInnerHTML={renderHTML(job.benefits)} />
+              </div>
+            )}
+
+            {job.recruitmentProcess && (
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
+                <h3 className="font-semibold mb-2">Recruitment Process</h3>
+                <div dangerouslySetInnerHTML={renderHTML(job.recruitmentProcess)} />
+              </div>
             )}
           </div>
-          <div>
-            <strong>Number Of Positions: </strong> {job.numberOfPositions}
-          </div>
-          <div>
-            <strong>Salary:</strong> {job.salary}
-          </div>
-          <div>
-            <strong>Location:</strong> {job.location}
-          </div>
-          <div>
-            <strong className="flex ">Recruitment Process: </strong> 
-            <div dangerouslySetInnerHTML={renderHTML(job.recruitmentProcess)}></div>
-          </div>
-          <div>
-            <strong className="flex ">Responsibilities: </strong>
-            <div dangerouslySetInnerHTML={renderHTML(job.responsibilities)}></div>
-          </div>
-          <div>
-            <strong className="flex ">Eligibility: </strong> 
-            <div dangerouslySetInnerHTML={renderHTML(job.eligibility)}></div>
-          </div>
-          <div>
-            <strong className="flex ">Benefits: </strong>
-            <div dangerouslySetInnerHTML={renderHTML(job.benefits)}></div>
-          </div>
-        </div>
 
-        {/* Show applications section */}
-        <div className={`text-xl font-semibold mb-4 mt-6 ${isDarkMode ? "text-white" : "text-[#E82561]"}`}>
-          Applicants
-        </div>
-
-        {applications.length === 0 ? (
-          <div className={`p-4 rounded-lg text-center ${isDarkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-500"}`}>
-            No applicants for this job yet
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {applications.map((applicant) => (
-              <div 
-                key={applicant._id} 
-                className={`p-4 rounded-lg shadow-md ${isDarkMode ? "bg-gray-700" : "bg-white"}`}
-              >
-                <div className="flex flex-col md:flex-row justify-between">
-                  <div className="mb-3 md:mb-0">
-                    {/* Fix: Wrap the adjacent JSX elements with a fragment or div */}
-                    <div>
-                      <div className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-800"}`}>
-                        {applicant.applicantName}
-                      </div>
-                      <div className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        Applied on: {new Date(applicant.createdAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    {applicant.testScore && (
-                      <div className="mt-1">
-                        <span className="font-medium">Test Score: </span>
-                        <span className={`${parseInt(applicant.testScore) >= 70 ? "text-green-500" : "text-red-500"}`}>
-                          {applicant.testScore}
-                        </span>
-                      </div>
-                    )}
-                    {applicant.skills && applicant.skills.length > 0 && (
-                      <div className="mt-2">
-                        <span className="font-medium">Skills: </span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {applicant.skills.map((skill, index) => (
-                            <span 
-                              key={index} 
-                              className={`text-xs px-2 py-1 rounded ${
-                                isDarkMode ? "bg-gray-600 text-white" : "bg-gray-200 text-gray-800"
-                              }`}
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-3 md:mt-0">
-                    {applicant.resume ? (
-                      <ResumeViewer resumeUrl={applicant.resume} applicantName={applicant.applicantName} />
-                    ) : (
-                      <div className="text-gray-500">No resume provided</div>
-                    )}
-                  </div>
+          {/* Sidebar */}
+          <div className="space-y-6">
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6 sticky top-24`}>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => navigate(`/apply/${job._id || job.id || jobId}`)}
+                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold"
+                >
+                  Apply Now
+                </button>
+                <div className="flex gap-2">
+                  <SaveButton isDarkMode={isDarkMode} />
+                  <ShareButton isDarkMode={isDarkMode} />
                 </div>
               </div>
-            ))}
+              <div className="mt-5 border-t pt-5 space-y-3 text-sm">
+                <div className="flex items-center gap-2"><FaBriefcase className="text-blue-500" /> {job.employmentType || 'N/A'}</div>
+                <div className="flex items-center gap-2"><FaClock className="text-purple-500" /> {job.experienceLevel || 'N/A'}</div>
+                <div className="flex items-center gap-2"><FaGlobe className="text-teal-500" /> {job.remoteOrOnsite || 'N/A'}</div>
+                <div className="flex items-center gap-2"><FaMapMarkerAlt className="text-red-500" /> {job.location || 'Not specified'}</div>
+                <div className="flex items-center gap-2"><FaMoneyBillWave className="text-green-500" /> {job.salary || 'Not specified'}</div>
+                {job.status && (
+                  <div className="flex items-center gap-2">
+                    {job.status === 'active' ? (
+                      <FaCheckCircle className="text-green-500" />
+                    ) : (
+                      <FaTimesCircle className="text-red-500" />
+                    )}
+                    <span className="capitalize">{job.status}</span>
+                  </div>
+                )}
+                {job.numberOfPositions && (
+                  <div className="flex items-center gap-2"><FaBookmark className="text-yellow-500" /> Positions: {job.numberOfPositions}</div>
+                )}
+                {job.category && (
+                  <div className="flex items-center gap-2"><FaBookmark className="text-yellow-500" /> Category: {job.category}</div>
+                )}
+              </div>
+            </div>
           </div>
-        )}
+        </div>
+
+        {/* Applicants section */}
+        <div className="mt-10 pb-10">
+          <div className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Applicants</div>
+          {applications.length === 0 ? (
+            <div className={`p-4 rounded-lg text-center ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-50 text-gray-600'} shadow-sm`}>
+              No applicants for this job yet
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {applications.map((applicant) => (
+                <div key={applicant._id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-sm`}> 
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <div className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                        {applicant.applicantName}
+                      </div>
+                      <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Applied on: {new Date(applicant.createdAt).toLocaleDateString()}
+                      </div>
+                      {applicant.testScore && (
+                        <div className="mt-1">
+                          <span className="font-medium">Test Score: </span>
+                          <span className={`${parseInt(applicant.testScore) >= 70 ? 'text-green-500' : 'text-red-500'}`}>{applicant.testScore}</span>
+                        </div>
+                      )}
+                      {applicant.skills && applicant.skills.length > 0 && (
+                        <div className="mt-2">
+                          <span className="font-medium">Skills: </span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {applicant.skills.map((skill, index) => (
+                              <span key={index} className={`text-xs px-2 py-1 rounded ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>{skill}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="md:min-w-[220px]">
+                      {applicant.resume ? (
+                        <ResumeViewer resumeUrl={applicant.resume} applicantName={applicant.applicantName} />
+                      ) : (
+                        <div className="text-gray-500">No resume provided</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
 export default Job;
+
+Job.propTypes = {
+  isDarkMode: PropTypes.bool
+};
+
+// Local UI components
+function SaveButton({ isDarkMode }) {
+  const [saved, setSaved] = useState(false);
+  return (
+    <button
+      onClick={() => setSaved(!saved)}
+      className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md border ${
+        isDarkMode
+          ? `border-gray-600 ${saved ? 'bg-gray-700 text-yellow-400' : 'bg-gray-800 text-gray-200 hover:bg-gray-700'}`
+          : `border-gray-200 ${saved ? 'bg-yellow-50 text-yellow-700' : 'bg-white text-gray-700 hover:bg-gray-50'}`
+      }`}
+      aria-pressed={saved}
+    >
+      <FaBookmark className={saved ? 'text-yellow-500' : ''} />
+      {saved ? 'Saved' : 'Save'}
+    </button>
+  );
+}
+
+function ShareButton({ isDarkMode }) {
+  const [copied, setCopied] = useState(false);
+  const onShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: document.title, url });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }
+    } catch {
+      // ignore
+    }
+  };
+  return (
+    <button
+      onClick={onShare}
+      className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md border ${
+        isDarkMode
+          ? 'border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700'
+          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+      <FaShareAlt />
+      {copied ? 'Link copied' : 'Share'}
+    </button>
+  );
+}
+
+SaveButton.propTypes = { isDarkMode: PropTypes.bool };
+ShareButton.propTypes = { isDarkMode: PropTypes.bool };

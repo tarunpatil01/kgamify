@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
     LOGIN: '/companies/login',
     REGISTER: '/companies',
     FORGOT_PASSWORD: '/auth/forgot-password',
+  VERIFY_OTP: '/auth/verify-otp',
     RESET_PASSWORD: '/auth/reset-password',
   },
   COMPANIES: {

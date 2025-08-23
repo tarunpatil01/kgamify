@@ -15,8 +15,8 @@ class ErrorBoundary extends React.Component {
     // Log error to console and any error reporting service
     console.error('Error caught by boundary:', error, errorInfo);
     this.setState({
-      error: error,
-      errorInfo: errorInfo
+      error,
+      errorInfo
     });
 
     // You can also log the error to an error reporting service here
@@ -53,7 +53,7 @@ class ErrorBoundary extends React.Component {
                 Something went wrong
               </h3>
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                We're sorry, but something unexpected happened. Please try refreshing the page.
+                We&apos;re sorry, but something unexpected happened. Please try refreshing the page.
               </p>
               
               {this.props.showDetails && this.state.error && (
@@ -98,11 +98,15 @@ class ErrorBoundary extends React.Component {
 
 // Higher-order component for functional components
 export const withErrorBoundary = (Component, fallback = null) => {
-  return (props) => (
+  const WrappedComponent = (props) => (
     <ErrorBoundary fallback={fallback}>
       <Component {...props} />
     </ErrorBoundary>
   );
+  
+  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
+  
+  return WrappedComponent;
 };
 
 export default ErrorBoundary; 

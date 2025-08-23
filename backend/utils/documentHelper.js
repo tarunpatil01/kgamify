@@ -15,13 +15,13 @@ const extractPublicId = (documentPath) => {
     // Extract the path after the last /
     const parts = documentPath.split('/');
     // Get the filename without extension
-    return 'kgamify/' + parts[parts.length - 1].split('.')[0];
+    return `kgamify/${  parts[parts.length - 1].split('.')[0]}`;
   }
   
   // Handle cases where only the path is stored
   return documentPath.startsWith('kgamify/') 
     ? documentPath 
-    : 'kgamify/' + documentPath;
+    : `kgamify/${  documentPath}`;
 };
 
 /**
@@ -87,7 +87,7 @@ const getDocumentDownloadUrl = (documentPath, fileName) => {
   if (basePath.includes('v')) {
     const parts = basePath.split('/');
     if (parts.length > 1 && parts[0].startsWith('v')) {
-      version = parts[0] + '/';
+      version = `${parts[0]  }/`;
       file = parts[1];
     }
   }
@@ -118,7 +118,7 @@ const getDocumentDownloadUrl = (documentPath, fileName) => {
     downloadUrl += `?filename=${encodeURIComponent(fileName)}`;
   }
   
-  console.log('Generated download URL:', downloadUrl);
+  // Generated download URL for document
   return downloadUrl;
 };
 

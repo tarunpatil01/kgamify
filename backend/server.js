@@ -1,9 +1,9 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -16,25 +16,25 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean); // Filter out undefined values
 
-console.log('Allowed CORS origins:', allowedOrigins);
+// CORS origins configured for production
 
 // Apply CORS middleware before defining routes
 app.use(cors({
-  origin: function (origin, callback) {
+  origin (origin, callback) {
     // Allow requests with no origin (like mobile apps, curl requests, or same-origin)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.log(`Origin ${origin} not allowed by CORS`);
+      // Origin not allowed by CORS policy
       // Still allowing all origins in development for easier debugging
       callback(null, true);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'company-email']
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'x-auth-token', 'company-email', 'x-request-id', 'X-Request-ID', 'X-Client-Version', 'X-Client-Platform']
 }));
 
 // Handle preflight requests explicitly
@@ -69,8 +69,11 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/companies', require('./routes/company'));
 app.use('/api/application', require('./routes/application'));
 app.use('/api/job', require('./routes/job'));
-const adminRoutes = require('./routes/admin');
-app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', require('./routes/notifications'));
+
+// Admin routes
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/admin-management', require('./routes/adminManagement'));
 
 // Protected route
 app.get("/protected", verifyToken, (req, res) => {
@@ -99,7 +102,7 @@ mongoose.connect(process.env.MONGO_URI)
 // Start server
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
-  console.log(`CORS configured for: ${allowedOrigins.join(', ')}`);
+  // CORS configuration complete
 });
 
 // Add error handler middleware

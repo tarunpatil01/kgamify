@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 const AccessibleButton = ({
   children,
@@ -219,6 +220,38 @@ export const AccessibleModal = ({
       </div>
     </div>
   );
+};
+
+// PropTypes definitions
+AccessibleButton.propTypes = {
+  children: PropTypes.node,
+  onClick: PropTypes.func,
+  disabled: PropTypes.bool,
+  loading: PropTypes.bool,
+  variant: PropTypes.oneOf(['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'outline']),
+  size: PropTypes.oneOf(['sm', 'md', 'lg']),
+  className: PropTypes.string,
+  type: PropTypes.oneOf(['button', 'submit', 'reset']),
+  'aria-label': PropTypes.string,
+  'aria-describedby': PropTypes.string,
+};
+
+AccessibleInput.propTypes = {
+  label: PropTypes.string.isRequired,
+  id: PropTypes.string.isRequired,
+  error: PropTypes.string,
+  helperText: PropTypes.string,
+  required: PropTypes.bool,
+  className: PropTypes.string,
+  children: PropTypes.node.isRequired,
+};
+
+AccessibleModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  title: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+  className: PropTypes.string,
 };
 
 export default AccessibleButton; 

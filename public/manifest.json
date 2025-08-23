@@ -1,0 +1,188 @@
+{
+  "name": "KGamify Job Portal",
+  "short_name": "KGamify",
+  "description": "Mobile-first job portal with touch-friendly interface and offline capabilities",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#ff8200",
+  "background_color": "#ffffff",
+  "lang": "en",
+  "dir": "ltr",
+  
+  "icons": [
+    {
+      "src": "/src/assets/KLOGO.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/src/assets/KLOGO.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/src/assets/KLOGO.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/src/assets/KLOGO.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/src/assets/KLOGO.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/src/assets/KLOGO.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  
+  "categories": [
+    "business",
+    "productivity",
+    "lifestyle"
+  ],
+  
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your job dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/src/assets/dashboard.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Post Job",
+      "short_name": "Post Job",
+      "description": "Post a new job",
+      "url": "/post-job",
+      "icons": [
+        {
+          "src": "/src/assets/KLOGO.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Applications",
+      "short_name": "Applications",
+      "description": "View job applications",
+      "url": "/applications",
+      "icons": [
+        {
+          "src": "/src/assets/KLOGO.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "short_name": "Profile",
+      "description": "Edit your profile",
+      "url": "/edit-registration",
+      "icons": [
+        {
+          "src": "/src/assets/KLOGO.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  
+  "screenshots": [
+    {
+      "src": "/src/assets/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Dashboard view showing job statistics and recent posts"
+    },
+    {
+      "src": "/src/assets/dashboard.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "platform": "narrow",
+      "label": "Mobile dashboard with touch-friendly navigation"
+    }
+  ],
+  
+  "features": [
+    "Cross Platform",
+    "fast",
+    "simple"
+  ],
+  
+  "iarc_rating_id": "",
+  
+  "prefer_related_applications": false,
+  
+  "protocol_handlers": [
+    {
+      "protocol": "mailto",
+      "url": "/compose?to=%s"
+    }
+  ],
+  
+  "file_handlers": [
+    {
+      "action": "/open-resume",
+      "accept": {
+        "application/pdf": [".pdf"],
+        "application/msword": [".doc"],
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"]
+      }
+    }
+  ],
+  
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "resume",
+          "accept": ["application/pdf", ".pdf", "application/msword", ".doc", ".docx"]
+        }
+      ]
+    }
+  },
+  
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
+  
+  "handle_links": "preferred"
+}

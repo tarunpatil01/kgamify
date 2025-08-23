@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   FaHome, 
   FaBriefcase, 
@@ -13,7 +13,8 @@ import {
 import PropTypes from 'prop-types';
 import Klogo from '../assets/KLOGO.png';
 
-function Sidebar({ onToggle, isOpen = false }) {
+function Sidebar({ onToggle, isOpen = false, isDarkMode = false }) {
+  const navigate = useNavigate();
   const [localIsOpen, setLocalIsOpen] = useState(isOpen);
   const location = useLocation();
   const isForgetPasswordPage = location.pathname === "/forgot-password";
@@ -50,7 +51,7 @@ function Sidebar({ onToggle, isOpen = false }) {
   const handleLogout = () => {
     localStorage.clear();
     sessionStorage.clear();
-    window.location.href = "/";
+    navigate("/");
   };
 
   // Determine if the current path matches a nav item
@@ -67,10 +68,16 @@ function Sidebar({ onToggle, isOpen = false }) {
     <>
       {/* Sidebar Container */}
       <div 
-        className={`h-full bg-gray-50 dark:bg-gray-900 shadow-xl flex flex-col transition-all duration-300 ease-in-out`}
+        className={`h-screen flex flex-col transition-all duration-300 ease-in-out relative z-[20000] ${
+          isDarkMode 
+            ? 'bg-gray-900 border-gray-800' 
+            : 'bg-white border-gray-200'
+        } border-r shadow-sm`}
       >
         {/* Header Section */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className={`flex items-center justify-between p-4 border-b ${
+          isDarkMode ? 'border-gray-800' : 'border-gray-100'
+        }`}>
           {localIsOpen && (
             <div className="flex items-center space-x-3">
               <img
@@ -80,7 +87,9 @@ function Sidebar({ onToggle, isOpen = false }) {
               />
               <div className="flex flex-col">
                 <span className="text-lg font-bold text-kgamify-500">Kgamify</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Job Portal</span>
+                <span className={`text-xs ${
+                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>Job Portal</span>
               </div>
             </div>
           )}
@@ -98,29 +107,25 @@ function Sidebar({ onToggle, isOpen = false }) {
           {/* Toggle Button */}
           <button
             onClick={toggleSidebar}
-            className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-              !localIsOpen ? "hidden" : ""
-            }`}
+            className={`p-2 rounded-lg transition-colors ${
+              isDarkMode 
+                ? 'hover:bg-gray-800 text-gray-300' 
+                : 'hover:bg-gray-100 text-gray-600'
+            } ${!localIsOpen ? "hidden" : ""} hidden md:inline-flex`}
             aria-label={localIsOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
             {localIsOpen ? (
-              <FaChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+              <FaChevronLeft className="w-4 h-4" />
             ) : (
-              <FaChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+              <FaChevronRight className="w-4 h-4" />
             )}
           </button>
         </div>
 
         {/* Navigation Section */}
-        <nav className="flex-1 px-3 py-6 space-y-2 bg-gray-50 dark:bg-gray-900">
-          {localIsOpen && (
-            <div className="px-3 mb-4">
-              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                Main Navigation
-              </p>
-            </div>
-          )}
-          
+        <nav className={`flex-1 px-2 py-4 space-y-1 ${
+          isDarkMode ? 'bg-gray-900' : 'bg-white'
+        }`}>          
           {navigationItems.map((item) => (
             <SidebarLink
               key={item.id}
@@ -129,19 +134,14 @@ function Sidebar({ onToggle, isOpen = false }) {
               text={item.text}
               isOpen={localIsOpen}
               isActive={isActivePath(item.to)}
+              isDarkMode={isDarkMode}
             />
           ))}
-        </nav>
-
-        {/* Bottom Section */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-3 space-y-2">
-          {localIsOpen && (
-            <div className="px-3 mb-4">
-              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                Account
-              </p>
-            </div>
-          )}
+          
+          {/* Divider */}
+          <div className={`my-4 border-t ${
+            isDarkMode ? 'border-gray-800' : 'border-gray-200'
+          }`} />
           
           <SidebarLink
             to="/settings"
@@ -149,35 +149,48 @@ function Sidebar({ onToggle, isOpen = false }) {
             text="Settings"
             isOpen={localIsOpen}
             isActive={isActivePath('/settings')}
+            isDarkMode={isDarkMode}
           />
           
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center px-3 py-3 text-left text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-lg transition-all duration-200 group ${
-              !localIsOpen ? "justify-center" : ""
-            }`}
+            className={`w-full flex items-center px-3 py-2.5 text-left rounded-lg transition-all duration-200 group ${
+              isDarkMode
+                ? 'text-gray-300 hover:bg-red-900/20 hover:text-red-400'
+                : 'text-gray-700 hover:bg-red-50 hover:text-red-600'
+            } ${!localIsOpen ? "justify-center" : ""}`}
           >
             <FaSignOutAlt className={`w-5 h-5 ${localIsOpen ? "mr-3" : ""}`} />
             {localIsOpen && (
               <span className="font-medium">Sign Out</span>
             )}
             {!localIsOpen && (
-              <span className="absolute left-16 bg-gray-900 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+              <span className={`absolute left-16 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[10000] ${
+                isDarkMode ? 'bg-gray-800' : 'bg-gray-900'
+              }`}>
                 Sign Out
               </span>
             )}
           </button>
-        </div>
+        </nav>
 
         {/* Collapse Button for Collapsed State */}
         {!localIsOpen && (
-          <div className="absolute -right-3 top-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg">
+          <div className={`absolute -right-3 top-6 border rounded-full shadow-lg ${
+            isDarkMode 
+              ? 'bg-gray-900 border-gray-700' 
+              : 'bg-white border-gray-200'
+          } hidden md:block`}>
             <button
               onClick={toggleSidebar}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+              className={`p-2 rounded-full transition-colors ${
+                isDarkMode 
+                  ? 'hover:bg-gray-800 text-gray-300' 
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
               aria-label="Expand sidebar"
             >
-              <FaChevronRight className="w-3 h-3 text-gray-600 dark:text-gray-300" />
+              <FaChevronRight className="w-3 h-3" />
             </button>
           </div>
         )}
@@ -187,14 +200,16 @@ function Sidebar({ onToggle, isOpen = false }) {
 }
 
 // Modern SidebarLink component
-function SidebarLink({ to, icon: Icon, text, isOpen, isActive }) {
+function SidebarLink({ to, icon: Icon, text, isOpen, isActive, isDarkMode = false }) {
   return (
     <Link to={to} className="relative group">
       <div
-        className={`flex items-center px-3 py-3 rounded-lg transition-all duration-200 ${
+        className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 ${
           isActive
-            ? "bg-kgamify-500 text-white shadow-lg"
-            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+            ? "bg-kgamify-500 text-white shadow-sm"
+            : isDarkMode
+              ? "text-gray-300 hover:bg-gray-800 hover:text-gray-100"
+              : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
         } ${!isOpen ? "justify-center" : ""}`}
       >
         <Icon className={`w-5 h-5 ${isOpen ? "mr-3" : ""} ${isActive ? "text-white" : ""}`} />
@@ -206,7 +221,9 @@ function SidebarLink({ to, icon: Icon, text, isOpen, isActive }) {
         
         {/* Tooltip for collapsed state */}
         {!isOpen && (
-          <span className="absolute left-16 bg-gray-900 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+          <span className={`absolute left-16 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[10000] ${
+            isDarkMode ? 'bg-gray-800' : 'bg-gray-900'
+          }`}>
             {text}
           </span>
         )}
@@ -219,6 +236,7 @@ function SidebarLink({ to, icon: Icon, text, isOpen, isActive }) {
 Sidebar.propTypes = {
   onToggle: PropTypes.func.isRequired,
   isOpen: PropTypes.bool,
+  isDarkMode: PropTypes.bool,
 };
 
 // PropTypes for SidebarLink
@@ -228,6 +246,7 @@ SidebarLink.propTypes = {
   text: PropTypes.string.isRequired,
   isOpen: PropTypes.bool.isRequired,
   isActive: PropTypes.bool.isRequired,
+  isDarkMode: PropTypes.bool,
 };
 
 export default Sidebar;

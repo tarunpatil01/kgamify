@@ -39,7 +39,7 @@ function checkFile(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
     
     // Check for Google terms
-    let foundTerms = [];
+    const foundTerms = [];
     googleTerms.forEach(term => {
       if (content.includes(term)) {
         foundTerms.push(term);

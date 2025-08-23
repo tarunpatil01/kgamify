@@ -1,0 +1,55 @@
+/* Targeted contrast improvements for accessibility */
+
+/* Only improve contrast for elements that need it */
+.job-title {
+  color: #111827; /* Dark gray but not pure black */
+}
+
+.dark .job-title {
+  color: #f9fafb; /* Light gray but not pure white */
+}
+
+/* Subtle improvements for dashboard stats */
+.dashboard-stat {
+  color: #1f2937;
+}
+
+.dark .dashboard-stat {
+  color: #e5e7eb;
+}
+
+/* Preserve design aesthetics while improving readability */
+.card-content {
+  color: #4b5563; /* Medium gray - good contrast but not harsh */
+}
+
+.dark .card-content {
+  color: #d1d5db; /* Medium light gray - good contrast but not harsh */
+}
+
+/* Subtle improvements for card styles */
+.card-kgamify h3 {
+  color: #111827;
+}
+
+.dark .card-kgamify h3 {
+  color: #f9fafb;
+}
+
+/* Subtle heading improvements */
+.section-heading {
+  color: #111827;
+}
+
+.dark .section-heading {
+  color: #f9fafb;
+}
+
+/* Better contrast for form elements but not overwhelming */
+.form-label {
+  color: #111827;
+}
+
+.dark .form-label {
+  color: #f9fafb;
+}

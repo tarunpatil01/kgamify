@@ -11,19 +11,15 @@ router.get('/', async (req, res) => {
     
     let query = {};
     if (email) {
-      console.log(`Backend: Filtering jobs by company email: "${email}"`);
       query = { companyEmail: email };
     }
     
     const jobs = await Job.find(query);
-    console.log(`Backend: Found ${jobs.length} jobs${email ? ' for ' + email : ''}`);
     
     // Debugging for missing email fields
     if (email && jobs.length === 0) {
-      console.log(`Backend: No jobs found for email: ${email}. Checking for jobs without companyEmail...`);
       const allJobs = await Job.find({});
       const missingEmailJobs = allJobs.filter(job => !job.companyEmail);
-      console.log(`Backend: Found ${missingEmailJobs.length} jobs with missing companyEmail field`);
     }
     
     res.status(200).json(jobs);
@@ -44,10 +40,9 @@ router.post('/', async (req, res) => {
       return res.status(401).json({ error: 'Company email required' });
     }
 
-    console.log("Creating job post with company email:", finalEmail);
 
     // Find company and verify it's approved
-    let company = await Company.findOne({ email: finalEmail, approved: true });
+    const company = await Company.findOne({ email: finalEmail, approved: true });
     
     if (!company) {
       return res.status(401).json({ error: 'Unauthorized or company not approved' });
@@ -79,7 +74,6 @@ router.get('/:id', async (req, res) => {
     }
     
     // Log the populated job for debugging
-    console.log(`Found job with ${job.applicants ? job.applicants.length : 0} applicants`);
     
     res.status(200).json(job);
   } catch (err) {
@@ -114,7 +108,6 @@ router.put('/:id', async (req, res) => {
 // Delete a job
 router.delete('/:id', async (req, res) => {
   try {
-    console.log('Deleting job with ID:', req.params.id);
     const job = await Job.findByIdAndDelete(req.params.id);
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
