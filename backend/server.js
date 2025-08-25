@@ -34,7 +34,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'x-auth-token', 'company-email', 'x-request-id', 'X-Request-ID', 'X-Client-Version', 'X-Client-Platform']
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'x-auth-token', 'company-email', 'x-request-id', 'X-Request-ID', 'X-Client-Version', 'X-Client-Platform', 'x-api-key']
 }));
 
 // Handle preflight requests explicitly
@@ -70,6 +70,7 @@ app.use('/api/companies', require('./routes/company'));
 app.use('/api/application', require('./routes/application'));
 app.use('/api/job', require('./routes/job'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/external', require('./routes/external'));
 
 // Admin routes
 app.use('/api/admin', require('./routes/admin'));
