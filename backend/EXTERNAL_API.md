@@ -51,12 +51,12 @@ CORS already permits typical headers. We added `x-api-key` to allowed headers.
 
 Body (application/json):
 jobId (required)
-applicantName (required)
-companyEmail (optional; resolved from job if omitted)
-companyName (optional; resolved from job/company if omitted)
-resumeUrl (optional)
-testScore (optional)
-skills (optional array or string)
+applicantName 
+companyEmail 
+companyName 
+resumeUrl 
+testScore 
+skills 
 
 GET /api/external/applications
 Query: jobId (required), companyEmail/email (optional), page, limit

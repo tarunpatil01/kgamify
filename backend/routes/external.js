@@ -25,12 +25,18 @@ router.get('/jobs', requireApiKey, async (req, res) => {
     const page = Math.max(parseInt(req.query.page || '1', 10), 1);
     const limit = Math.max(Math.min(parseInt(req.query.limit || '50', 10), 100), 1);
     const skip = (page - 1) * limit;
+    const status = req.query.status; // e.g. 'active'
+    const format = (req.query.format || '').toLowerCase(); // 'plain' to include stripped text
+    const minimal = String(req.query.minimal || '').toLowerCase() === 'true';
 
     let query = {};
     if (companyEmail) {
       query.companyEmail = companyEmail;
     } else if (companyName) {
       query.companyName = new RegExp(`^${companyName}$`, 'i');
+    }
+    if (status && status !== 'all') {
+      query.status = status;
     }
 
     const [jobs, total] = await Promise.all([
@@ -39,33 +45,47 @@ router.get('/jobs', requireApiKey, async (req, res) => {
     ]);
 
     // Map to a clean DTO for external use
-    const data = jobs.map(j => ({
-      id: j._id.toString(),
-      title: j.jobTitle,
-      description: j.jobDescription,
-      employmentType: j.employmentType,
-      experienceLevel: j.experienceLevel,
-      location: j.location,
-      remoteOrOnsite: j.remoteOrOnsite,
-      salary: j.salary,
-      equity: j.equity || null,
-      sponsorship: j.sponsorship || null,
-      recruitmentProcess: j.recruitmentProcess || null,
-      responsibilities: j.responsibilities || null,
-      skills: j.skills || null,
-      benefits: j.benefits || null,
-      eligibility: j.eligibility || null,
-      company: {
-        name: j.companyName,
-        email: j.companyEmail,
-      },
-      status: j.status,
-      category: j.category || null,
-      tags: j.tags || null,
-      postedAt: j.postedAt,
-      createdAt: j.createdAt,
-      applicationsCount: Array.isArray(j.applicants) ? j.applicants.length : 0,
-    }));
+    const stripTags = (html) => (html ? String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : null);
+
+    const data = jobs.map(j => {
+      const base = {
+        id: j._id.toString(),
+        title: j.jobTitle,
+        employmentType: j.employmentType,
+        experienceLevel: j.experienceLevel,
+        location: j.location,
+        remoteOrOnsite: j.remoteOrOnsite,
+        salary: j.salary,
+        company: { name: j.companyName, email: j.companyEmail },
+        status: j.status,
+        postedAt: j.postedAt,
+        createdAt: j.createdAt,
+        applicationsCount: Array.isArray(j.applicants) ? j.applicants.length : 0,
+      };
+
+      if (minimal) return base;
+
+      const withDetails = {
+        ...base,
+        description: j.jobDescription,
+        responsibilities: j.responsibilities || null,
+        benefits: j.benefits || null,
+        eligibility: j.eligibility || null,
+        sponsorship: j.sponsorship || null,
+        recruitmentProcess: j.recruitmentProcess || null,
+        skills: j.skills || null,
+        equity: j.equity || null,
+        category: j.category || null,
+        tags: j.tags || null,
+      };
+
+      if (format === 'plain') {
+        withDetails.descriptionText = stripTags(j.jobDescription);
+        withDetails.responsibilitiesText = stripTags(j.responsibilities);
+      }
+
+      return withDetails;
+    });
 
     res.json({
       companyEmail: companyEmail || null,
@@ -74,7 +94,7 @@ router.get('/jobs', requireApiKey, async (req, res) => {
       total,
       page,
       limit,
-      jobs: data,
+  jobs: data,
     });
   } catch (err) {
     console.error('Error exporting jobs:', err);
