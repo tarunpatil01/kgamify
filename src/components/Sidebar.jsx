@@ -62,6 +62,7 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false }) {
     { to: "/post-job", icon: FaBriefcase, text: "Post Job", id: "post-job" },
     { to: "/job-posted", icon: FaClipboardList, text: "Job Posted", id: "job-posted" },
     { to: "/Edit-Registration", icon: FaBuilding, text: "Edit Registration", id: "edit-registration" },
+  { to: "/applications", icon: FaClipboardList, text: "Applications", id: "applications" },
   ];
 
   return (

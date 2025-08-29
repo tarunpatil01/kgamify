@@ -19,36 +19,55 @@
   font-size: 16px;
 }
 
-/* Maintain dark mode styling */
-.react-quill-dark .ql-toolbar {
-  background-color: #374151;
-  border-color: #4B5563;
+/* Maintain dark mode styling (higher specificity vs .ql-snow defaults) */
+.react-quill-dark .ql-snow .ql-toolbar {
+  background-color: #1F2937 !important; /* gray-800 */
+  border-color: #374151 !important;     /* gray-700 */
 }
 
-.react-quill-dark .ql-container {
-  background-color: #1F2937;
-  border-color: #4B5563;
+.react-quill-dark .ql-snow .ql-container {
+  background-color: #111827 !important; /* gray-900 */
+  border-color: #374151 !important;     /* gray-700 */
 }
 
-.react-quill-dark .ql-editor {
-  color: white;
+.react-quill-dark .ql-snow .ql-editor {
+  color: #E5E7EB !important; /* gray-200 */
 }
 
-.react-quill-dark .ql-stroke {
-  stroke: #D1D5DB;
+/* Placeholder text in dark mode */
+.react-quill-dark .ql-snow .ql-editor.ql-blank::before {
+  color: #9CA3AF; /* gray-400 */
+}
+/* Icon strokes/fills and pickers */
+.react-quill-dark .ql-snow .ql-stroke { stroke: #E5E7EB !important; }
+.react-quill-dark .ql-snow .ql-fill   { fill:   #E5E7EB !important; }
+.react-quill-dark .ql-snow .ql-picker-label { color: #E5E7EB !important; }
+.react-quill-dark .ql-snow .ql-picker-item  { color: #E5E7EB !important; }
+.react-quill-dark .ql-snow .ql-picker-options {
+  background-color: #374151 !important; /* gray-700 */
+  border-color: #4B5563 !important;     /* gray-600 */
 }
 
-.react-quill-dark .ql-fill {
-  fill: #D1D5DB;
+/* Toolbar buttons color/hover in dark */
+.react-quill-dark .ql-snow .ql-toolbar .ql-formats button,
+.react-quill-dark .ql-snow .ql-toolbar .ql-formats .ql-picker-label {
+  color: #E5E7EB !important;
+}
+.react-quill-dark .ql-snow .ql-toolbar .ql-formats button:hover,
+.react-quill-dark .ql-snow .ql-toolbar .ql-formats .ql-picker-label:hover {
+  color: #FFFFFF !important;
+}
+/* Active state highlight */
+.react-quill-dark .ql-snow .ql-toolbar button.ql-active .ql-stroke,
+.react-quill-dark .ql-snow .ql-toolbar button.ql-active .ql-fill,
+.react-quill-dark .ql-snow .ql-picker-label.ql-active {
+  stroke: #ff8200 !important;
+  fill: #ff8200 !important;
+  color: #ff8200 !important;
 }
 
-.react-quill-dark .ql-picker-label {
-  color: #D1D5DB;
-}
-
-.react-quill-dark .ql-picker-options {
-  background-color: #374151;
-}
+/* Links inside editor in dark */
+.react-quill-dark .ql-snow .ql-editor a { color: #60A5FA; }
 
 /* Override editor container to prevent findDOMNode warnings */
 .ql-container.ql-snow {

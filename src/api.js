@@ -271,3 +271,13 @@ export const getApplicationsByJobId = async (jobId) => {
     return [];
   }
 };
+
+// Get all applications for a company by email (aggregated)
+export const getApplicationsForCompany = async (email) => {
+  if (!email) throw new Error('Email is required');
+  const response = await axios.get(`${API_URL}/application/company`, {
+    headers: { 'company-email': email },
+    params: { email },
+  });
+  return response.data;
+};

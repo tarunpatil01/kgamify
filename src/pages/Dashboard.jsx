@@ -203,11 +203,13 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   }
 
   return (
-
-    
-    <div className={`flex flex-col p-1 sm:p-2 md:p-4 min-h-screen dashboard-spacing ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"}`}>
+    <div
+      className={`flex flex-col p-1 sm:p-2 md:p-4 min-h-screen dashboard-spacing ${
+        isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"
+      }`}
+    >
       <div className="flex-0">
-        <div className={`rounded-lg flex md:flex-row justify-between items-center p-2 sm:p-3 md:p-5 ${isDarkMode ? "bg-gray-800 text-white" : "bg-kgamify-500 text-white"}`}>
+  <div className={`rounded-lg flex md:flex-row justify-between items-center p-2 sm:p-3 md:p-5 ${isDarkMode ? "bg-gray-800 text-white" : "bg-kgamify-500 text-white"}`}>
           <div className="flex flex-col text-center md:text-left mb-2 md:mb-0 md:ml-5">
             <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-light">Welcome To kgamify Job Portal</h1>
             <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-light">

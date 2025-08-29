@@ -96,6 +96,39 @@ router.post('/', upload.single('resume'), async (req, res) => {
   }
 });
 
+// Get all applications for a company by email (aggregated, most recent first)
+router.get('/company', async (req, res) => {
+  try {
+    const email = req.query.email || req.headers['company-email'];
+    if (!email) {
+      return res.status(400).json({ error: 'Company email is required' });
+    }
+
+    const apps = await Application.find({ companyEmail: email })
+      .sort({ createdAt: -1 })
+      .populate({ path: 'jobId', select: 'jobTitle createdAt' });
+
+    const payload = apps.map(a => ({
+      id: a._id,
+      jobId: a.jobId?._id || a.jobId,
+      jobTitle: a.jobId?.jobTitle || 'Unknown Job',
+      applicantName: a.applicantName,
+      companyEmail: a.companyEmail,
+      companyName: a.CompanyName,
+      appliedAt: a.createdAt,
+      jobCreatedAt: a.jobId?.createdAt || null,
+      resume: a.resume || null,
+      testScore: a.testScore || null,
+      skills: a.skills || [],
+    }));
+
+    res.json({ count: payload.length, applications: payload });
+  } catch (err) {
+    console.error('Error fetching company applications:', err);
+    res.status(500).json({ error: 'Failed to fetch applications' });
+  }
+});
+
 // Get applications by job ID
 router.get('/job/:jobId', checkCompany, async (req, res) => {
   try {

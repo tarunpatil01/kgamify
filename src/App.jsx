@@ -27,6 +27,7 @@ const EditJob = lazy(() => import("./pages/EditJob"));
 const Job = lazy(() => import("./JobApplications/Job.jsx"));
 const JobApplication = lazy(() => import("./pages/JobApplication"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Applications = lazy(() => import("./pages/Applications"));
 
 function AppContent() {
   const location = useLocation();
@@ -245,6 +246,10 @@ function AppContent() {
                     <Route
                       path="/Edit-Registration"
                       element={<EditRegistration isDarkMode={isDarkMode} />}
+                    />
+                    <Route
+                      path="/applications"
+                      element={<Applications isDarkMode={isDarkMode} />}
                     />
                     <Route
                       path="/admin"

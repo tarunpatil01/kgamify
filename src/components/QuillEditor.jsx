@@ -51,7 +51,7 @@ const QuillEditor = ({ value, onChange, isDarkMode, placeholder = "Enter descrip
   };
 
   return (
-    <div className={`quill-wrapper ${isDarkMode ? "react-quill-dark" : ""}`}>
+    <div className={`quill-wrapper ${isDarkMode ? 'react-quill-dark' : ''}`}>
       <ReactQuill
         ref={quillRef}
         theme="snow"
@@ -60,7 +60,7 @@ const QuillEditor = ({ value, onChange, isDarkMode, placeholder = "Enter descrip
         value={editorContent}
         onChange={handleEditorChange}
         placeholder={placeholder}
-        className={`bg-white rounded ${isDarkMode ? "text-black" : ""}`}
+        className={isDarkMode ? 'rounded' : 'bg-white rounded'}
         style={editorStyle}
       />
     </div>
