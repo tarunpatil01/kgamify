@@ -1,59 +1,23 @@
 /* eslint-env serviceworker */
 
-// Skip all service worker functionality in development
-if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-  // In development, immediately skip waiting and don't cache anything
-  self.addEventListener('install', (event) => {
-    self.skipWaiting();
-  });
+// Determine environment safely (avoid top-level return which breaks parsing)
+const IS_DEV = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
 
-  self.addEventListener('activate', (event) => {
-    event.waitUntil(
-      Promise.all([
-        // Clear all caches in development
-        caches.keys().then((cacheNames) => {
-          return Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
-        }),
-        self.clients.claim()
-      ])
-    );
-  });
+const CACHE_NAME = 'kgamify-mobile-v3';
+const RUNTIME_CACHE = 'kgamify-runtime-v3';
+const IMAGES_CACHE = 'kgamify-images-v3';
+const API_CACHE = 'kgamify-api-v3';
 
-  // In development, don't intercept any fetch requests - let them go to the network
-  self.addEventListener('fetch', (event) => {
-    // Do nothing - let all requests go through normally
-    return;
-  });
-
-  // Stop executing the rest of the service worker code
-  return;
-}
-
-const CACHE_NAME = 'kgamify-mobile-v2';
-const RUNTIME_CACHE = 'kgamify-runtime-v2';
-const IMAGES_CACHE = 'kgamify-images-v2';
-const API_CACHE = 'kgamify-api-v2';
-
-// Assets to cache immediately
+// Assets to cache immediately (only public, non-hashed paths)
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
-  '/src/main.jsx',
-  '/src/App.jsx',
-  '/src/index.css',
-  '/src/App.css',
-  '/src/styles/mobile.css',
-  '/src/assets/KLOGO.png',
-  '/src/assets/dashboard.png',
-  '/manifest.json'
+  '/manifest.json',
+  '/favicon.png'
 ];
 
-// Mobile-specific assets
-const MOBILE_ASSETS = [
-  '/src/components/MobileComponents.jsx',
-  '/src/components/MobileNavigation.jsx',
-  '/src/hooks/useMobile.js'
-];
+// Do not precache source files; Vite will hash asset URLs in production
+const MOBILE_ASSETS = [];
 
 // API endpoints to cache with network-first strategy
 const API_CACHE_PATTERNS = [
@@ -63,65 +27,88 @@ const API_CACHE_PATTERNS = [
 ];
 
 // Install event - cache essential assets
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    Promise.all([
-      // Cache core assets
-      caches.open(CACHE_NAME).then((cache) => {
-        return cache.addAll([...PRECACHE_ASSETS, ...MOBILE_ASSETS]);
-      }),
-      // Initialize other caches
-      caches.open(RUNTIME_CACHE),
-      caches.open(IMAGES_CACHE),
-      caches.open(API_CACHE)
-    ]).catch(() => {
-      // Silently handle precaching errors
-    })
-  );
-  
-  // Force the waiting service worker to become the active service worker
-  self.skipWaiting();
-});
+if (IS_DEV) {
+  // Development: register no-op caching and clear any existing caches
+  self.addEventListener('install', (event) => {
+    self.skipWaiting();
+  });
+
+  self.addEventListener('activate', (event) => {
+    event.waitUntil(
+      Promise.all([
+        caches.keys().then((cacheNames) => Promise.all(cacheNames.map((name) => caches.delete(name)))),
+        self.clients.claim()
+      ])
+    );
+  });
+
+  self.addEventListener('fetch', () => {
+    // Let all requests hit the network in dev
+  });
+} else {
+  // Production: enable caching strategies
+  self.addEventListener('install', (event) => {
+    event.waitUntil(
+      Promise.all([
+        // Cache core assets
+        caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS)),
+        // Initialize other caches
+        caches.open(RUNTIME_CACHE),
+        caches.open(IMAGES_CACHE),
+        caches.open(API_CACHE)
+      ]).catch(() => {
+        // Silently handle precaching errors
+      })
+    );
+    
+    // Force the waiting service worker to become the active service worker
+    self.skipWaiting();
+  });
+}
 
 // Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    Promise.all([
-      // Clean up old caches
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (!cacheName.includes('kgamify-mobile-v2') && !cacheName.includes('kgamify-runtime-v2') && 
-                !cacheName.includes('kgamify-images-v2') && !cacheName.includes('kgamify-api-v2')) {
-              return caches.delete(cacheName);
-            }
-            return Promise.resolve();
-          })
-        );
-      }),
-      // Take control of all clients
-      self.clients.claim()
-    ])
-  );
-});
+if (!IS_DEV) {
+  self.addEventListener('activate', (event) => {
+    event.waitUntil(
+      Promise.all([
+        // Clean up old caches
+        caches.keys().then((cacheNames) => {
+          return Promise.all(
+            cacheNames.map((cacheName) => {
+              if (!cacheName.includes('kgamify-mobile-v3') && !cacheName.includes('kgamify-runtime-v3') && 
+                  !cacheName.includes('kgamify-images-v3') && !cacheName.includes('kgamify-api-v3')) {
+                return caches.delete(cacheName);
+              }
+              return Promise.resolve();
+            })
+          );
+        }),
+        // Take control of all clients
+        self.clients.claim()
+      ])
+    );
+  });
+}
 
 // Fetch event - implement mobile-optimized caching strategies
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
+if (!IS_DEV) {
+  self.addEventListener('fetch', (event) => {
+    const { request } = event;
+    const url = new URL(request.url);
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
-    return;
-  }
+    // Skip non-GET requests
+    if (request.method !== 'GET') {
+      return;
+    }
 
-  // Skip cross-origin requests that aren't APIs or assets
-  if (url.origin !== location.origin && !isApiRequest(url) && !isAssetRequest(url)) {
-    return;
-  }
+    // Skip cross-origin requests that aren't APIs or assets
+    if (url.origin !== location.origin && !isApiRequest(url) && !isAssetRequest(url)) {
+      return;
+    }
 
-  event.respondWith(handleMobileFetch(request));
-});
+    event.respondWith(handleMobileFetch(request));
+  });
+}
 
 // Mobile-optimized fetch handling
 async function handleMobileFetch(request) {
@@ -247,8 +234,8 @@ async function handleFetchError(request, error) {
   
   // For image requests, return placeholder if available
   if (isImageRequest(url)) {
-    const cache = await caches.open(IMAGES_CACHE);
-    const placeholder = await cache.match('/src/assets/placeholder.png');
+  const cache = await caches.open(IMAGES_CACHE);
+  const placeholder = await cache.match('/favicon.png');
     if (placeholder) {
       return placeholder;
     }
@@ -383,7 +370,7 @@ async function processOfflineAction(request) {
 }
 
 // Enhanced push notifications for job portal
-self.addEventListener('push', (event) => {
+if (!IS_DEV) self.addEventListener('push', (event) => {
   let data = {};
   
   if (event.data) {
@@ -397,9 +384,9 @@ self.addEventListener('push', (event) => {
   const options = {
     title: data.title || 'KGamify Job Portal',
     body: data.body || 'New notification',
-    icon: '/src/assets/KLOGO.png',
-    badge: '/src/assets/KLOGO.png',
-    image: data.image || '/src/assets/dashboard.png',
+    icon: '/favicon.png',
+    badge: '/favicon.png',
+    image: data.image || '/favicon.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -425,22 +412,22 @@ function getNotificationActions(type) {
   switch (type) {
     case 'job-application':
       return [
-        { action: 'view', title: 'View Application', icon: '/src/assets/view-icon.png' },
-        { action: 'dismiss', title: 'Dismiss', icon: '/src/assets/dismiss-icon.png' }
+  { action: 'view', title: 'View Application', icon: '/favicon.png' },
+  { action: 'dismiss', title: 'Dismiss', icon: '/favicon.png' }
       ];
     case 'job-posted':
       return [
-        { action: 'view', title: 'View Job', icon: '/src/assets/view-icon.png' },
-        { action: 'share', title: 'Share', icon: '/src/assets/share-icon.png' }
+  { action: 'view', title: 'View Job', icon: '/favicon.png' },
+  { action: 'share', title: 'Share', icon: '/favicon.png' }
       ];
     case 'application-status':
       return [
-        { action: 'view', title: 'View Details', icon: '/src/assets/view-icon.png' },
-        { action: 'apply-more', title: 'Find More Jobs', icon: '/src/assets/search-icon.png' }
+  { action: 'view', title: 'View Details', icon: '/favicon.png' },
+  { action: 'apply-more', title: 'Find More Jobs', icon: '/favicon.png' }
       ];
     default:
       return [
-        { action: 'view', title: 'View', icon: '/src/assets/view-icon.png' }
+  { action: 'view', title: 'View', icon: '/favicon.png' }
       ];
   }
 }

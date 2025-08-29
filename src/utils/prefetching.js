@@ -2,17 +2,19 @@
  * Resource preloading and prefetching utilities for better performance
  */
 import { config } from '../config/env.js';
+import logoUrl from '../assets/KLOGO.png';
+import dashboardImg from '../assets/dashboard.png';
 
 /**
  * Preload critical resources
  */
 export function preloadCriticalResources() {
-  // Preload critical fonts
-  preloadFont('/fonts/inter-var.woff2', 'woff2');
+  // Optional: preload fonts only if hosted in public/ (keep commented if not present)
+  // preloadFont('/fonts/inter-var.woff2', 'woff2');
   
   // Preload hero images
-  preloadImage('/src/assets/KLOGO.png');
-  preloadImage('/src/assets/dashboard.png');
+  preloadImage(logoUrl);
+  preloadImage(dashboardImg);
   
   // Preload critical API endpoints
   prefetchAPI(`${config.API_URL}/job?featured=true`);

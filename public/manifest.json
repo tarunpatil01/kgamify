@@ -13,37 +13,37 @@
   
   "icons": [
     {
-      "src": "/src/assets/KLOGO.png",
+      "src": "/favicon.png",
       "sizes": "48x48",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/src/assets/KLOGO.png",
+      "src": "/favicon.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/src/assets/KLOGO.png",
+      "src": "/favicon.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/src/assets/KLOGO.png",
+      "src": "/favicon.png",
       "sizes": "144x144",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/src/assets/KLOGO.png",
+      "src": "/favicon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/src/assets/KLOGO.png",
+      "src": "/favicon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -64,7 +64,7 @@
       "url": "/dashboard",
       "icons": [
         {
-          "src": "/src/assets/dashboard.png",
+          "src": "/favicon.png",
           "sizes": "96x96"
         }
       ]
@@ -76,7 +76,7 @@
       "url": "/post-job",
       "icons": [
         {
-          "src": "/src/assets/KLOGO.png",
+          "src": "/favicon.png",
           "sizes": "96x96"
         }
       ]
@@ -88,7 +88,7 @@
       "url": "/applications",
       "icons": [
         {
-          "src": "/src/assets/KLOGO.png",
+          "src": "/favicon.png",
           "sizes": "96x96"
         }
       ]
@@ -100,7 +100,7 @@
       "url": "/edit-registration",
       "icons": [
         {
-          "src": "/src/assets/KLOGO.png",
+          "src": "/favicon.png",
           "sizes": "96x96"
         }
       ]
@@ -109,18 +109,11 @@
   
   "screenshots": [
     {
-      "src": "/src/assets/dashboard.png",
-      "sizes": "1280x720",
+      "src": "/favicon.png",
+      "sizes": "512x512",
       "type": "image/png",
       "platform": "wide",
-      "label": "Dashboard view showing job statistics and recent posts"
-    },
-    {
-      "src": "/src/assets/dashboard.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "platform": "narrow",
-      "label": "Mobile dashboard with touch-friendly navigation"
+      "label": "KGamify"
     }
   ],
   

@@ -8,6 +8,7 @@ import {
   FaSignOutAlt, FaHome, FaClock, FaCheckCircle, FaUser
 } from "react-icons/fa";
 import { changeAdminPassword } from "../api";
+import logoUrl from "../assets/KLOGO.png";
 
 const AdminPortal = ({ isDarkMode }) => {
   const [pendingCompanies, setPendingCompanies] = useState([]);
@@ -300,7 +301,7 @@ const AdminPortal = ({ isDarkMode }) => {
             <div className="flex items-center">
               <div className="bg-gray-100 dark:bg-gray-700 rounded-full p-1.5 mr-3">
                 <img 
-                  src="/src/assets/KLOGO.png" 
+                  src={logoUrl} 
                   alt="KGamify Logo" 
                   className="h-8 w-8" 
                 />
