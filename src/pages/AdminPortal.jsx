@@ -553,7 +553,7 @@ const AdminPortal = ({ isDarkMode }) => {
                     {company.description && (
                       <div className={`mt-6 p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
                         <h4 className="font-medium mb-2 text-[#ff8200]">Company Description</h4>
-                        <p className="text-sm">{company.description}</p>
+                        <div className="prose dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: company.description }} />
                       </div>
                     )}
                   </div>
@@ -669,7 +669,7 @@ const AdminPortal = ({ isDarkMode }) => {
                     {company.description && (
                       <div className={`mt-6 p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
                         <h4 className="font-medium mb-2 text-[#ff8200]">Company Description</h4>
-                        <p className="text-sm">{company.description}</p>
+                        <div className="prose dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: company.description }} />
                       </div>
                     )}
                   </div>

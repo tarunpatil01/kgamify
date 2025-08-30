@@ -39,6 +39,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   const [filteredJobs, setFilteredJobs] = useState([]);
   const [companyJobs, setCompanyJobs] = useState([]);
   const [directAPIJobs, setDirectAPIJobs] = useState([]); // Test direct API like JobPosted
+  const [initialWaitOver, setInitialWaitOver] = useState(false);
 
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,8 +53,19 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
 
   useEffect(() => {
     // Fetch jobs when component mounts
-    dispatch(fetchJobs({ page: 1, limit: 50 }));
-  }, [dispatch]);
+    // If viewing a company dashboard, fetch only that company's jobs with a smaller limit for faster response
+    const params = email
+      ? { page: 1, limit: 12, filters: { email } }
+      : { page: 1, limit: 50 };
+    dispatch(fetchJobs(params));
+  }, [dispatch, email]);
+
+  // So the UI doesn't stay blocked by a slow request (new companies may have 0 jobs),
+  // stop showing the initial full-screen loader after a short grace period
+  useEffect(() => {
+    const t = setTimeout(() => setInitialWaitOver(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   // Test direct API call like JobPosted does
   useEffect(() => {
@@ -61,7 +73,13 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
       try {
         // Try the same approach as JobPosted
         const response = await getJobs(email ? { email } : {});
-        setDirectAPIJobs(response || []);
+        // Normalize to array regardless of API shape
+        const normalized = Array.isArray(response?.jobs)
+          ? response.jobs
+          : Array.isArray(response)
+            ? response
+            : [];
+        setDirectAPIJobs(normalized);
       } catch {
         // ignore
       }
@@ -192,7 +210,9 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
     return jobDate >= weekAgo;
   }).length;
 
-  if (loading) {
+  // Only block the screen if we're still loading AND have no data yet AND grace period not over
+  const hasAnyData = (jobs && jobs.length > 0) || (directAPIJobs && directAPIJobs.length > 0);
+  if (loading && !hasAnyData && !initialWaitOver) {
     return (
       <LoadingSpinner 
         fullScreen 
