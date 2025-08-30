@@ -303,8 +303,8 @@ function Register({ isDarkMode }) {
       }${formData.city}, ${formData.state}, ${formData.pinCode}`;
       submissionData.append("address", address);
 
-      // Add registration details
-      submissionData.append("registrationNumber", formData.username); // Using username as registration number
+  // Add registration details (backend expects case-sensitive field `Username`)
+  submissionData.append("Username", formData.username);
       submissionData.append("yearEstablished", new Date().getFullYear().toString());
       submissionData.append("password", formData.password);
 
