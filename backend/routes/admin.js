@@ -101,7 +101,7 @@ router.post('/approve-company/:id', adminAuth, auditLogger({
   try {
     const company = await Company.findByIdAndUpdate(
       req.params.id,
-      { approved: true },
+      { approved: true, status: 'approved' },
       { new: true }
     );
     
@@ -123,14 +123,64 @@ router.post('/approve-company/:id', adminAuth, auditLogger({
   }
 });
 
-// Deny company route (protected)
+// Deny company with reason (protected)
 router.post('/deny-company/:id', adminAuth, auditLogger({
   action: 'deny_company',
   entityType: 'company'
 }), async (req, res) => {
   try {
+    const { reason } = req.body || {};
+    const company = await Company.findById(req.params.id);
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+
+    // Store message then remove account
+    if (reason) {
+      company.adminMessages = company.adminMessages || [];
+      company.adminMessages.push({ type: 'deny', message: reason });
+    }
+    company.status = 'denied';
+    await company.save();
+
+    // Send denial email
+    if (company.email) {
+      sendEmail(company.email, 'custom', {
+        subject: 'KGamify Registration Denied',
+        html: `<div style="font-family: Arial, sans-serif;">
+          <h2 style="color:#dc2626;">Registration Denied</h2>
+          <p>Hi ${company.companyName},</p>
+          <p>Your registration was denied.${reason ? ` Reason: <strong>${reason}</strong>.` : ''}</p>
+          <p>You may re-register after addressing the issues.</p>
+        </div>`
+      }).catch(() => {});
+    }
+
+    // Finally delete company
     await Company.findByIdAndDelete(req.params.id);
     res.json({ message: 'Company denied and removed' });
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Hold company with reason (protected)
+router.post('/hold-company/:id', adminAuth, auditLogger({
+  action: 'hold_company',
+  entityType: 'company'
+}), async (req, res) => {
+  try {
+    const { reason } = req.body || {};
+    const company = await Company.findById(req.params.id);
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+
+    company.status = 'hold';
+    company.approved = false;
+    company.adminMessages = company.adminMessages || [];
+    if (reason) {
+      company.adminMessages.push({ type: 'hold', message: reason });
+    }
+    await company.save();
+
+    res.json({ message: 'Company put on hold', company });
   } catch {
     res.status(500).json({ message: 'Server error' });
   }

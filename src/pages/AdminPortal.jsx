@@ -7,7 +7,7 @@ import {
   FaPhone, FaGlobeAmericas, FaUserCircle, FaKey, FaLock,
   FaSignOutAlt, FaHome, FaClock, FaCheckCircle, FaUser
 } from "react-icons/fa";
-import { changeAdminPassword } from "../api";
+import { changeAdminPassword, denyCompanyWithReason, holdCompanyWithReason } from "../api";
 import logoUrl from "../assets/KLOGO.png";
 
 const AdminPortal = ({ isDarkMode }) => {
@@ -173,17 +173,11 @@ const AdminPortal = ({ isDarkMode }) => {
 
   const handleDeny = async (companyId) => {
     try {
-      const token = localStorage.getItem("adminToken");
-      
-      await axios.post(
-        `${import.meta.env.VITE_API_URL.replace(/\/api$/, "")}/api/admin/deny-company/${companyId}`,
-        {},
-        {
-          headers: {
-            "x-auth-token": token
-          }
-        }
-      );
+      const reason = window.prompt('Please provide a reason for denial (required):');
+      if (!reason || !reason.trim()) {
+        return;
+      }
+      await denyCompanyWithReason(companyId, reason.trim());
       
       setPendingCompanies(pendingCompanies.filter((company) => company._id !== companyId));
       setNotification({
@@ -202,6 +196,25 @@ const AdminPortal = ({ isDarkMode }) => {
       setTimeout(() => setNotification({ show: false, message: "", type: "" }), 3000);
       
       // If unauthorized, logout
+      if (error.response?.status === 401) {
+        handleLogout();
+      }
+    }
+  };
+
+  const handleHold = async (companyId) => {
+    try {
+      const reason = window.prompt('Enter a reason to put this company on hold (required):');
+      if (!reason || !reason.trim()) {
+        return;
+      }
+      await holdCompanyWithReason(companyId, reason.trim());
+      setPendingCompanies(prev => prev.map(c => c._id === companyId ? { ...c, status: 'hold' } : c));
+      setNotification({ show: true, message: 'Company put on hold', type: 'success' });
+      setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+    } catch (error) {
+      setNotification({ show: true, message: 'Error putting company on hold', type: 'error' });
+      setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
       if (error.response?.status === 401) {
         handleLogout();
       }
@@ -469,6 +482,12 @@ const AdminPortal = ({ isDarkMode }) => {
                           className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-sm"
                         >
                           <FaCheck className="mr-2" /> Approve
+                        </button>
+                        <button
+                          onClick={() => handleHold(company._id)}
+                          className="flex items-center px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors shadow-sm"
+                        >
+                          <FaClock className="mr-2" /> Hold
                         </button>
                         <button
                           onClick={() => handleDeny(company._id)}

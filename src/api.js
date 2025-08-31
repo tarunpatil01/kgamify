@@ -144,7 +144,26 @@ export const approveCompany = async (companyId) => {
 };
 
 export const denyCompany = async (companyId) => {
-  const response = await axios.post(`${API_URL}/admin/deny-company/${companyId}`);
+  const token = localStorage.getItem('adminToken');
+  const response = await axios.post(`${API_URL}/admin/deny-company/${companyId}`, {}, {
+    headers: token ? { 'x-auth-token': token } : undefined
+  });
+  return response.data;
+};
+
+export const denyCompanyWithReason = async (companyId, reason) => {
+  const token = localStorage.getItem('adminToken');
+  const response = await axios.post(`${API_URL}/admin/deny-company/${companyId}`, { reason }, {
+    headers: token ? { 'x-auth-token': token } : undefined
+  });
+  return response.data;
+};
+
+export const holdCompanyWithReason = async (companyId, reason) => {
+  const token = localStorage.getItem('adminToken');
+  const response = await axios.post(`${API_URL}/admin/hold-company/${companyId}`, { reason }, {
+    headers: token ? { 'x-auth-token': token } : undefined
+  });
   return response.data;
 };
 

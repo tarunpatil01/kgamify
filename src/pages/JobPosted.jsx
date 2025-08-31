@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FaEdit,
@@ -15,13 +15,20 @@ import {
   FaUserTie,
   FaLaptopHouse,
   FaCheck,
+  FaSearch,
+  FaSortAlphaDown,
+  FaSortAmountDown,
 } from 'react-icons/fa';
 import { getJobs, deleteJob } from '../api';
+import PropTypes from 'prop-types';
 
 const JobPosted = ({ isDarkMode, email }) => {
   const [jobs, setJobs] = useState([]);
   const [filteredJobs, setFilteredJobs] = useState([]);
   const [selectedType, setSelectedType] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // active | inactive | all
+  const [sortBy, setSortBy] = useState('dateDesc'); // dateDesc | dateAsc | titleAsc | titleDesc
   const [notification, setNotification] = useState('');
   const [categories, setCategories] = useState(['All']);
   const navigate = useNavigate();
@@ -29,34 +36,66 @@ const JobPosted = ({ isDarkMode, email }) => {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        if (!email) {
-          console.error('No email provided to fetch jobs');
-          return;
-        }
-        const response = await getJobs({ email });
-        setJobs(response);
-        setFilteredJobs(response);
+  if (!email) { return; }
+  const response = await getJobs({ email });
+  setJobs(response);
+  setFilteredJobs(response);
         // Extract unique categories from jobs
         const uniqueCategories = [
           'All',
           ...new Set(response.map(job => job.category).filter(Boolean)),
         ];
         setCategories(uniqueCategories);
-      } catch (error) {
-        console.error('Error fetching jobs:', error);
+  } catch {
+  // Silent
       }
     };
     fetchJobs();
   }, [email]);
 
+  const applyFilters = (base = jobs, opt = {}) => {
+    const { category = selectedType, q = searchQuery, status = statusFilter, sort = sortBy } = opt;
+    let list = Array.isArray(base) ? [...base] : [];
+    // Category chip
+    if (category && category !== 'All') {
+      list = list.filter(j => j.category === category);
+    }
+    // Search by title/location/type
+    if (q) {
+      const s = q.toLowerCase();
+      list = list.filter(j => (
+        j.jobTitle?.toLowerCase().includes(s) ||
+        j.location?.toLowerCase().includes(s) ||
+        j.employmentType?.toLowerCase().includes(s)
+      ));
+    }
+    // Status filter (treat undefined as active by default only when filtering)
+    if (status !== 'all') {
+      list = list.filter(j => (j.status || 'active') === status);
+    }
+    // Sorting
+    list.sort((a, b) => {
+      if (sort === 'titleAsc' || sort === 'titleDesc') {
+        const A = (a.jobTitle || '').toLowerCase();
+        const B = (b.jobTitle || '').toLowerCase();
+        return sort === 'titleAsc' ? (A > B ? 1 : -1) : (A < B ? 1 : -1);
+      }
+      const aDate = new Date(a.createdAt || a.datePosted || a.postedAt || 0).getTime();
+      const bDate = new Date(b.createdAt || b.datePosted || b.postedAt || 0).getTime();
+      return sort === 'dateAsc' ? aDate - bDate : bDate - aDate;
+    });
+    setFilteredJobs(list);
+  };
+
   const filterJobs = type => {
     setSelectedType(type);
-    if (type === 'All') {
-      setFilteredJobs(jobs);
-    } else {
-      setFilteredJobs(jobs.filter(job => job.category === type));
-    }
+    applyFilters(jobs, { category: type });
   };
+
+  useEffect(() => {
+    applyFilters(jobs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, statusFilter, sortBy]);
 
   const handleDelete = async jobId => {
     if (window.confirm('Are you sure you want to delete this job?')) {
@@ -110,7 +149,7 @@ const JobPosted = ({ isDarkMode, email }) => {
             <span
               className={`flex items-center gap-1 rounded px-3 py-1 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
             >
-              <FaUsers className="text-[#e74094]" /> Applicants:{' '}
+              <FaUsers className="text-[#ff8200]" /> Applicants:{' '}
               <b>{totalApplicants}</b>
             </span>
             {jobsByCategory.map(cat => (
@@ -122,7 +161,7 @@ const JobPosted = ({ isDarkMode, email }) => {
                     : 'bg-blue-100 text-blue-800'
                 }`}
               >
-                <FaFilter className="text-blue-400" /> {cat.name}:{' '}
+                <FaFilter className="text-[#ff8200]" /> {cat.name}:{' '}
                 <b>{cat.count}</b>
               </span>
             ))}
@@ -141,6 +180,50 @@ const JobPosted = ({ isDarkMode, email }) => {
           <FaCheck /> {notification}
         </div>
       )}
+
+      {/* Search and filters */}
+      <div className="mb-4 grid md:grid-cols-3 gap-3">
+        <div className="relative">
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-300" />
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search by title, location, type"
+            className={`pl-9 pr-3 py-2 w-full rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+          />
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Status</label>
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className={`w-full py-2 px-3 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+          >
+            <option value="all">All</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs mb-1">Sort</label>
+          <div className="flex gap-2">
+            <button
+              className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded border ${sortBy === 'titleAsc' ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              onClick={() => setSortBy(sortBy === 'titleAsc' ? 'titleDesc' : 'titleAsc')}
+              title="Sort A-Z/Z-A"
+            >
+              <FaSortAlphaDown /> {sortBy === 'titleAsc' ? 'A-Z' : 'Z-A'}
+            </button>
+            <button
+              className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded border ${sortBy === 'dateDesc' ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              onClick={() => setSortBy(sortBy === 'dateDesc' ? 'dateAsc' : 'dateDesc')}
+              title="Sort by Date"
+            >
+              <FaSortAmountDown /> {sortBy === 'dateDesc' ? 'Newest' : 'Oldest'}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Category filter */}
       <div className="mb-6 overflow-x-auto">
@@ -211,37 +294,37 @@ const JobPosted = ({ isDarkMode, email }) => {
               </div>
               {job.category && (
                 <span
-                  className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded mb-2 ${isDarkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'}`}
+                  className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded mb-2 ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-orange-50 text-[#ff8200]'}`}
                 >
-                  <FaFilter className="text-blue-400" /> {job.category}
+                  <FaFilter className="text-[#ff8200]" /> {job.category}
                 </span>
               )}
               <div className="flex flex-wrap gap-2 mb-2 text-sm">
                 <span
                   className={`flex items-center gap-1 rounded px-2 py-0.5 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
                 >
-                  <FaMoneyBill className="text-green-500" /> {job.salary}
+                  <FaMoneyBill className="text-[#ff8200]" /> {job.salary}
                 </span>
                 <span
                   className={`flex items-center gap-1 rounded px-2 py-0.5 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
                 >
-                  <FaMapMarkerAlt className="text-blue-500" /> {job.location}
+                  <FaMapMarkerAlt className="text-[#ff8200]" /> {job.location}
                 </span>
                 <span
                   className={`flex items-center gap-1 rounded px-2 py-0.5 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
                 >
-                  <FaUserTie className="text-purple-500" />{' '}
+                  <FaUserTie className="text-[#ff8200]" />{' '}
                   {job.experienceLevel}
                 </span>
                 <span
                   className={`flex items-center gap-1 rounded px-2 py-0.5 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
                 >
-                  <FaClock className="text-yellow-500" /> {job.employmentType}
+                  <FaClock className="text-[#ff8200]" /> {job.employmentType}
                 </span>
                 <span
                   className={`flex items-center gap-1 rounded px-2 py-0.5 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
                 >
-                  <FaLaptopHouse className="text-pink-500" />{' '}
+                  <FaLaptopHouse className="text-[#ff8200]" />{' '}
                   {job.remoteOrOnsite}
                 </span>
               </div>
@@ -290,3 +373,8 @@ const JobPosted = ({ isDarkMode, email }) => {
 };
 
 export default JobPosted;
+
+JobPosted.propTypes = {
+  isDarkMode: PropTypes.bool,
+  email: PropTypes.string
+};

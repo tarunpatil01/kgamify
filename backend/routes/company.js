@@ -1,9 +1,10 @@
+/* eslint-disable no-console */
 const express = require('express');
 const router = express.Router();
 const Company = require('../models/Company');
 const { upload, cloudinary } = require('../config/cloudinary');
 const bcrypt = require('bcryptjs');
-const { getDocumentUrl, extractPublicId, getDocumentDownloadUrl } = require('../utils/documentHelper');
+const { getDocumentUrl, getDocumentDownloadUrl } = require('../utils/documentHelper');
 
 // Middleware to authenticate company
 const authenticateCompany = async (req, res, next) => {
@@ -61,9 +62,15 @@ router.post('/', upload.fields([
 
     const newCompany = new Company({
       ...companyData,
+      // Ensure optional fields exist for minimal registration
+      contactName: companyData.contactName || undefined,
+      phone: companyData.phone || undefined,
+      address: companyData.address || undefined,
+      size: companyData.size || undefined,
       logo: req.files?.logo ? req.files.logo[0].path : null,
       documents: req.files?.documents ? req.files.documents[0].path : null,
-      approved: false
+      approved: false,
+      profileCompleted: false
     });
 
     await newCompany.save(); // Password will be hashed by pre-save hook
@@ -96,8 +103,12 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    // Check if company is approved
-    if (!company.approved) {
+    // Account lifecycle checks
+    if (company.status === 'denied') {
+      return res.status(403).json({ error: 'Your account has been denied. Please contact support or re-register.' });
+    }
+    // Allow login when on hold, but restrict actions like posting jobs elsewhere
+    if (!company.approved && company.status !== 'hold') {
       return res.status(403).json({ error: 'Your company is not approved by Admin yet' });
     }
     

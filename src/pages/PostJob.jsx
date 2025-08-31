@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Button,
   TextField,
   Select,
   MenuItem,
@@ -12,6 +11,7 @@ import {
 } from "@mui/material";
 import { createJob } from "../api";
 import QuillEditor from '../components/QuillEditor'; // Added import for QuillEditor
+import PropTypes from 'prop-types';
 
 const jobTitles = [
   "Software Engineer",
@@ -64,7 +64,7 @@ export default function PostJob({ isDarkMode, email }) {
     }
   }, [email]);
 
-  const [cities, setCities] = useState([]);
+  // Cities selection not used currently
   const [openSnackbar, setOpenSnackbar] = useState(false); // State for Snackbar
 
   const handleChange = (e) => {
@@ -87,15 +87,15 @@ export default function PostJob({ isDarkMode, email }) {
         companyEmail: email, // Ensure this is always set
       };
 
-      const response = await createJob(jobDataToSubmit);
+  await createJob(jobDataToSubmit);
       setOpenSnackbar(true);
 
       // Add navigation after successful post
       setTimeout(() => {
         navigate("/job-posted");
       }, 2000);
-    } catch (error) {
-      console.error("Error posting job:", error);
+  } catch {
+      // Silent
     }
   };
 
@@ -104,25 +104,7 @@ export default function PostJob({ isDarkMode, email }) {
   };
 
   // Custom styling for Material-UI components in dark mode
-  const darkModeStyles = {
-    input: {
-      color: isDarkMode ? 'white' : 'inherit',
-      '&::placeholder': {
-        color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'inherit',
-      }
-    },
-    select: {
-      color: isDarkMode ? 'white' : 'inherit',
-      '& .MuiSelect-icon': {
-        color: isDarkMode ? 'white' : 'inherit',
-      }
-    },
-    menuItem: {
-      '&.MuiMenuItem-root': {
-        color: 'black', // Always black to ensure visibility on white background dropdown
-      }
-    }
-  };
+  // Styles handled inline in components
 
   return (
     <div
@@ -144,7 +126,7 @@ export default function PostJob({ isDarkMode, email }) {
               Job Details
             </h2>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Job Title</label>
+              <label className="block mb-2 sm:mb-3">Job Title</label>
               <Autocomplete
                 freeSolo
                 options={jobTitles}
@@ -179,7 +161,7 @@ export default function PostJob({ isDarkMode, email }) {
               />
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Job Description</label>
+              <label className="block mb-2 sm:mb-3">Job Description</label>
               <QuillEditor
                 value={formData.jobDescription}
                 onChange={(content) => setFormData({...formData, jobDescription: content})}
@@ -606,3 +588,7 @@ export default function PostJob({ isDarkMode, email }) {
     </div>
   );
 }
+PostJob.propTypes = {
+  isDarkMode: PropTypes.bool,
+  email: PropTypes.string
+};

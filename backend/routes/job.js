@@ -15,16 +15,9 @@ router.get('/', async (req, res) => {
     }
     
     const jobs = await Job.find(query);
-    
-    // Debugging for missing email fields
-    if (email && jobs.length === 0) {
-      const allJobs = await Job.find({});
-      const missingEmailJobs = allJobs.filter(job => !job.companyEmail);
-    }
-    
+
     res.status(200).json(jobs);
   } catch (err) {
-    console.error('Error fetching jobs:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -41,11 +34,19 @@ router.post('/', async (req, res) => {
     }
 
 
-    // Find company and verify it's approved
-    const company = await Company.findOne({ email: finalEmail, approved: true });
-    
+    // Find company and verify lifecycle state
+    const company = await Company.findOne({ email: finalEmail });
     if (!company) {
-      return res.status(401).json({ error: 'Unauthorized or company not approved' });
+      return res.status(401).json({ error: 'Unauthorized or company not found' });
+    }
+    if (company.status === 'hold') {
+      return res.status(403).json({ error: 'Your account is on hold. You cannot post jobs at this time. Please check Messages for details.' });
+    }
+    if (company.status === 'denied') {
+      return res.status(403).json({ error: 'Your account has been denied. Please contact support.' });
+    }
+    if (!company.approved) {
+      return res.status(403).json({ error: 'Company not approved' });
     }
 
     // Handle job description from textarea (no HTML processing needed)
@@ -55,10 +56,9 @@ router.post('/', async (req, res) => {
       companyEmail: finalEmail // Ensure consistent field usage
     });
     
-    await newJob.save();
-    res.status(201).json(newJob);
+  await newJob.save();
+  res.status(201).json(newJob);
   } catch (err) {
-    console.error('Error creating job:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -73,11 +73,8 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Job not found' });
     }
     
-    // Log the populated job for debugging
-    
     res.status(200).json(job);
   } catch (err) {
-    console.error('Error fetching job details:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -100,7 +97,6 @@ router.put('/:id', async (req, res) => {
     const job = await Job.findByIdAndUpdate(req.params.id, updatedData, { new: true });
     res.json(job);
   } catch (error) {
-    console.error('Error updating job:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -114,7 +110,6 @@ router.delete('/:id', async (req, res) => {
     }
     res.json({ message: 'Job deleted successfully' });
   } catch (error) {
-    console.error('Error deleting job:', error);
     res.status(400).json({ error: error.message });
   }
 });

@@ -19,9 +19,11 @@ const companySchema = new mongoose.Schema({
   industry: { type: String },
   type: { type: String, required: true }, // Company type (e.g. Private Limited)
   size: { type: String }, // Company size (e.g. 10-50 employees)
-  contactName: { type: String, required: true },
+  // Made optional to support minimal registration; complete later in profile
+  contactName: { type: String },
   email: { type: String, required: true, unique: true },
-  phone: { type: String, required: true },
+  // Made optional to support minimal registration; complete later in profile
+  phone: { type: String },
   address: { type: String },
   Username: { type: String, required: true },
   yearEstablished: { type: String, required: true },
@@ -36,6 +38,18 @@ const companySchema = new mongoose.Schema({
   },
   password: { type: String, required: true },
   approved: { type: Boolean, default: false },
+  // Account lifecycle status
+  status: { type: String, enum: ['pending', 'approved', 'hold', 'denied'], default: 'pending' },
+  // Messages from admin to the company (e.g., hold/deny reasons)
+  adminMessages: [
+    {
+      type: { type: String, enum: ['info', 'hold', 'deny', 'system'], default: 'info' },
+      message: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now }
+    }
+  ],
+  // Track whether the company has filled the full profile details
+  profileCompleted: { type: Boolean, default: false },
   
   // Add fields for password reset functionality
   resetToken: String,

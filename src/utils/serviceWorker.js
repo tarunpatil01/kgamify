@@ -37,21 +37,24 @@ async function unregisterServiceWorkers() {
 
 async function registerServiceWorker() {
   try {
-    // Add cache-busting parameter to force service worker update
-    const swUrl = `/sw.js?v=${Date.now()}`;
+    // Register service worker without cache-busting; periodic update() will check for new versions
+    const swUrl = `/sw.js`;
     const registration = await navigator.serviceWorker.register(swUrl, {
       scope: '/',
     });
 
-    // Update found
+  // Update found
     registration.addEventListener('updatefound', () => {
       const newWorker = registration.installing;
       
       if (newWorker) {
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // New content is available, show update notification
-            showUpdateNotification();
+            // New content is available and a previous SW controls the page
+            // Only show when the new worker is actually waiting to activate
+            if (registration.waiting) {
+        showUpdateNotification(registration);
+            }
           }
         });
       }
@@ -67,7 +70,16 @@ async function registerServiceWorker() {
   }
 }
 
-function showUpdateNotification() {
+function showUpdateNotification(registration) {
+  // Avoid duplicate banners
+  if (document.getElementById('sw-update-notification')) return;
+
+  // Respect cooldown after dismiss (10 minutes)
+  try {
+    const until = parseInt(localStorage.getItem('swUpdateCooldownUntil') || '0', 10);
+    if (Date.now() < until) return;
+  } catch { /* ignore */ }
+
   // Create a simple notification for updates
   const notification = document.createElement('div');
   notification.id = 'sw-update-notification';
@@ -80,7 +92,8 @@ function showUpdateNotification() {
     padding: 16px 20px;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 10000;
+  z-index: 2147483647; /* Ensure above any app overlays/tooltips */
+  pointer-events: auto; /* Guarantee clicks go to this element */
     font-family: system-ui, -apple-system, sans-serif;
     font-size: 14px;
     max-width: 300px;
@@ -126,20 +139,52 @@ function showUpdateNotification() {
     notification.style.transform = 'translateX(0)';
   }, 100);
 
-  // Handle refresh button
+  // Handle refresh button: activate waiting SW then reload when controlled
   document.getElementById('sw-update-btn').addEventListener('click', () => {
-    window.location.reload();
+    let hasReloaded = false;
+    const doReload = () => {
+      if (!hasReloaded) {
+        hasReloaded = true;
+        window.location.reload();
+      }
+    };
+
+    try {
+      const waiting = registration?.waiting;
+      if (waiting) {
+        // When the new SW takes control, reload to use the fresh assets
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          doReload();
+        }, { once: true });
+        waiting.postMessage({ type: 'SKIP_WAITING' });
+        // Fallback: if controllerchange doesn’t fire in time, reload after 1.5s
+        setTimeout(doReload, 1500);
+      } else {
+        doReload();
+      }
+    } catch {
+      doReload();
+    }
   });
 
   // Handle dismiss button
   document.getElementById('sw-dismiss-btn').addEventListener('click', () => {
     hideUpdateNotification();
   });
+  
+  // Dismiss on Escape for accessibility
+  const onKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      hideUpdateNotification();
+      window.removeEventListener('keydown', onKeyDown, true);
+    }
+  };
+  window.addEventListener('keydown', onKeyDown, true);
 
-  // Auto-hide after 10 seconds
+  // Auto-hide after 15 seconds
   setTimeout(() => {
     hideUpdateNotification();
-  }, 10000);
+  }, 15000);
 }
 
 function hideUpdateNotification() {
@@ -150,6 +195,10 @@ function hideUpdateNotification() {
       notification.remove();
     }, 300);
   }
+  // Set cooldown to prevent immediate re-showing in case an update check runs again soon
+  try {
+    localStorage.setItem('swUpdateCooldownUntil', String(Date.now() + 10 * 60 * 1000));
+  } catch { /* ignore */ }
 }
 
 // Listen for service worker messages
@@ -159,11 +208,12 @@ navigator.serviceWorker?.addEventListener('message', (event) => {
   }
 });
 
-// Check for app updates periodically
+// Check for app updates periodically (every 15 minutes)
 setInterval(() => {
-  navigator.serviceWorker?.ready.then((registration) => {
-    registration.update();
-  });
-}, 60000); // Check every minute
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.ready
+    .then((registration) => registration?.update?.())
+    .catch(() => {});
+}, 15 * 60 * 1000);
 
 export { registerServiceWorker, unregisterServiceWorkers };

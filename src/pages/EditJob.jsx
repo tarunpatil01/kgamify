@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   TextField,
@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import { getJobById, editJob } from "../api";
 import QuillEditor from '../components/QuillEditor'; // Added import for QuillEditor
+import PropTypes from 'prop-types';
 
 const jobTitles = ["Software Engineer", "Product Manager", "Designer", "Data Scientist", "Project Manager", "QA Engineer"];
 
@@ -42,7 +43,6 @@ export default function EditJob({ isDarkMode }) {
   });
   const [loading, setLoading] = useState(true);
   const [openSnackbar, setOpenSnackbar] = useState(false);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -50,9 +50,8 @@ export default function EditJob({ isDarkMode }) {
         setLoading(true);
         const jobData = await getJobById(jobId);
         setFormData(jobData);
-      } catch (error) {
-        console.error("Error fetching job:", error);
-        setError("Failed to load job data");
+  } catch {
+        // Silent
       } finally {
         setLoading(false);
       }
@@ -73,9 +72,8 @@ export default function EditJob({ isDarkMode }) {
       setTimeout(() => {
         navigate("/job-posted");
       }, 2000);
-    } catch (error) {
-      console.error("Error updating job:", error);
-      setError("Failed to update job");
+  } catch {
+      // Silent
     }
   };
 
@@ -103,7 +101,7 @@ export default function EditJob({ isDarkMode }) {
               Job Details
             </h2>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Job Title</label>
+              <label className="block mb-2 sm:mb-3">Job Title</label>
               <Autocomplete
                 freeSolo
                 options={jobTitles}
@@ -131,7 +129,7 @@ export default function EditJob({ isDarkMode }) {
               />
             </div>
             <div className="mb-4 sm:mb-6">
-              <label className="block">Job Description</label>
+              <label className="block mb-2 sm:mb-3">Job Description</label>
               <QuillEditor
                 value={formData.jobDescription}
                 onChange={(content) => setFormData({...formData, jobDescription: content})}
@@ -421,3 +419,6 @@ export default function EditJob({ isDarkMode }) {
     </div>
   );
 }
+EditJob.propTypes = {
+  isDarkMode: PropTypes.bool
+};

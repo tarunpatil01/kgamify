@@ -5,8 +5,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { 
   FaCheckCircle, 
   FaTimesCircle,
-  FaSearch,
-  FaFilter,
   FaBriefcase,
   FaUsers,
   FaEye,
@@ -15,13 +13,11 @@ import {
   FaCalendarAlt
 } from "react-icons/fa";
 import DashboardImage from "../assets/dashboard.png";
-import { fetchJobs, setSortBy } from "../store/slices/jobsSlice";
+import { fetchJobs } from "../store/slices/jobsSlice";
 import { 
   selectJobs, 
   selectJobsLoading, 
-  selectJobsError,
-  selectSortBy,
-  selectSortOrder
+  selectJobsError
 } from "../store/slices/jobsSlice";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { getJobs } from "../api"; // Add direct API import for testing
@@ -32,20 +28,11 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   const jobs = useSelector(selectJobs);
   const loading = useSelector(selectJobsLoading);
   const error = useSelector(selectJobsError);
-  const sortBy = useSelector(selectSortBy);
-  const sortOrder = useSelector(selectSortOrder);
-  
-  // Local state for filtering and search
+  // Local state
   const [filteredJobs, setFilteredJobs] = useState([]);
   const [companyJobs, setCompanyJobs] = useState([]);
   const [directAPIJobs, setDirectAPIJobs] = useState([]); // Test direct API like JobPosted
   const [initialWaitOver, setInitialWaitOver] = useState(false);
-
-  // Search and Filter State
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [showFilters, setShowFilters] = useState(false);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -97,7 +84,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
     }
   }, [jobs, email]);
 
-  // Filter and search logic
+  // Prepare list for display (no search/filters here)
   useEffect(() => {
     // Choose data source: use direct API if Redux is empty
     let baseJobs;
@@ -119,70 +106,18 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
       baseJobs = (jobs && jobs.length > 0) ? jobs : (directAPIJobs || []);
     }
     
-    let filtered = [...baseJobs]; // Always start with base jobs
-
-    // Apply search filter
-    if (searchQuery) {
-      filtered = filtered.filter(job =>
-        job.jobTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.employmentType?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Apply status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(job => job.status === statusFilter);
-    }
-
-    // Apply type filter
-    if (typeFilter !== "all") {
-      filtered = filtered.filter(job => job.employmentType === typeFilter);
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue, bValue;
-      
-      switch (sortBy) {
-        case "datePosted":
-          aValue = new Date(a.createdAt || a.datePosted);
-          bValue = new Date(b.createdAt || b.datePosted);
-          break;
-        case "title":
-          aValue = a.jobTitle?.toLowerCase();
-          bValue = b.jobTitle?.toLowerCase();
-          break;
-        case "location":
-          aValue = a.location?.toLowerCase();
-          bValue = b.location?.toLowerCase();
-          break;
-        case "applications":
-          aValue = a.applicants?.length || 0;
-          bValue = b.applicants?.length || 0;
-          break;
-        default:
-          aValue = a.jobTitle?.toLowerCase();
-          bValue = b.jobTitle?.toLowerCase();
-      }
-
-      if (sortOrder === "asc") {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
+    // Default sort: newest first by createdAt/datePosted
+    const sorted = [...baseJobs].sort((a, b) => {
+      const aDate = new Date(a.createdAt || a.datePosted || a.postedAt || 0);
+      const bDate = new Date(b.createdAt || b.datePosted || b.postedAt || 0);
+      return bDate - aDate;
     });
 
-    setFilteredJobs(filtered);
-  }, [jobs, companyJobs, directAPIJobs, email, searchQuery, statusFilter, typeFilter, sortBy, sortOrder]);
+    setFilteredJobs(sorted);
+  }, [jobs, companyJobs, directAPIJobs, email]);
 
   // Safety checks for arrays
   const safeFilteredJobs = filteredJobs || [];
-  const safeJobs = jobs || [];
-  const safeCompanyJobs = companyJobs || [];
-
-  // Get unique employment types for filter dropdown
-  const employmentTypes = [...new Set((email ? safeCompanyJobs : safeJobs).map(job => job.employmentType).filter(Boolean))];
 
   // Use filteredJobs as the primary source (now includes direct API fallback)
   const displayJobs = safeFilteredJobs;
@@ -212,6 +147,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
 
   // Only block the screen if we're still loading AND have no data yet AND grace period not over
   const hasAnyData = (jobs && jobs.length > 0) || (directAPIJobs && directAPIJobs.length > 0);
+  const showSkeletons = loading && !hasAnyData && initialWaitOver;
   if (loading && !hasAnyData && !initialWaitOver) {
     return (
       <LoadingSpinner 
@@ -293,112 +229,18 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
 
       {/* Recent Job Posts */}
       <div className="card-kgamify mt-2 sm:mt-4 md:mt-6 p-3 sm:p-4 md:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4">
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4">
           <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-0 ">Recent Job Posts</h2>
-          
-          {/* Search and Filter Controls */}
-          <div className="pt-5 flex sm:flex-row gap-4">
-            {/* Search Bar */}
-            <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Search jobs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-kgamify pl-10 pr-4 py-2 text-sm w-full sm:w-64"
-              />
-            </div>
-
-            {/* Filter Toggle */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`btn-secondary px-3 py-2 text-sm flex items-center ${showFilters ? 'bg-kgamify-100 dark:bg-kgamify-900' : ''}`}
-            >
-              <FaFilter className="mr-2 h-4 w-4" />
-              Filters
-            </button>
-          </div>
         </div>
 
-        {/* Advanced Filters */}
-        {showFilters && (
-          <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Status Filter */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Status</label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="input-kgamify w-full text-sm"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-
-              {/* Type Filter */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Employment Type</label>
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="input-kgamify w-full text-sm"
-                >
-                  <option value="all">All Types</option>
-                  {employmentTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Sort Options */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Sort By</label>
-                <select
-                  value={`${sortBy}-${sortOrder}`}
-                  onChange={(e) => {
-                    const [field, order] = e.target.value.split('-');
-                    dispatch(setSortBy({ sortBy: field, sortOrder: order }));
-                  }}
-                  className="input-kgamify w-full text-sm"
-                >
-                  <option value="datePosted-desc">Newest First</option>
-                  <option value="datePosted-asc">Oldest First</option>
-                  <option value="title-asc">Title A-Z</option>
-                  <option value="title-desc">Title Z-A</option>
-                  <option value="applications-desc">Most Applications</option>
-                  <option value="applications-asc">Least Applications</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Clear Filters */}
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("all");
-                  setTypeFilter("all");
-                  dispatch(setSortBy({ sortBy: "datePosted", sortOrder: "desc" }));
-                }}
-                className="text-sm text-kgamify-500 hover:text-kgamify-600"
-              >
-                Clear all filters
-              </button>
-            </div>
+        {/* Results Summary */}
+        {!showSkeletons && (
+          <div className="mb-4 text-sm font-semibold">
+            Showing {currentJobs.length} of {displayJobs.length} jobs
           </div>
         )}
 
-        {/* Results Summary */}
-  <div className="mb-4 text-sm font-semibold">
-          Showing {currentJobs.length} of {displayJobs.length} jobs
-          {searchQuery && ` matching "${searchQuery}"`}
-        </div>
-        {error && (
+        {error && !showSkeletons && (
           <div className="mt-3 sm:mt-4 p-3 sm:p-4 rounded bg-red-100 dark:bg-red-900/20">
             <p className="text-red-500 dark:text-red-400 text-sm sm:text-base">{error}</p>
             {error.includes("No listed jobs") && (
@@ -419,7 +261,47 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
           </div>
         )}
 
-        {!error && displayJobs.length === 0 && !searchQuery && statusFilter === "all" && typeFilter === "all" && (
+        {/* Skeleton cards while loading */}
+        {showSkeletons && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={`skeleton-${i}`}
+                className="card-kgamify p-4 md:p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 animate-pulse"
+              >
+                {/* Header skeleton */}
+                <div className="flex justify-between items-start mb-3 md:mb-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="h-4 md:h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-blue-100 dark:bg-blue-900 rounded w-20"></div>
+                  </div>
+                  <div className="ml-4 h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                </div>
+
+                {/* Details skeleton */}
+                <div className="space-y-2 md:space-y-3 mb-3 md:mb-4">
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                </div>
+
+                {/* Footer skeleton */}
+                <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+                </div>
+
+                {/* Actions skeleton */}
+                <div className="mt-3 md:mt-4 grid grid-cols-2 gap-2">
+                  <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+  {!showSkeletons && !error && displayJobs.length === 0 && (
           <div className="text-center py-8">
             <FaBriefcase className="mx-auto h-12 w-12 text-gray-500 dark:text-gray-400 mb-4" />
             <p className=" mb-4 font-medium">No jobs posted yet.</p>
@@ -429,24 +311,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
           </div>
         )}
 
-        {!error && displayJobs.length === 0 && (searchQuery || statusFilter !== "all" || typeFilter !== "all") && (
-          <div className="text-center py-8">
-            <FaSearch className="mx-auto h-12 w-12 text-gray-500 dark:text-gray-400 mb-4" />
-            <p className="text-gray-700 dark:text-gray-300 mb-2 font-medium">No jobs match your search criteria</p>
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setStatusFilter("all");
-                setTypeFilter("all");
-              }}
-              className="text-kgamify-500 hover:text-kgamify-600 text-sm"
-            >
-              Clear filters to see all jobs
-            </button>
-          </div>
-        )}
-
-        {!error && displayJobs.length > 0 && (
+        {!showSkeletons && !error && displayJobs.length > 0 && (
           <>
             {/* Unified responsive grid so laptop and mobile both show jobs */}
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
@@ -538,7 +403,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
+            {!showSkeletons && totalPages > 1 && (
               <div className="mt-6 flex items-center justify-between">
                 <div className="text-sm text-gray-700 dark:text-gray-300 font-medium">
                   Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, displayJobs.length)} of {displayJobs.length} results

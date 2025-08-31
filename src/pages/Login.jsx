@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaSpinner, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import backgroundImage from '../assets/background.jpg';
 import Klogo from '../assets/KLOGO.png';
 import { loginCompany } from '../api';
+import PropTypes from 'prop-types';
 
 const Login = ({ setLoggedInEmail }) => {
   const navigate = useNavigate();
@@ -81,12 +82,7 @@ const Login = ({ setLoggedInEmail }) => {
   };
 
   // Password strength indicator (for future registration forms)
-  const getPasswordStrength = (password) => {
-    if (password.length < 6) return { strength: 'weak', color: 'bg-red-500', width: '25%' };
-    if (password.length < 8) return { strength: 'fair', color: 'bg-yellow-500', width: '50%' };
-    if (password.length < 12) return { strength: 'good', color: 'bg-blue-500', width: '75%' };
-    return { strength: 'strong', color: 'bg-green-500', width: '100%' };
-  };
+  // password strength reserved for future use
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -309,17 +305,7 @@ const Login = ({ setLoggedInEmail }) => {
               </p>
             </div>
 
-            {/* Admin Portal Link */}
-            <div className="text-center pt-2">
-              <Link to="/admin-login" className="block">
-                <button 
-                  type="button"
-                  className="btn-secondary"
-                >
-                  Admin Portal
-                </button>
-              </Link>
-            </div>
+            {/* Admin Portal Link removed as per requirements */}
           </form>
         </div>
       </div>
@@ -328,3 +314,7 @@ const Login = ({ setLoggedInEmail }) => {
 };
 
 export default Login;
+
+Login.propTypes = {
+  setLoggedInEmail: PropTypes.func,
+};

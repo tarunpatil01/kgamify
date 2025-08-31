@@ -22,6 +22,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
   
   // State management
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  // messages are now on a dedicated page
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [logoUrl, setLogoUrl] = useState(null);
@@ -96,6 +97,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
   };
 
   const unreadNotifications = notifications.filter(n => n.unread).length;
+  const hasAdminMessages = Array.isArray(userCompany?.adminMessages) && userCompany.adminMessages.length > 0;
 
   return (
     <nav className={`sticky top-0 z-30 w-full border-b backdrop-blur-sm transition-colors ${
@@ -265,6 +267,17 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
                     <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{email}</p>
                   </div>
                   <div className="py-1">
+                    {hasAdminMessages && (
+                      <button
+                        onClick={() => { navigate('/messages'); setShowUserDropdown(false); }}
+                        className={`${isDarkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'} flex items-center w-full px-4 py-2 text-sm`}
+                      >
+                        <span className="mr-3 inline-flex items-center justify-center h-5 w-5 rounded-full bg-[#ff8200] text-white text-[10px]">
+                          {userCompany?.adminMessages?.length || 0}
+                        </span>
+                        Account Messages
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         navigate('/edit-registration');

@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { adminLogin } from "../api";
-import backgroundImage from "../assets/background.jpg"; // Import background image
+import backgroundImage from "../assets/dashboard.png"; // Updated background image
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -40,8 +40,7 @@ const AdminLogin = () => {
       } else {
         setErrorMessage("Invalid admin credentials");
       }
-    } catch (error) {
-      console.error("Login error:", error);
+  } catch (error) {
       setErrorMessage(
         error.message || "Invalid admin credentials. Please try again."
       );
