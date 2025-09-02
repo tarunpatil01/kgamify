@@ -105,7 +105,7 @@ export const jobPostingSchema = yup.object().shape({
   experience: yup
     .string()
     .required('Experience level is required')
-    .oneOf(['entry', 'mid', 'senior', 'executive'], 'Please select a valid experience level'),
+    .oneOf(['Entry Level', 'Junior', 'Mid Level', 'Senior', 'Executive', 'entry', 'mid', 'senior', 'executive', 'junior'], 'Please select a valid experience level'),
   
   salary: yup
     .number()

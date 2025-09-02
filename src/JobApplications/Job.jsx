@@ -133,10 +133,33 @@ const Job = ({ isDarkMode }) => {
               <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
                 <h3 className="font-semibold mb-3">Role Details</h3>
                 <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2"><FaBriefcase className="text-blue-500" /> {job.employmentType || 'N/A'}</li>
-                  <li className="flex items-center gap-2"><FaClock className="text-purple-500" /> {job.experienceLevel || 'N/A'}</li>
-                  <li className="flex items-center gap-2"><FaGlobe className="text-teal-500" /> {job.remoteOrOnsite || 'N/A'}</li>
+                  <li className="flex items-center gap-2"><FaBriefcase className="text-[#ff8200]" /> {job.employmentType || 'N/A'}</li>
+                  <li className="flex items-center gap-2"><FaClock className="text-[#ff8200]" /> {job.experienceLevel || 'N/A'}</li>
+                  <li className="flex items-center gap-2"><FaGlobe className="text-[#ff8200]" /> {job.remoteOrOnsite || 'N/A'}</li>
                 </ul>
+                {(Array.isArray(job.jdFiles) && job.jdFiles.length > 0) ? (
+                  <div className="mt-3 space-y-1">
+                    <div className="text-sm font-medium">JD Attachments</div>
+                    <ul className="list-disc list-inside text-sm">
+                      {job.jdFiles.map((u, i) => (
+                        <li key={i}><a href={u} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Attachment {i + 1}</a></li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  job.jdPdfUrl ? (
+                    <div className="mt-3">
+                      <a
+                        href={job.jdPdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block text-sm text-blue-600 underline"
+                      >
+                        View JD
+                      </a>
+                    </div>
+                  ) : null
+                )}
                 {job.skills && (
                   <div className="mt-4">
                     <div className="text-sm font-medium mb-2">Skills</div>
@@ -151,10 +174,10 @@ const Job = ({ isDarkMode }) => {
               <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
                 <h3 className="font-semibold mb-3">Compensation & Location</h3>
                 <ul className="space-y-2 text-sm">
-                  <li className="flex items-center gap-2"><FaMoneyBillWave className="text-green-500" /> {job.salary || 'Not specified'}</li>
-                  <li className="flex items-center gap-2"><FaMapMarkerAlt className="text-red-500" /> {job.location || 'Not specified'}</li>
-                  {job.equity && <li className="flex items-center gap-2"><FaBookmark className="text-yellow-500" /> Equity: {job.equity}</li>}
-                  {job.sponsorship && <li className="flex items-center gap-2"><FaBookmark className="text-yellow-500" /> Sponsorship: {job.sponsorship}</li>}
+                  <li className="flex items-center gap-2"><FaMoneyBillWave className="text-[#ff8200]" /> {job.salary || 'Not specified'}</li>
+                  <li className="flex items-center gap-2"><FaMapMarkerAlt className="text-[#ff8200]" /> {job.location || 'Not specified'}</li>
+                  {job.equity && <li className="flex items-center gap-2"><FaBookmark className="text-[#ff8200]" /> Equity: {job.equity}</li>}
+                  {job.sponsorship && <li className="flex items-center gap-2"><FaBookmark className="text-[#ff8200]" /> Sponsorship: {job.sponsorship}</li>}
                 </ul>
               </div>
             </div>
@@ -203,11 +226,11 @@ const Job = ({ isDarkMode }) => {
                 </div>
               </div>
               <div className="mt-5 border-t pt-5 space-y-3 text-sm">
-                <div className="flex items-center gap-2"><FaBriefcase className="text-blue-500" /> {job.employmentType || 'N/A'}</div>
-                <div className="flex items-center gap-2"><FaClock className="text-purple-500" /> {job.experienceLevel || 'N/A'}</div>
-                <div className="flex items-center gap-2"><FaGlobe className="text-teal-500" /> {job.remoteOrOnsite || 'N/A'}</div>
-                <div className="flex items-center gap-2"><FaMapMarkerAlt className="text-red-500" /> {job.location || 'Not specified'}</div>
-                <div className="flex items-center gap-2"><FaMoneyBillWave className="text-green-500" /> {job.salary || 'Not specified'}</div>
+                <div className="flex items-center gap-2"><FaBriefcase className="text-[#ff8200]" /> {job.employmentType || 'N/A'}</div>
+                <div className="flex items-center gap-2"><FaClock className="text-[#ff8200]" /> {job.experienceLevel || 'N/A'}</div>
+                <div className="flex items-center gap-2"><FaGlobe className="text-[#ff8200]" /> {job.remoteOrOnsite || 'N/A'}</div>
+                <div className="flex items-center gap-2"><FaMapMarkerAlt className="text-[#ff8200]" /> {job.location || 'Not specified'}</div>
+                <div className="flex items-center gap-2"><FaMoneyBillWave className="text-[#ff8200]" /> {job.salary || 'Not specified'}</div>
                 {job.status && (
                   <div className="flex items-center gap-2">
                     {job.status === 'active' ? (
@@ -223,6 +246,17 @@ const Job = ({ isDarkMode }) => {
                 )}
                 {job.category && (
                   <div className="flex items-center gap-2"><FaBookmark className="text-yellow-500" /> Category: {job.category}</div>
+                )}
+                {(Array.isArray(job.jdFiles) && job.jdFiles.length > 0) ? (
+                  <div className="mt-2">
+                    <a href={job.jdFiles[0]} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">View JD</a>
+                  </div>
+                ) : (
+                  job.jdPdfUrl ? (
+                    <div className="mt-2">
+                      <a href={job.jdPdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm">View JD</a>
+                    </div>
+                  ) : null
                 )}
               </div>
             </div>

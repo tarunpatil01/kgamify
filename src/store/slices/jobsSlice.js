@@ -514,7 +514,19 @@ export const selectFilteredJobs = (state) => {
     // Filter matching
     if (filters.category && job.category !== filters.category) return false;
     if (filters.location && !job.location?.toLowerCase().includes(filters.location.toLowerCase())) return false;
-    if (filters.experience && job.experienceLevel !== filters.experience) return false;
+    if (filters.experience) {
+      const toToken = (val) => {
+        const v = String(val || '').trim().toLowerCase();
+        if (!v) return '';
+        if (['entry level', 'entry'].includes(v)) return 'entry';
+        if (['junior'].includes(v)) return 'junior';
+        if (['mid', 'mid level', 'mid-level', 'midlevel'].includes(v)) return 'mid';
+        if (['senior'].includes(v)) return 'senior';
+        if (['executive'].includes(v)) return 'executive';
+        return v;
+      };
+      if (toToken(job.experienceLevel) !== toToken(filters.experience)) return false;
+    }
     if (filters.jobType && job.jobType !== filters.jobType) return false;
     if (filters.remote && !job.isRemote) return false;
     

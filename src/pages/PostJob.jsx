@@ -66,6 +66,8 @@ export default function PostJob({ isDarkMode, email }) {
 
   // Cities selection not used currently
   const [openSnackbar, setOpenSnackbar] = useState(false); // State for Snackbar
+  const [jdFiles, setJdFiles] = useState([]);
+  const [jdError, setJdError] = useState("");
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -81,13 +83,38 @@ export default function PostJob({ isDarkMode, email }) {
     }
 
     try {
-      // Ensure companyEmail is explicitly set to the current user's email
-      const jobDataToSubmit = {
-        ...formData,
-        companyEmail: email, // Ensure this is always set
-      };
+      // Validate file if present
+      if (jdFiles && jdFiles.length) {
+        for (const f of jdFiles) {
+          const name = f.name.toLowerCase();
+          const valid = name.endsWith('.pdf') || name.endsWith('.doc') || name.endsWith('.docx');
+          if (!valid) {
+            setJdError('Only PDF, DOC, DOCX are allowed');
+            return;
+          }
+          if (f.size > 10 * 1024 * 1024) {
+            setJdError('Each file must be less than 10MB');
+            return;
+          }
+        }
+      }
 
-  await createJob(jobDataToSubmit);
+      // Build payload: use FormData when file is present
+  let payload;
+  const headers = {};
+      if (jdFiles && jdFiles.length) {
+        payload = new FormData();
+        Object.entries({ ...formData, companyEmail: email }).forEach(([k, v]) => {
+          if (typeof v !== 'undefined' && v !== null) payload.append(k, v);
+        });
+        jdFiles.forEach(file => payload.append('jdFiles', file));
+        headers['Content-Type'] = 'multipart/form-data';
+      } else {
+        payload = { ...formData, companyEmail: email };
+        headers['Content-Type'] = 'application/json';
+      }
+
+      await createJob(payload, { headers });
       setOpenSnackbar(true);
 
       // Add navigation after successful post
@@ -223,9 +250,11 @@ export default function PostJob({ isDarkMode, email }) {
                   }}
                 >
                   <MenuItem value="">Select Experience Level</MenuItem>
-                  <MenuItem value="junior">Junior</MenuItem>
-                  <MenuItem value="mid">Mid-Level</MenuItem>
-                  <MenuItem value="senior">Senior</MenuItem>
+                  <MenuItem value="Entry Level">Entry Level</MenuItem>
+                  <MenuItem value="Junior">Junior</MenuItem>
+                  <MenuItem value="Mid Level">Mid Level</MenuItem>
+                  <MenuItem value="Senior">Senior</MenuItem>
+                  <MenuItem value="Executive">Executive</MenuItem>
                 </Select>
               </div>
             </div>
@@ -433,6 +462,31 @@ export default function PostJob({ isDarkMode, email }) {
                 minRows={3}
                 style={{ width: "100%" }}
               />
+            </div>
+            {/* JD attachments upload */}
+            <div className="mb-4 sm:mb-6">
+              <label className="block mb-2">Attach JD files (PDF/DOC/DOCX, optional)</label>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  setJdError("");
+                  setJdFiles(files);
+                }}
+                className="block w-full text-sm text-gray-900 bg-white border border-gray-300 rounded-lg cursor-pointer focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#ff8200] file:text-white hover:file:bg-[#e57400]"
+              />
+              {jdFiles && jdFiles.length > 0 && (
+                <ul className="mt-2 text-sm list-disc list-inside">
+                  {jdFiles.map((f, i) => (
+                    <li key={i}>{f.name}</li>
+                  ))}
+                </ul>
+              )}
+              {jdError && (
+                <p className="mt-1 text-sm text-red-500">{jdError}</p>
+              )}
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block">Status</label>

@@ -43,13 +43,30 @@ export default function EditJob({ isDarkMode }) {
   });
   const [loading, setLoading] = useState(true);
   const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [jdFilesNew, setJdFilesNew] = useState([]);
+  const [jdError, setJdError] = useState("");
 
   useEffect(() => {
     const fetchJob = async () => {
       try {
         setLoading(true);
         const jobData = await getJobById(jobId);
-        setFormData(jobData);
+        // Map legacy experience values to new human-readable labels for backward compatibility
+        const legacyToLabel = {
+          'entry': 'Entry Level',
+          'entry ': 'Entry Level',
+          'junior': 'Junior',
+          'mid': 'Mid Level',
+          'mid-level': 'Mid Level',
+          'mid level': 'Mid Level',
+          'senior': 'Senior',
+          'executive': 'Executive'
+        };
+        const normalized = {
+          ...jobData,
+          experienceLevel: legacyToLabel[String(jobData.experienceLevel || '').trim().toLowerCase()] || jobData.experienceLevel || ''
+        };
+        setFormData(normalized);
   } catch {
         // Silent
       } finally {
@@ -67,11 +84,48 @@ export default function EditJob({ isDarkMode }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      await editJob(jobId, formData);
-      setOpenSnackbar(true);
-      setTimeout(() => {
-        navigate("/job-posted");
-      }, 2000);
+      // Validate file if present
+      if (jdFilesNew && jdFilesNew.length) {
+        for (const f of jdFilesNew) {
+          const name = f.name.toLowerCase();
+          const valid = name.endsWith('.pdf') || name.endsWith('.doc') || name.endsWith('.docx');
+          if (!valid) {
+            setJdError('Only PDF, DOC, DOCX are allowed');
+            return;
+          }
+          if (f.size > 10 * 1024 * 1024) {
+            setJdError('Each file must be less than 10MB');
+            return;
+          }
+        }
+      }
+
+      // Prepare payload
+      let payload;
+      const existingList = Array.isArray(formData.jdFiles) ? formData.jdFiles : (formData.jdPdfUrl ? [formData.jdPdfUrl] : []);
+      if (jdFilesNew && jdFilesNew.length) {
+        payload = new FormData();
+        // Include current explicit jdFiles if present; otherwise include existing list to preserve
+        const toSend = Array.isArray(formData.jdFiles) ? formData.jdFiles : existingList;
+        Object.entries({ ...formData, jdFiles: toSend }).forEach(([k, v]) => {
+          if (k === 'jdFiles' && Array.isArray(v)) {
+            v.forEach(val => payload.append('jdFiles', val));
+          } else if (typeof v !== 'undefined' && v !== null) {
+            payload.append(k, v);
+          }
+        });
+        jdFilesNew.forEach(f => payload.append('jdFiles', f));
+      } else {
+        payload = { ...formData };
+        // Ensure jdFiles stays an array in JSON case if present
+        if (Array.isArray(payload.jdFiles)) {
+          payload.jdFiles = payload.jdFiles.filter(Boolean);
+        }
+      }
+
+      await editJob(jobId, payload);
+  // Navigate with success message state so JobPosted can show it
+  navigate("/job-posted", { state: { notification: "Job updated successfully" } });
   } catch {
       // Silent
     }
@@ -180,11 +234,11 @@ export default function EditJob({ isDarkMode }) {
                   } : {}}
                 >
                   <MenuItem value="">Select Experience Level</MenuItem>
-                  <MenuItem value="entry">Entry Level</MenuItem>
-                  <MenuItem value="junior">Junior</MenuItem>
-                  <MenuItem value="mid">Mid-Level</MenuItem>
-                  <MenuItem value="senior">Senior</MenuItem>
-                  <MenuItem value="executive">Executive</MenuItem>
+                  <MenuItem value="Entry Level">Entry Level</MenuItem>
+                  <MenuItem value="Junior">Junior</MenuItem>
+                  <MenuItem value="Mid Level">Mid Level</MenuItem>
+                  <MenuItem value="Senior">Senior</MenuItem>
+                  <MenuItem value="Executive">Executive</MenuItem>
                 </Select>
               </div>
             </div>
@@ -383,6 +437,51 @@ export default function EditJob({ isDarkMode }) {
                 InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
                 size="small"
               />
+            </div>
+            {/* JD attachments management */}
+            <div className="mb-4 sm:mb-6">
+              <label className="block mb-2">Attach JD files (PDF/DOC/DOCX, optional)</label>
+              {/* Existing attachments list */}
+              <div className="mb-2">
+                {Array.isArray(formData.jdFiles) && formData.jdFiles.length > 0 ? (
+                  <ul className="list-disc list-inside text-sm">
+                    {formData.jdFiles.map((url, i) => (
+                      <li key={i} className="flex items-center gap-3">
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Attachment {i + 1}</a>
+                        <button type="button" className="text-red-600 underline" onClick={() => setFormData({ ...formData, jdFiles: formData.jdFiles.filter((u, idx) => idx !== i) })}>Remove</button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  formData.jdPdfUrl ? (
+                    <div className="text-sm flex items-center gap-3">
+                      <a href={formData.jdPdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View current JD</a>
+                      <button type="button" className="text-red-600 underline" onClick={() => setFormData({ ...formData, jdPdfUrl: '' })}>Remove</button>
+                    </div>
+                  ) : null
+                )}
+              </div>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  setJdError("");
+                  setJdFilesNew(files);
+                }}
+                className="block w-full text-sm text-gray-900 bg-white border border-gray-300 rounded-lg cursor-pointer focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#ff8200] file:text-white hover:file:bg-[#e57400]"
+              />
+              {jdFilesNew && jdFilesNew.length > 0 && (
+                <ul className="mt-2 text-sm list-disc list-inside">
+                  {jdFilesNew.map((f, i) => (
+                    <li key={i}>{f.name}</li>
+                  ))}
+                </ul>
+              )}
+              {jdError && (
+                <p className="mt-1 text-sm text-red-500">{jdError}</p>
+              )}
             </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0">

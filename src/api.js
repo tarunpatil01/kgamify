@@ -85,8 +85,10 @@ export const getApplication = async (id, email) => {
   return response.data;
 };
 
-export const createJob = async (jobData) => {
-  const response = await axios.post(`${API_URL}/job`, jobData, { headers: { 'Content-Type': 'application/json' } });
+export const createJob = async (jobData, options = {}) => {
+  const isFormData = typeof FormData !== 'undefined' && jobData instanceof FormData;
+  const headers = options.headers || (isFormData ? { 'Content-Type': 'multipart/form-data' } : { 'Content-Type': 'application/json' });
+  const response = await axios.post(`${API_URL}/job`, jobData, { headers });
   return response.data;
 };
 
@@ -124,7 +126,9 @@ export const getCompanyInfo = async (email) => {
 };
 
 export const editJob = async (jobId, jobData) => {
-  const response = await axios.put(`${API_URL}/job/${jobId}`, jobData);
+  const isFormData = typeof FormData !== 'undefined' && jobData instanceof FormData;
+  const headers = isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined;
+  const response = await axios.put(`${API_URL}/job/${jobId}`, jobData, { headers });
   return response.data;
 };
 

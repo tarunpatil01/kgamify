@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   FaEdit,
   FaTrashAlt,
@@ -29,32 +29,66 @@ const JobPosted = ({ isDarkMode, email }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // active | inactive | all
   const [sortBy, setSortBy] = useState('dateDesc'); // dateDesc | dateAsc | titleAsc | titleDesc
+  // Missing filter states referenced in JSX
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [jobTypeFilter, setJobTypeFilter] = useState('all');
+  const [experienceFilter, setExperienceFilter] = useState('all');
+  const [salaryFilter, setSalaryFilter] = useState('all');
+  const [applicantsFilter, setApplicantsFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   const [notification, setNotification] = useState('');
   const [categories, setCategories] = useState(['All']);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-  if (!email) { return; }
-  const response = await getJobs({ email });
-  setJobs(response);
-  setFilteredJobs(response);
+        if (!email) {
+          return;
+        }
+        const response = await getJobs({ email });
+        // Normalize: API may return array or { jobs: [] }
+        const list = Array.isArray(response?.jobs)
+          ? response.jobs
+          : Array.isArray(response)
+            ? response
+            : [];
+        setJobs(list);
+        setFilteredJobs(list);
         // Extract unique categories from jobs
         const uniqueCategories = [
           'All',
-          ...new Set(response.map(job => job.category).filter(Boolean)),
+          ...new Set(list.map(job => job.category).filter(Boolean)),
         ];
         setCategories(uniqueCategories);
-  } catch {
-  // Silent
+      } catch {
+        // Silent
       }
     };
     fetchJobs();
   }, [email]);
 
+  // Pick up notification from navigation state (e.g., after EditJob)
+  useEffect(() => {
+    const msg = location.state?.notification;
+    if (msg) {
+      setNotification(msg);
+      // Clear the notification after a short time and remove state to prevent repeat
+      const t = setTimeout(() => setNotification(''), 3000);
+      // Replace state to clear it
+      navigate(location.pathname, { replace: true, state: {} });
+      return () => clearTimeout(t);
+    }
+  }, [location, navigate]);
+
   const applyFilters = (base = jobs, opt = {}) => {
-    const { category = selectedType, q = searchQuery, status = statusFilter, sort = sortBy } = opt;
+    const {
+      category = selectedType,
+      q = searchQuery,
+      status = statusFilter,
+      sort = sortBy,
+    } = opt;
     let list = Array.isArray(base) ? [...base] : [];
     // Category chip
     if (category && category !== 'All') {
@@ -63,11 +97,95 @@ const JobPosted = ({ isDarkMode, email }) => {
     // Search by title/location/type
     if (q) {
       const s = q.toLowerCase();
-      list = list.filter(j => (
-        j.jobTitle?.toLowerCase().includes(s) ||
-        j.location?.toLowerCase().includes(s) ||
-        j.employmentType?.toLowerCase().includes(s)
-      ));
+      list = list.filter(
+        j =>
+          j.jobTitle?.toLowerCase().includes(s) ||
+          j.location?.toLowerCase().includes(s) ||
+          j.employmentType?.toLowerCase().includes(s) ||
+          j.companyName?.toLowerCase?.().includes(s) ||
+          (Array.isArray(j.skills) ? j.skills.join(' ').toLowerCase().includes(s) : (j.skills || '').toLowerCase().includes(s))
+      );
+    }
+    // Location filter
+    if (locationFilter !== 'all') {
+      const loc = locationFilter.toLowerCase();
+      list = list.filter(j => (j.location || '').toLowerCase().includes(loc));
+    }
+    // Job type filter
+    if (jobTypeFilter !== 'all') {
+      list = list.filter(j => (j.employmentType || '').toLowerCase() === jobTypeFilter);
+    }
+    // Experience filter (support both legacy codes and human-readable labels)
+    if (experienceFilter !== 'all') {
+      const mapLabelToLegacy = {
+        'entry level': 'entry',
+        'junior': 'junior',
+        'mid level': 'mid',
+        'senior': 'senior',
+        'executive': 'executive'
+      };
+      const exp = experienceFilter.toLowerCase();
+      list = list.filter(j => {
+        const val = String(j.experienceLevel || '').trim().toLowerCase();
+        // match either label directly or legacy token contained
+        return val === exp || val.includes(mapLabelToLegacy[exp] || exp);
+      });
+    }
+    // Salary range filter (best-effort parse of numeric value from string)
+    const parseSalary = (val) => {
+      if (!val) return 0;
+      if (typeof val === 'number') return val;
+      const m = String(val).match(/\d[\d,]*/g);
+      if (!m) return 0;
+      const nums = m.map(x => Number(x.replace(/,/g, '')));
+      if (nums.length === 0) return 0;
+      // If range present, take average; else single number
+      return nums.length >= 2 ? Math.round((nums[0] + nums[1]) / 2) : nums[0];
+    };
+    if (salaryFilter !== 'all') {
+      list = list.filter(j => {
+        const s = parseSalary(j.salary);
+        switch (salaryFilter) {
+          case '0-30000': return s >= 0 && s <= 30000;
+          case '30000-50000': return s > 30000 && s <= 50000;
+          case '50000-100000': return s > 50000 && s <= 100000;
+          case '100000+': return s > 100000;
+          default: return true;
+        }
+      });
+    }
+    // Applicants filter
+    if (applicantsFilter !== 'all') {
+      list = list.filter(j => {
+        const n = j.applicants?.length || 0;
+        switch (applicantsFilter) {
+          case '0-10': return n >= 0 && n <= 10;
+          case '10-50': return n > 10 && n <= 50;
+          case '50+': return n > 50;
+          default: return true;
+        }
+      });
+    }
+    // Posted date filter
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      list = list.filter(j => {
+        const d = new Date(j.postedAt || j.datePosted || j.createdAt || 0);
+        if (dateFilter === '24h') {
+          const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          return d >= dayAgo;
+        }
+        if (dateFilter === 'week') {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return d >= weekAgo;
+        }
+        if (dateFilter === 'month') {
+          const monthAgo = new Date();
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+          return d >= monthAgo;
+        }
+        return true;
+      });
     }
     // Status filter (treat undefined as active by default only when filtering)
     if (status !== 'all') {
@@ -78,10 +196,20 @@ const JobPosted = ({ isDarkMode, email }) => {
       if (sort === 'titleAsc' || sort === 'titleDesc') {
         const A = (a.jobTitle || '').toLowerCase();
         const B = (b.jobTitle || '').toLowerCase();
-        return sort === 'titleAsc' ? (A > B ? 1 : -1) : (A < B ? 1 : -1);
+        return sort === 'titleAsc' ? (A > B ? 1 : -1) : A < B ? 1 : -1;
       }
-      const aDate = new Date(a.createdAt || a.datePosted || a.postedAt || 0).getTime();
-      const bDate = new Date(b.createdAt || b.datePosted || b.postedAt || 0).getTime();
+      if (sort === 'salaryHigh' || sort === 'salaryLow') {
+        const sa = parseSalary(a.salary);
+        const sb = parseSalary(b.salary);
+        return sort === 'salaryHigh' ? sb - sa : sa - sb;
+      }
+      const aDate = new Date(
+        a.createdAt || a.datePosted || a.postedAt || 0
+      ).getTime();
+      const bDate = new Date(
+        b.createdAt || b.datePosted || b.postedAt || 0
+      ).getTime();
+      // 'relevant' -> fallback to newest first
       return sort === 'dateAsc' ? aDate - bDate : bDate - aDate;
     });
     setFilteredJobs(list);
@@ -95,7 +223,7 @@ const JobPosted = ({ isDarkMode, email }) => {
   useEffect(() => {
     applyFilters(jobs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, statusFilter, sortBy]);
+  }, [searchQuery, statusFilter, sortBy, locationFilter, jobTypeFilter, experienceFilter, salaryFilter, applicantsFilter, dateFilter]);
 
   const handleDelete = async jobId => {
     if (window.confirm('Are you sure you want to delete this job?')) {
@@ -153,17 +281,21 @@ const JobPosted = ({ isDarkMode, email }) => {
               <b>{totalApplicants}</b>
             </span>
             {jobsByCategory.map(cat => (
-              <span
+              <button
                 key={cat.name}
-                className={`flex items-center gap-1 rounded px-3 py-1 ${
-                  isDarkMode
-                    ? 'bg-blue-900 text-blue-200'
-                    : 'bg-blue-100 text-blue-800'
+                onClick={() => filterJobs(cat.name)}
+                className={`flex items-center gap-1 rounded px-3 py-1 transition-colors ${
+                  selectedType === cat.name
+                    ? 'bg-[#ff8200] text-white'
+                    : isDarkMode
+                      ? 'bg-blue-900 text-blue-200 hover:bg-blue-800'
+                      : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
                 }`}
+                title={`Filter by ${cat.name}`}
               >
-                <FaFilter className="text-[#ff8200]" /> {cat.name}:{' '}
+                <FaFilter className={selectedType === cat.name ? 'text-white' : 'text-[#ff8200]'} /> {cat.name}:{' '}
                 <b>{cat.count}</b>
-              </span>
+              </button>
             ))}
           </div>
         </div>
@@ -181,75 +313,241 @@ const JobPosted = ({ isDarkMode, email }) => {
         </div>
       )}
 
-      {/* Search and filters */}
-      <div className="mb-4 grid md:grid-cols-3 gap-3">
+  {/* Search and filters */}
+  <div className="mb-4 grid md:grid-cols-5 gap-3">
+        {/* Search */}
         <div className="relative">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-300" />
+          <label htmlFor="job-search" className="block text-xs mb-1">Search</label>
+          <FaSearch className="pointer-events-none absolute left-3 top-2/3 -translate-y-1/2 text-gray-500 dark:text-gray-300" />
           <input
+            id="job-search"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search by title, location, type"
-            className={`pl-9 pr-3 py-2 w-full rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+            placeholder="Search by title, company, skills"
+            className={`pl-9 pr-3 py-2 w-full rounded border ${
+              isDarkMode
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
           />
         </div>
+
+        {/* Location */}
+        <div>
+          <label className="block text-xs mb-1">Location</label>
+          <select
+            value={locationFilter}
+            onChange={e => setLocationFilter(e.target.value)}
+            className={`w-full py-2 px-3 rounded border ${
+              isDarkMode
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          >
+            <option value="all">All</option>
+            <option value="pune">Pune</option>
+            <option value="remote">Remote</option>
+            <option value="hybrid">Hybrid</option>
+          </select>
+        </div>
+
+        {/* Job Type */}
+        <div>
+          <label className="block text-xs mb-1">Job Type</label>
+          <select
+            value={jobTypeFilter}
+            onChange={e => setJobTypeFilter(e.target.value)}
+            className={`w-full py-2 px-3 rounded border ${
+              isDarkMode
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          >
+            <option value="all">All</option>
+            <option value="full-time">Full-time</option>
+            <option value="part-time">Part-time</option>
+            <option value="freelance">Freelance</option>
+            <option value="internship">Internship</option>
+          </select>
+        </div>
+
+        {/* Status */}
         <div>
           <label className="block text-xs mb-1">Status</label>
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className={`w-full py-2 px-3 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+            className={`w-full py-2 px-3 rounded border ${
+              isDarkMode
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
           >
             <option value="all">All</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
         </div>
+
+        {/* Experience */}
         <div>
-          <label className="block text-xs mb-1">Sort</label>
-          <div className="flex gap-2">
-            <button
-              className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded border ${sortBy === 'titleAsc' ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              onClick={() => setSortBy(sortBy === 'titleAsc' ? 'titleDesc' : 'titleAsc')}
-              title="Sort A-Z/Z-A"
-            >
-              <FaSortAlphaDown /> {sortBy === 'titleAsc' ? 'A-Z' : 'Z-A'}
-            </button>
-            <button
-              className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded border ${sortBy === 'dateDesc' ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              onClick={() => setSortBy(sortBy === 'dateDesc' ? 'dateAsc' : 'dateDesc')}
-              title="Sort by Date"
-            >
-              <FaSortAmountDown /> {sortBy === 'dateDesc' ? 'Newest' : 'Oldest'}
-            </button>
-          </div>
+          <label className="block text-xs mb-1">Experience</label>
+          <select
+            value={experienceFilter}
+            onChange={e => setExperienceFilter(e.target.value)}
+            className={`w-full py-2 px-3 rounded border ${
+              isDarkMode
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          >
+            <option value="all">All</option>
+            <option value="Entry Level">Entry Level</option>
+            <option value="Junior">Junior</option>
+            <option value="Mid Level">Mid Level</option>
+            <option value="Senior">Senior</option>
+            <option value="Executive">Executive</option>
+          </select>
         </div>
       </div>
 
-      {/* Category filter */}
-      <div className="mb-6 overflow-x-auto">
-        <div className="flex space-x-2 pb-2">
-          {categories.map((category, index) => (
-            <button
-              key={index}
-              className={`flex items-center gap-2 px-4 py-2 rounded whitespace-nowrap border transition-colors font-medium shadow-sm ${
-                selectedType === category
-                  ? category === 'All'
-                    ? 'bg-[#ff8200] text-white border-[#ff8200]'
-                    : 'bg-[#e74094] text-white border-[#e74094]'
-                  : isDarkMode
-                    ? 'bg-gray-700 text-white border-gray-600 hover:bg-gray-600'
-                    : 'bg-gray-200 text-gray-800 border-gray-300 hover:bg-gray-300'
-              }`}
-              onClick={() => filterJobs(category)}
-              aria-pressed={selectedType === category}
-              title={
-                category === 'All' ? 'Show all jobs' : `Filter by ${category}`
-              }
-            >
-              <FaFilter className="text-xs" />
-              {category || 'Uncategorized'}
-            </button>
-          ))}
+      {/* More filters */}
+      <div className="mb-4 grid md:grid-cols-3 gap-3">
+        {/* Salary */}
+        <div>
+          <label className="block text-xs mb-1">Salary Range</label>
+          <select
+            value={salaryFilter}
+            onChange={e => setSalaryFilter(e.target.value)}
+            className={`w-full py-2 px-3 rounded border ${
+              isDarkMode
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          >
+            <option value="all">All</option>
+            <option value="0-30000">0 - 30,000</option>
+            <option value="30000-50000">30,000 - 50,000</option>
+            <option value="50000-100000">50,000 - 1,00,000</option>
+            <option value="100000+">1,00,000+</option>
+          </select>
+        </div>
+
+        {/* Applicants */}
+        <div>
+          <label className="block text-xs mb-1">Applicants</label>
+          <select
+            value={applicantsFilter}
+            onChange={e => setApplicantsFilter(e.target.value)}
+            className={`w-full py-2 px-3 rounded border ${
+              isDarkMode
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          >
+            <option value="all">All</option>
+            <option value="0-10">0-10</option>
+            <option value="10-50">10-50</option>
+            <option value="50+">50+</option>
+          </select>
+        </div>
+
+        {/* Posted date */}
+        <div>
+          <label className="block text-xs mb-1">Posted Date</label>
+          <select
+            value={dateFilter}
+            onChange={e => setDateFilter(e.target.value)}
+            className={`w-full py-2 px-3 rounded border ${
+              isDarkMode
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          >
+            <option value="all">Any time</option>
+            <option value="24h">Past 24 hours</option>
+            <option value="week">Past week</option>
+            <option value="month">Past month</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Sorting */}
+      <div className="mb-6">
+        <label className="block text-xs mb-1">Sort By</label>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            className={`px-4 py-2 rounded border ${
+              sortBy === 'titleAsc'
+                ? 'bg-[#ff8200] text-white border-[#ff8200]'
+                : isDarkMode
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            onClick={() => setSortBy('titleAsc')}
+          >
+            <FaSortAlphaDown className="inline mr-1" /> A–Z
+          </button>
+          <button
+            className={`px-4 py-2 rounded border ${
+              sortBy === 'titleDesc'
+                ? 'bg-[#ff8200] text-white border-[#ff8200]'
+                : isDarkMode
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            onClick={() => setSortBy('titleDesc')}
+          >
+            <FaSortAmountDown className="inline mr-1" /> Z–A
+          </button>
+          <button
+            className={`px-4 py-2 rounded border ${
+              sortBy === 'relevant'
+                ? 'bg-[#ff8200] text-white border-[#ff8200]'
+                : isDarkMode
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            onClick={() => setSortBy('relevant')}
+          >
+            Most Relevant
+          </button>
+          <button
+            className={`px-4 py-2 rounded border ${
+              sortBy === 'dateDesc'
+                ? 'bg-[#ff8200] text-white border-[#ff8200]'
+                : isDarkMode
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            onClick={() => setSortBy('dateDesc')}
+          >
+            Newest
+          </button>
+          <button
+            className={`px-4 py-2 rounded border ${
+              sortBy === 'salaryHigh'
+                ? 'bg-[#ff8200] text-white border-[#ff8200]'
+                : isDarkMode
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            onClick={() => setSortBy('salaryHigh')}
+          >
+            Salary ↑
+          </button>
+          <button
+            className={`px-4 py-2 rounded border ${
+              sortBy === 'salaryLow'
+                ? 'bg-[#ff8200] text-white border-[#ff8200]'
+                : isDarkMode
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            onClick={() => setSortBy('salaryLow')}
+          >
+            Salary ↓
+          </button>
         </div>
       </div>
 
@@ -299,6 +597,17 @@ const JobPosted = ({ isDarkMode, email }) => {
                   <FaFilter className="text-[#ff8200]" /> {job.category}
                 </span>
               )}
+              {(Array.isArray(job.jdFiles) && job.jdFiles.length > 0) || job.jdPdfUrl ? (
+                <a
+                  href={(Array.isArray(job.jdFiles) && job.jdFiles[0]) || job.jdPdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded mb-2 ml-2 ${isDarkMode ? 'bg-blue-900 text-blue-100' : 'bg-blue-50 text-blue-700'} hover:underline`}
+                  title="View JD attachment"
+                >
+                  📎 JD attached
+                </a>
+              ) : null}
               <div className="flex flex-wrap gap-2 mb-2 text-sm">
                 <span
                   className={`flex items-center gap-1 rounded px-2 py-0.5 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
@@ -313,8 +622,7 @@ const JobPosted = ({ isDarkMode, email }) => {
                 <span
                   className={`flex items-center gap-1 rounded px-2 py-0.5 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
                 >
-                  <FaUserTie className="text-[#ff8200]" />{' '}
-                  {job.experienceLevel}
+                  <FaUserTie className="text-[#ff8200]" /> {job.experienceLevel}
                 </span>
                 <span
                   className={`flex items-center gap-1 rounded px-2 py-0.5 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
@@ -329,13 +637,17 @@ const JobPosted = ({ isDarkMode, email }) => {
                 </span>
               </div>
               <div className="flex items-center gap-2 mb-2 text-sm">
-                <FaUsers className="text-[#e74094]" /> Applicants:{' '}
+                <FaUsers className="text-[#ff8200]" /> Applicants:{' '}
                 <b>{job.applicants?.length || 0}</b>
               </div>
               <div
                 className={`mb-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}
               >
-                Posted at: {new Date(job.postedAt).toLocaleString()}
+                {(() => {
+                  const d = job.postedAt || job.datePosted || job.createdAt;
+                  const txt = d ? new Date(d).toLocaleString() : 'N/A';
+                  return <>Posted at: {txt}</>;
+                })()}
               </div>
               <div className="flex justify-between items-center mt-auto pt-4 gap-2">
                 <Link to={`/job/${job._id}`} title="View Details">
@@ -376,5 +688,5 @@ export default JobPosted;
 
 JobPosted.propTypes = {
   isDarkMode: PropTypes.bool,
-  email: PropTypes.string
+  email: PropTypes.string,
 };

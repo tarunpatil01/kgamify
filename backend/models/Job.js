@@ -19,6 +19,10 @@ const jobSchema = new mongoose.Schema({
   eligibility: { type: String },
   companyDescription: { type: String },
   additionalInformation: { type: String },
+  // URL to the uploaded Job Description PDF (Cloudinary URL)
+  jdPdfUrl: { type: String },
+  // Array of JD file URLs (PDF/DOC/DOCX); supersedes jdPdfUrl for multiple files
+  jdFiles: [{ type: String }],
   status: { type: String, default: 'active' },
   numberOfPositions: { type: String },
   category: { type: String },
