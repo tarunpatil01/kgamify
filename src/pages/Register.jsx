@@ -1,43 +1,296 @@
-import { useMemo, useRef, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaSpinner } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaSpinner, FaCloudUploadAlt, FaCheckCircle } from "react-icons/fa";
 import { registerCompany } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import QuillEditor from '../components/QuillEditor';
 import backgroundImage from '../assets/background.jpg';
-import PropTypes from 'prop-types';
+import Klogo from '../assets/KLOGO.png';
 
-// Three-step registration with progress stepper and summary
+// Expanded list of Indian states and cities
+const statesAndCities = {
+  "Andhra Pradesh": [
+    "Visakhapatnam",
+    "Vijayawada",
+    "Guntur",
+    "Nellore",
+    "Kurnool",
+    "Rajahmundry",
+    "Tirupati",
+  ],
+  Assam: [
+    "Guwahati",
+    "Silchar",
+    "Dibrugarh",
+    "Jorhat",
+    "Nagaon",
+    "Tinsukia",
+    "Tezpur",
+  ],
+  Bihar: [
+    "Patna",
+    "Gaya",
+    "Bhagalpur",
+    "Muzaffarpur",
+    "Darbhanga",
+    "Purnia",
+    "Arrah",
+    "Begusarai",
+  ],
+  Chhattisgarh: [
+    "Raipur",
+    "Bhilai",
+    "Bilaspur",
+    "Korba",
+    "Durg",
+    "Rajnandgaon",
+    "Jagdalpur",
+  ],
+  Delhi: [
+    "New Delhi",
+    "Old Delhi",
+    "South Delhi",
+    "North Delhi",
+    "East Delhi",
+    "West Delhi",
+  ],
+  Goa: ["Panaji", "Margao", "Vasco da Gama", "Mapusa", "Ponda", "Bicholim"],
+  Gujarat: [
+    "Ahmedabad",
+    "Surat",
+    "Vadodara",
+    "Rajkot",
+    "Bhavnagar",
+    "Jamnagar",
+    "Gandhinagar",
+    "Anand",
+  ],
+  Haryana: [
+    "Gurgaon",
+    "Faridabad",
+    "Chandigarh",
+    "Ambala",
+    "Panipat",
+    "Karnal",
+    "Hisar",
+    "Rohtak",
+  ],
+  "Himachal Pradesh": [
+    "Shimla",
+    "Manali",
+    "Dharamshala",
+    "Solan",
+    "Mandi",
+    "Kullu",
+    "Chamba",
+  ],
+  Jharkhand: [
+    "Ranchi",
+    "Jamshedpur",
+    "Dhanbad",
+    "Bokaro",
+    "Hazaribagh",
+    "Deoghar",
+    "Dumka",
+  ],
+  Karnataka: [
+    "Bengaluru",
+    "Mysuru",
+    "Mangaluru",
+    "Hubli-Dharwad",
+    "Belagavi",
+    "Shivamogga",
+    "Tumakuru",
+    "Davanagere",
+  ],
+  Kerala: [
+    "Thiruvananthapuram",
+    "Kochi",
+    "Kozhikode",
+    "Thrissur",
+    "Kollam",
+    "Palakkad",
+    "Kannur",
+    "Alappuzha",
+  ],
+  "Madhya Pradesh": [
+    "Bhopal",
+    "Indore",
+    "Jabalpur",
+    "Gwalior",
+    "Ujjain",
+    "Sagar",
+    "Dewas",
+    "Satna",
+  ],
+  Maharashtra: [
+    "Mumbai",
+    "Pune",
+    "Nagpur",
+    "Thane",
+    "Nashik",
+    "Aurangabad",
+    "Solapur",
+    "Navi Mumbai",
+    "Kolhapur",
+  ],
+  Odisha: [
+    "Bhubaneswar",
+    "Cuttack",
+    "Rourkela",
+    "Brahmapur",
+    "Sambalpur",
+    "Puri",
+    "Balasore",
+  ],
+  Punjab: [
+    "Ludhiana",
+    "Amritsar",
+    "Jalandhar",
+    "Patiala",
+    "Bathinda",
+    "Mohali",
+    "Pathankot",
+    "Hoshiarpur",
+  ],
+  Rajasthan: [
+    "Jaipur",
+    "Jodhpur",
+    "Udaipur",
+    "Kota",
+    "Ajmer",
+    "Bikaner",
+    "Alwar",
+    "Bharatpur",
+  ],
+  "Tamil Nadu": [
+    "Chennai",
+    "Coimbatore",
+    "Madurai",
+    "Tiruchirappalli",
+    "Salem",
+    "Tirunelveli",
+    "Erode",
+    "Vellore",
+  ],
+  Telangana: [
+    "Hyderabad",
+    "Warangal",
+    "Nizamabad",
+    "Karimnagar",
+    "Khammam",
+    "Ramagundam",
+    "Mahbubnagar",
+  ],
+  "Uttar Pradesh": [
+    "Lucknow",
+    "Kanpur",
+    "Varanasi",
+    "Agra",
+    "Prayagraj",
+    "Meerut",
+    "Bareilly",
+    "Aligarh",
+    "Moradabad",
+  ],
+  Uttarakhand: [
+    "Dehradun",
+    "Haridwar",
+    "Roorkee",
+    "Haldwani",
+    "Rudrapur",
+    "Kashipur",
+    "Rishikesh",
+  ],
+  "West Bengal": [
+    "Kolkata",
+    "Asansol",
+    "Siliguri",
+    "Durgapur",
+    "Bardhaman",
+    "Malda",
+    "Baharampur",
+    "Howrah",
+  ],
+};
+
+// Map company type to required document label and help text
+const companyTypeDocs = {
+  "Private Limited": {
+    label: "MOA/AOA (PDF)",
+    help: "Upload Memorandum and Articles of Association.",
+  },
+  "Public Limited": {
+    label: "Prospectus (PDF)",
+    help: "Upload the company prospectus.",
+  },
+  "Startup": {
+    label: "Startup Registration Certificate (PDF)",
+    help: "Upload your Startup India registration certificate.",
+  },
+  "Partnership": {
+    label: "Partnership Deed (PDF)",
+    help: "Upload the registered partnership deed.",
+  },
+  "Proprietorship": {
+    label: "GST Registration (PDF)",
+    help: "Upload GST registration or equivalent proof.",
+  },
+  "NGO": {
+    label: "NGO Registration Certificate (PDF)",
+    help: "Upload your NGO registration certificate.",
+  },
+  "LLP": {
+    label: "LLP Agreement (PDF)",
+    help: "Upload the LLP agreement document.",
+  },
+};
 
 function Register({ isDarkMode }) {
   const navigate = useNavigate();
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [formData, setFormData] = useState({
-    // Step 1: Basic Info
     companyName: "",
+    logo: null,
+    website: "www.",
+    industry: "",
+    type: "",
+    size: "",
+    contactName: "",
     email: "",
     phone: "",
-    // Step 2: Company Details
-    companyType: "",
-    website: "https://",
-    description: "",
-    // Auth fields
-    username: "",
-    password: "",
-    confirmPassword: "",
-    // Step 3: Address + Documents
     addressLine1: "",
     addressLine2: "",
     city: "",
     state: "",
     pinCode: "",
-    documents: null
+    companyType: "", // Company type (e.g. Private Limited)
+    companySize: "", // Company size (e.g. 10-50 employees)
+    documents: null,
+    username: "",
+    password: "",
+    confirmPassword: "",
+    description: "",
+    instagram: "",
+    twitter: "",
+    linkedin: "",
+    youtube: "",
   });
   const [currentStep, setCurrentStep] = useState(1);
+  const [cities, setCities] = useState([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+  const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleStateChange = (event) => {
+    const selectedState = event.target.value;
+    setFormData((prev) => ({ ...prev, state: selectedState, city: "" }));
+    setCities(statesAndCities[selectedState] || []);
+  };
 
   const handleChange = (event) => {
     const { name, value, files } = event.target;
@@ -47,69 +300,16 @@ function Register({ isDarkMode }) {
     }));
   };
 
-  const validateStep = (step) => {
-    if (step === 1) {
-      if (!formData.companyName?.trim() || !formData.email?.trim() || !formData.phone?.trim()) {
-        setSnackbarMessage("Please fill Company Name, Email, and Phone");
-        setSnackbarSeverity("error");
-        setOpenSnackbar(true);
-        return false;
-      }
-      // Basic email shape check
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        setSnackbarMessage("Please enter a valid email address");
-        setSnackbarSeverity("error");
-        setOpenSnackbar(true);
-        return false;
-      }
-      return true;
-    }
-    if (step === 2) {
-      if (!formData.companyType || !formData.username?.trim() || !formData.password || !formData.confirmPassword || !formData.website?.trim()) {
-        setSnackbarMessage("Please complete company type, username, password, and website");
-        setSnackbarSeverity("error");
-        setOpenSnackbar(true);
-        return false;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        setSnackbarMessage("Passwords don't match");
-        setSnackbarSeverity("error");
-        setOpenSnackbar(true);
-        return false;
-      }
-      return true;
-    }
-    if (step === 3) {
-      if (!formData.addressLine1?.trim() || !formData.city?.trim() || !formData.state?.trim() || !formData.pinCode?.trim()) {
-        setSnackbarMessage("Please complete the address fields");
-        setSnackbarSeverity("error");
-        setOpenSnackbar(true);
-        return false;
-      }
-      if (!formData.documents) {
-        setSnackbarMessage("Please upload the required PDF document");
-        setSnackbarSeverity("error");
-        setOpenSnackbar(true);
-        return false;
-      }
-      return true;
-    }
-    return true;
-  };
-
-  const handleNext = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep((prev) => prev + 1);
-    }
-  };
+  const handleNext = () => setCurrentStep((prev) => prev + 1);
   const handlePrevious = () => setCurrentStep((prev) => prev - 1);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setErrorMessage("");
     setIsSubmitting(true);
 
     try {
-      // Validate passwords match on final submission
+      // Validate passwords match
       if (formData.password !== formData.confirmPassword) {
         setSnackbarMessage("Passwords don't match");
         setSnackbarSeverity("error");
@@ -118,38 +318,53 @@ function Register({ isDarkMode }) {
         return;
       }
 
-      // Prepare minimal form data for submission (with address + documents)
-  const submissionData = new FormData();
-  submissionData.append("companyName", formData.companyName);
-  submissionData.append("website", formData.website);
-  submissionData.append("type", formData.companyType);
-  submissionData.append("email", formData.email);
-  // Backend expects 'Username' with capital U
-  submissionData.append("Username", formData.username);
-  submissionData.append("yearEstablished", new Date().getFullYear().toString());
-  submissionData.append("password", formData.password);
-  const description = formData.description || "<p>No description provided</p>";
-  submissionData.append("description", description);
-  if (formData.phone) submissionData.append("phone", formData.phone);
+      // Prepare form data for submission
+      const submissionData = new FormData();
 
-      // Combine address fields into a single string
-      const addressParts = [
-        formData.addressLine1?.trim(),
-        formData.addressLine2?.trim(),
-        formData.city?.trim(),
-        formData.state?.trim(),
-        formData.pinCode?.trim(),
-      ].filter(Boolean);
-      const address = addressParts.join(", ");
+      // Add regular fields to form data
+      submissionData.append("companyName", formData.companyName);
+      submissionData.append("website", formData.website);
+      submissionData.append("industry", formData.industry);
+      submissionData.append("type", formData.companyType);
+      submissionData.append("size", formData.companySize);
+      submissionData.append("contactName", formData.contactName);
+      submissionData.append("email", formData.email);
+      submissionData.append("phone", formData.phone);
+
+      // Combine address fields
+      const address = `${formData.addressLine1}, ${
+        formData.addressLine2 ? `${formData.addressLine2  }, ` : ""
+      }${formData.city}, ${formData.state}, ${formData.pinCode}`;
       submissionData.append("address", address);
 
-      // Documents upload (PDF)
+  // Add registration details (backend expects case-sensitive field `Username`)
+  submissionData.append("Username", formData.username);
+      submissionData.append("yearEstablished", new Date().getFullYear().toString());
+      submissionData.append("password", formData.password);
+
+      // Handle files
+      if (formData.logo) {
+        submissionData.append("logo", formData.logo);
+      }
+
       if (formData.documents) {
         submissionData.append("documents", formData.documents);
       }
 
-  // Submit the form
-  await registerCompany(submissionData);
+      // Ensure HTML content from ReactQuill is properly handled
+      const description = formData.description || "<p>No description provided</p>";
+      submissionData.append("description", description);
+
+      const socialMediaLinks = {
+        instagram: formData.instagram || "",
+        twitter: formData.twitter || "",
+        linkedin: formData.linkedin || "",
+        youtube: formData.youtube || "",
+      };
+      submissionData.append("socialMediaLinks", JSON.stringify(socialMediaLinks));
+
+      // Submit the form
+      const response = await registerCompany(submissionData);
 
       // Handle successful registration
       setSnackbarMessage("Registration successful! Waiting for admin approval.");
@@ -161,6 +376,7 @@ function Register({ isDarkMode }) {
         navigate("/");
       }, 3000);
     } catch (error) {
+      console.error("Registration error:", error);
       setSnackbarMessage(error.message || "Registration failed. Please try again.");
       setSnackbarSeverity("error");
       setOpenSnackbar(true);
@@ -169,37 +385,77 @@ function Register({ isDarkMode }) {
     }
   };
 
+  const togglePasswordVisibility = () => {
+    setPasswordVisible(!passwordVisible);
+  };
+
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
   };
 
-  const steps = useMemo(() => ([
-    { key: 1, label: 'Company Registration' },
-    { key: 2, label: 'Company Details' },
-    { key: 3, label: 'Document Upload' }
-  ]), []);
-
-  const docRequirements = useMemo(() => ({
-    'Private Limited': ['Certificate of Incorporation', 'Company PAN and GST Certificate', 'MOA/AOA'],
-    'Public Limited': ['Certificate of Incorporation', 'Company PAN and GST Certificate', 'Prospectus'],
-    'LLP': ['LLP Agreement', 'LLP Incorporation Certificate', 'PAN and GST Certificate'],
-    'Partnership': ['Registered Partnership Deed', 'PAN of Firm and GST Certificate'],
-    'Proprietorship': ['GST Registration Certificate', 'MSME/Udyam (if available)', 'Proprietor PAN'],
-    'Startup': ['Startup India Recognition (if available)', 'Certificate of Incorporation', 'PAN & GST'],
-    'NGO': ['Registration/Trust/Societies Certificate', '12A/80G (if applicable)', 'PAN of Organization']
-  }), []);
-
-  const fileDropRef = useRef(null);
-
-  const onDrop = (e) => {
+  // Drag-and-drop handlers for document upload
+  const handleDrag = (e) => {
     e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type === 'application/pdf') {
-      setFormData(fd => ({ ...fd, documents: file }));
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
+  };
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFormData((prev) => ({ ...prev, documents: e.dataTransfer.files[0] }));
     }
   };
 
-  const onDragOver = (e) => { e.preventDefault(); };
+  // Stepper steps
+  const steps = [
+    "Company Registration",
+    "Company Details",
+    "Document Upload",
+    "Summary"
+  ];
+
+  // Helper for progress text
+  const progressText = `Step ${currentStep} of ${steps.length}`;
+
+  // Document field info based on company type
+  const docInfo = companyTypeDocs[formData.companyType] || {
+    label: "Documents (PDF)",
+    help: "Upload relevant company documents.",
+  };
+
+  // Summary step content
+  const summaryContent = (
+    <div className="space-y-4">
+      <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+        Review &amp; Confirm
+      </h2>
+      <div className="bg-gray-50 rounded p-4 border">
+        <div className="mb-2"><b>Company Name:</b> {formData.companyName}</div>
+        <div className="mb-2"><b>Website:</b> {formData.website}</div>
+        <div className="mb-2"><b>Industry:</b> {formData.industry}</div>
+        <div className="mb-2"><b>Description:</b> <span dangerouslySetInnerHTML={{__html: formData.description}} /></div>
+        <div className="mb-2"><b>Contact Name:</b> {formData.contactName}</div>
+        <div className="mb-2"><b>Email:</b> {formData.email}</div>
+        <div className="mb-2"><b>Phone:</b> {formData.phone}</div>
+        <div className="mb-2"><b>Address:</b> {formData.addressLine1}, {formData.addressLine2}, {formData.city}, {formData.state}, {formData.pinCode}</div>
+        <div className="mb-2"><b>Company Type:</b> {formData.companyType}</div>
+        <div className="mb-2"><b>Company Size:</b> {formData.companySize}</div>
+        <div className="mb-2"><b>Username:</b> {formData.username}</div>
+        <div className="mb-2"><b>Social Links:</b> 
+          <span className="ml-2">Instagram: {formData.instagram || "-"}</span>
+          <span className="ml-2">Twitter: {formData.twitter || "-"}</span>
+          <span className="ml-2">LinkedIn: {formData.linkedin || "-"}</span>
+          <span className="ml-2">YouTube: {formData.youtube || "-"}</span>
+        </div>
+        <div className="mb-2"><b>Logo:</b> {formData.logo ? formData.logo.name : "-"}</div>
+        <div className="mb-2"><b>Document:</b> {formData.documents ? formData.documents.name : "-"}</div>
+      </div>
+      <div className="text-sm text-gray-500 mt-2">Please review your details before submitting.</div>
+    </div>
+  );
 
   return (
     <div
@@ -218,100 +474,229 @@ function Register({ isDarkMode }) {
       
       {/* Content Container */}
       <div className="relative z-10 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-4 sm:p-8 w-full max-w-3xl">
-        {/* Stepper */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center justify-between">
-            {steps.map((s, idx) => (
-              <div key={s.key} className="flex-1 flex items-center">
-                <div className={`flex flex-col items-center text-center ${currentStep === s.key ? 'font-bold' : ''}`}>
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm ${currentStep >= s.key ? 'bg-[#ff8200] text-white' : 'bg-gray-300 text-gray-700'}`}>{s.key}</div>
-                  <div className="mt-2 text-xs sm:text-sm max-w-[5.5rem] sm:max-w-none">
-                    {s.label}
-                  </div>
-                </div>
-                {idx < steps.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-2 ${currentStep > s.key ? 'bg-[#ff8200]' : 'bg-gray-300'}`} />
-                )}
-              </div>
-            ))}
-          </div>
-          <div className="text-right text-xs opacity-70 mt-2">Step {Math.min(currentStep, steps.length)} of {steps.length}</div>
+        {/* Logo at the top */}
+        <div className="flex justify-center mb-4">
+          <img src={Klogo} alt="Kgamify Logo" className="h-16 sm:h-20 w-auto object-contain" />
         </div>
+        {/* Stepper */}
+        <div className="flex items-center justify-between mb-8">
+          {steps.map((step, idx) => (
+            <div key={step} className="flex-1 flex flex-col items-center relative">
+              <div className={`w-9 h-9 flex items-center justify-center rounded-full border-2
+                ${currentStep === idx + 1 ? 'bg-kgamify-500 text-white border-kgamify-500 font-bold' : 
+                  currentStep > idx + 1 ? 'bg-kgamify-500 text-white border-kgamify-500' : 
+                  'bg-white text-gray-400 border-gray-300'}
+                transition-all duration-200`}>
+                {currentStep > idx + 1 ? <FaCheckCircle /> : idx + 1}
+              </div>
+              <div className={`mt-2 text-xs sm:text-sm ${currentStep === idx + 1 ? 'font-bold text-kgamify-500' : 'text-gray-500'}`}>
+                {step}
+              </div>
+              {idx < steps.length - 1 && (
+                <div className="absolute top-1/2 right-0 w-full h-0.5 bg-gray-300 z-0" style={{left: '50%', width: '100%', zIndex: -1}}></div>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="text-right text-xs text-gray-500 mb-2">{progressText}</div>
+        <h1 className="text-2xl sm:text-4xl font-heading font-bold mb-4 sm:mb-8 text-center text-gray-800">
+          Company Registration
+        </h1>
 
         <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
           {currentStep === 1 && (
             <>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 border-b border-gray-200 pb-3">Basic Info</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 border-b border-gray-200 pb-3">
+                Basic Information
+              </h2>
               <div className="mb-4 sm:mb-6">
-                <label className="block">Company Name <span className="text-red-500">*</span></label>
-                <input type="text" name="companyName" value={formData.companyName} onChange={handleChange} className="input-kgamify" required />
+                <label className="block">
+                  <span className="font-medium text-gray-800">
+                    Company Name <span className="text-red-500">*</span>
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  name="companyName"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  className="input-kgamify mt-2"
+                  required
+                />
               </div>
               <div className="mb-4 sm:mb-6">
-                <label className="block">Email <span className="text-red-500">*</span></label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} className="input-kgamify" required />
+                <label className="block">
+                  Logo (PNG, JPEG) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  name="logo"
+                  onChange={handleChange}
+                  className="input-kgamify"
+                  accept=".png, .jpeg"
+                  required
+                />
               </div>
               <div className="mb-4 sm:mb-6">
-                <label className="block">Phone <span className="text-red-500">*</span></label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="input-kgamify" required />
+                <label className="block">
+                  Website <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleChange}
+                  className="input-kgamify"
+                  required
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Industry Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="industry"
+                  value={formData.industry}
+                  onChange={handleChange}
+                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 text-white"
+                  required
+                >
+                  <option className="text-black" value="">Select Industry</option>
+                  <option className="text-black" value="IT">IT</option>
+                  <option className="text-black" value="Finance">Finance</option>
+                  <option className="text-black" value="Healthcare">Healthcare</option>
+                  <option className="text-black" value="Education">Education</option>
+                </select>
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">Company Description</label>
+                <QuillEditor
+                  value={formData.description}
+                  onChange={(content) => setFormData({...formData, description: content})}
+                  isDarkMode={isDarkMode}
+                />
               </div>
             </>
           )}
 
           {currentStep === 2 && (
             <>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 border-b border-gray-200 pb-3">Company Details</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+                Company Details
+              </h2>
               <div className="mb-4 sm:mb-6">
-                <label className="block">Company Type <span className="text-red-500">*</span></label>
-                <select
-                  name="companyType"
-                  value={formData.companyType}
+                <label className="block">
+                  Contact Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="contactName"
+                  value={formData.contactName}
                   onChange={handleChange}
                   className="input-kgamify"
                   required
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="input-kgamify"
+                  required
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Phone <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="input-kgamify"
+                  required
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  Address Line 1 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="addressLine1"
+                  value={formData.addressLine1}
+                  onChange={handleChange}
+                  className="input-kgamify"
+                  required
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">Address Line 2</label>
+                <input
+                  type="text"
+                  name="addressLine2"
+                  value={formData.addressLine2}
+                  onChange={handleChange}
+                  className="input-kgamify"
+                />
+              </div>
+              <div className="mb-4 sm:mb-6">
+                <label className="block">
+                  State <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="state"
+                  value={formData.state}
+                  onChange={handleStateChange}
+                  className="input-kgamify"
+                  required
                 >
-                  <option value="">Select Company Type</option>
-                  <option value="Private Limited">Private Limited</option>
-                  <option value="Public Limited">Public Limited</option>
-                  <option value="LLP">LLP</option>
-                  <option value="Startup">Startup</option>
-                  <option value="Partnership">Partnership</option>
-                  <option value="Proprietorship">Proprietorship</option>
-                  <option value="NGO">Non-Governmental Organization (NGO)</option>
+                  <option value="">Select State</option>
+                  {Object.keys(statesAndCities).map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
                 </select>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="mb-4 sm:mb-6">
-                  <label className="block">Username <span className="text-red-500">*</span></label>
-                  <input type="text" name="username" value={formData.username} onChange={handleChange} className="input-kgamify" required />
-                </div>
-                <div className="mb-4 sm:mb-6">
-                  <label className="block">Password <span className="text-red-500">*</span></label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="input-kgamify"
-                    pattern="(?=.*\\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
-                    title="Must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters"
-                    required
-                  />
-                </div>
-                <div className="mb-4 sm:mb-6">
-                  <label className="block">Confirm Password <span className="text-red-500">*</span></label>
-                  <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className="input-kgamify" required />
-                </div>
-              </div>
               <div className="mb-4 sm:mb-6">
-                <label className="block">Website <span className="text-red-500">*</span></label>
-                <input type="url" name="website" value={formData.website} onChange={handleChange} className="input-kgamify" required />
+                <label className="block">
+                  City <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="input-kgamify"
+                  required
+                  disabled={!formData.state}
+                >
+                  <option value="">Select City</option>
+                  {cities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
               </div>
+
               <div className="mb-4 sm:mb-6">
-                <label className="block">Company Description</label>
-                <QuillEditor
-                  value={formData.description}
-                  onChange={(content) => setFormData({ ...formData, description: content })}
-                  isDarkMode={isDarkMode}
+                <label className="block">
+                  Pin Code <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="pinCode"
+                  value={formData.pinCode}
+                  onChange={handleChange}
+                  className="input-kgamify"
+                  required
                 />
               </div>
             </>
@@ -319,98 +704,70 @@ function Register({ isDarkMode }) {
 
           {currentStep === 3 && (
             <>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 border-b border-gray-200 pb-3">Document Upload</h2>
-              {/* Dynamic document guidance */}
-              {formData.companyType && (
-                <div className="mb-3 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3">
-                  <p className="font-medium mb-2">Required documents for {formData.companyType}:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    {(docRequirements[formData.companyType] || []).map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                  <p className="mt-2 text-xs text-gray-600">Please upload a single PDF that includes the above documents.</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                <div>
-                  <label className="block">Address Line 1 <span className="text-red-500">*</span></label>
-                  <input type="text" name="addressLine1" value={formData.addressLine1} onChange={handleChange} className="input-kgamify" required />
-                </div>
-                <div>
-                  <label className="block">Address Line 2</label>
-                  <input type="text" name="addressLine2" value={formData.addressLine2} onChange={handleChange} className="input-kgamify" />
-                </div>
-                <div>
-                  <label className="block">City <span className="text-red-500">*</span></label>
-                  <input type="text" name="city" value={formData.city} onChange={handleChange} className="input-kgamify" required />
-                </div>
-                <div>
-                  <label className="block">State <span className="text-red-500">*</span></label>
-                  <input type="text" name="state" value={formData.state} onChange={handleChange} className="input-kgamify" required />
-                </div>
-                <div>
-                  <label className="block">Pin Code <span className="text-red-500">*</span></label>
-                  <input type="text" name="pinCode" value={formData.pinCode} onChange={handleChange} className="input-kgamify" required />
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+                Document Upload
+              </h2>
+              <div className="mb-4 sm:mb-6">
+                <label className="block font-medium">
+                  {docInfo.label} <span className="text-red-500">*</span>
+                  <span className="ml-2 text-xs text-gray-500" title={docInfo.help}>ⓘ</span>
+                </label>
+                {/* Drag-and-drop area */}
+                <div
+                  className={`border-2 border-dashed rounded p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-150
+                    ${dragActive ? 'border-kgamify-500 bg-kgamify-50' : 'border-gray-300 bg-gray-50'}`}
+                  onDragEnter={handleDrag}
+                  onDragOver={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById('doc-upload').click()}
+                  style={{ minHeight: 100 }}
+                >
+                  <FaCloudUploadAlt className="text-3xl text-kgamify-500 mb-2" />
+                  <div className="text-gray-700 mb-1">
+                    {formData.documents ? (
+                      <span className="font-medium">{formData.documents.name}</span>
+                    ) : (
+                      "Drag & drop your document here, or click to select"
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500">{docInfo.help}</div>
+                  <input
+                    id="doc-upload"
+                    type="file"
+                    name="documents"
+                    onChange={handleChange}
+                    className="hidden"
+                    accept=".pdf"
+                    required
+                  />
                 </div>
               </div>
-
-              {/* Drag and drop */}
-              <div
-                ref={fileDropRef}
-                onDragOver={onDragOver}
-                onDrop={onDrop}
-                className={`border-2 border-dashed rounded-lg p-6 text-center ${isDarkMode ? 'border-gray-600 bg-gray-800/50' : 'border-gray-300 bg-gray-50'}`}
-              >
-                <p className="mb-2 font-medium">Drag & drop your PDF here, or click to select</p>
-                <p className="text-xs opacity-70 mb-4">PDF only, up to 10MB</p>
-                <input
-                  type="file"
-                  name="documents"
-                  accept="application/pdf,.pdf"
-                  onChange={handleChange}
-                  className="input-kgamify"
-                />
-                {formData.documents && (
-                  <div className="mt-3 text-sm">Selected: <span className="font-medium">{formData.documents.name}</span></div>
-                )}
-              </div>
-              <div className="text-xs opacity-70 mt-2">Tip: Hover over document names to see help. Upload combined PDF with all required items.</div>
             </>
           )}
 
-          {currentStep === 4 && (
-            <>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 border-b border-gray-200 pb-3">Summary</h2>
-              <div className="space-y-3 text-sm">
-                <div><span className="font-semibold">Company:</span> {formData.companyName}</div>
-                <div><span className="font-semibold">Email:</span> {formData.email}</div>
-                <div><span className="font-semibold">Phone:</span> {formData.phone}</div>
-                <div><span className="font-semibold">Type:</span> {formData.companyType || '—'}</div>
-                <div><span className="font-semibold">Website:</span> {formData.website}</div>
-                <div><span className="font-semibold">Address:</span> {[formData.addressLine1, formData.addressLine2, formData.city, formData.state, formData.pinCode].filter(Boolean).join(', ')}</div>
-                <div><span className="font-semibold">Documents:</span> {formData.documents?.name || '—'}</div>
-              </div>
-              <div className="mt-4 text-xs opacity-70">Please review your information before submission.</div>
-            </>
-          )}
+          {currentStep === 4 && summaryContent}
 
-          <div className="flex justify-between">
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-8">
             {currentStep > 1 && (
               <button
                 type="button"
-                onClick={handlePrevious}
+                onClick={() => setCurrentStep((prev) => prev - 1)}
                 className="btn-secondary half-width"
               >
-                Previous
+                Back
               </button>
             )}
-            {currentStep < 4 ? (
+            {currentStep < steps.length ? (
               <button
                 type="button"
-                onClick={handleNext}
+                onClick={() => setCurrentStep((prev) => prev + 1)}
                 className={`btn-primary ${currentStep > 1 ? 'half-width' : ''}`}
+                disabled={
+                  (currentStep === 3 && !formData.documents) ||
+                  (currentStep === 2 && !formData.companyType)
+                }
               >
                 Next
               </button>
@@ -458,6 +815,3 @@ function Register({ isDarkMode }) {
 
 export default Register;
 
-Register.propTypes = {
-  isDarkMode: PropTypes.bool,
-};
