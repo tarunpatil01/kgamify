@@ -459,21 +459,50 @@ function Register({ isDarkMode }) {
 
   return (
     <div
-      className="min-h-screen flex p-4 sm:p-12 justify-center items-center relative"
-      style={{
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed'
-      }}
+      className="min-h-screen flex items-center justify-center py-8 px-2 sm:px-6 lg:px-8 relative overflow-hidden"
     >
-      {/* Background Overlay */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"></div>
-      <div className="absolute inset-0 bg-gradient-to-br from-kgamify-500/20 via-transparent to-kgamify-pink-500/20"></div>
-      
+      {/* Modern animated gradient background with subtle pattern overlay */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            "linear-gradient(120deg, #fff7e6 0%, #ffecd2 40%, #ffe3b3 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(circle at 80% 20%, #ffb34733 0%, transparent 60%), radial-gradient(circle at 20% 80%, #ff820033 0%, transparent 60%)",
+            opacity: 0.7,
+          }}
+        />
+        <div
+          className="absolute inset-0 animate-gradient-move"
+          style={{
+            background:
+              "linear-gradient(120deg, #ffecd2 0%, #ffb347 100%)",
+            opacity: 0.15,
+            mixBlendMode: "multiply",
+          }}
+        />
+        <style>
+          {`
+            @keyframes gradient-move {
+              0% { background-position: 0% 50%; }
+              50% { background-position: 100% 50%; }
+              100% { background-position: 0% 50%; }
+            }
+            .animate-gradient-move {
+              background-size: 200% 200%;
+              animation: gradient-move 10s ease-in-out infinite;
+            }
+          `}
+        </style>
+      </div>
       {/* Content Container */}
-      <div className="relative z-10 bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-4 sm:p-8 w-full max-w-3xl">
+      <div className="relative z-10 w-full max-w-3xl mx-auto rounded-3xl shadow-2xl border bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 p-6 sm:p-10">
         {/* Logo at the top */}
         <div className="flex justify-center mb-4">
           <img src={Klogo} alt="Kgamify Logo" className="h-16 sm:h-20 w-auto object-contain" />
@@ -483,13 +512,13 @@ function Register({ isDarkMode }) {
           {steps.map((step, idx) => (
             <div key={step} className="flex-1 flex flex-col items-center relative">
               <div className={`w-9 h-9 flex items-center justify-center rounded-full border-2
-                ${currentStep === idx + 1 ? 'bg-kgamify-500 text-white border-kgamify-500 font-bold' : 
-                  currentStep > idx + 1 ? 'bg-kgamify-500 text-white border-kgamify-500' : 
+                ${currentStep === idx + 1 ? 'bg-[#ff8200] text-white border-[#ff8200] font-bold' : 
+                  currentStep > idx + 1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : 
                   'bg-white text-gray-400 border-gray-300'}
                 transition-all duration-200`}>
                 {currentStep > idx + 1 ? <FaCheckCircle /> : idx + 1}
               </div>
-              <div className={`mt-2 text-xs sm:text-sm ${currentStep === idx + 1 ? 'font-bold text-kgamify-500' : 'text-gray-500'}`}>
+              <div className={`mt-2 text-xs sm:text-sm ${currentStep === idx + 1 ? 'font-bold text-[#ff8200]' : 'text-gray-500'}`}>
                 {step}
               </div>
               {idx < steps.length - 1 && (
@@ -499,46 +528,44 @@ function Register({ isDarkMode }) {
           ))}
         </div>
         <div className="text-right text-xs text-gray-500 mb-2">{progressText}</div>
-        <h1 className="text-2xl sm:text-4xl font-heading font-bold mb-4 sm:mb-8 text-center text-gray-800">
+        <h1 className="text-2xl sm:text-4xl font-extrabold mb-6 text-center tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg">
           Company Registration
         </h1>
 
-        <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
+        <form className="space-y-8" onSubmit={handleSubmit}>
           {currentStep === 1 && (
             <>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 border-b border-gray-200 pb-3">
+              <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
                 Basic Information
               </h2>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
-                  <span className="font-medium text-gray-800">
-                    Company Name <span className="text-red-500">*</span>
-                  </span>
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
+                  Company Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
-                  className="input-kgamify mt-2"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   Logo (PNG, JPEG) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="file"
                   name="logo"
                   onChange={handleChange}
-                  className="input-kgamify"
+                  className="w-full px-4 py-2 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   accept=".png, .jpeg"
                   required
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   Website <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -546,19 +573,19 @@ function Register({ isDarkMode }) {
                   name="website"
                   value={formData.website}
                   onChange={handleChange}
-                  className="input-kgamify"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   Industry Type <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="industry"
                   value={formData.industry}
                   onChange={handleChange}
-                  className="w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 text-white"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                 >
                   <option className="text-black" value="">Select Industry</option>
@@ -568,8 +595,8 @@ function Register({ isDarkMode }) {
                   <option className="text-black" value="Education">Education</option>
                 </select>
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">Company Description</label>
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">Company Description</label>
                 <QuillEditor
                   value={formData.description}
                   onChange={(content) => setFormData({...formData, description: content})}
@@ -581,11 +608,11 @@ function Register({ isDarkMode }) {
 
           {currentStep === 2 && (
             <>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
                 Company Details
               </h2>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   Contact Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -593,12 +620,12 @@ function Register({ isDarkMode }) {
                   name="contactName"
                   value={formData.contactName}
                   onChange={handleChange}
-                  className="input-kgamify"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   Email <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -606,12 +633,12 @@ function Register({ isDarkMode }) {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="input-kgamify"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   Phone <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -619,12 +646,12 @@ function Register({ isDarkMode }) {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="input-kgamify"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   Address Line 1 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -632,29 +659,29 @@ function Register({ isDarkMode }) {
                   name="addressLine1"
                   value={formData.addressLine1}
                   onChange={handleChange}
-                  className="input-kgamify"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">Address Line 2</label>
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">Address Line 2</label>
                 <input
                   type="text"
                   name="addressLine2"
                   value={formData.addressLine2}
                   onChange={handleChange}
-                  className="input-kgamify"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   State <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="state"
                   value={formData.state}
                   onChange={handleStateChange}
-                  className="input-kgamify"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                 >
                   <option value="">Select State</option>
@@ -665,15 +692,15 @@ function Register({ isDarkMode }) {
                   ))}
                 </select>
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   City <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
-                  className="input-kgamify"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                   disabled={!formData.state}
                 >
@@ -685,9 +712,8 @@ function Register({ isDarkMode }) {
                   ))}
                 </select>
               </div>
-
-              <div className="mb-4 sm:mb-6">
-                <label className="block">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   Pin Code <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -695,7 +721,7 @@ function Register({ isDarkMode }) {
                   name="pinCode"
                   value={formData.pinCode}
                   onChange={handleChange}
-                  className="input-kgamify"
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                 />
               </div>
@@ -704,18 +730,18 @@ function Register({ isDarkMode }) {
 
           {currentStep === 3 && (
             <>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
                 Document Upload
               </h2>
-              <div className="mb-4 sm:mb-6">
-                <label className="block font-medium">
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">
                   {docInfo.label} <span className="text-red-500">*</span>
                   <span className="ml-2 text-xs text-gray-500" title={docInfo.help}>ⓘ</span>
                 </label>
                 {/* Drag-and-drop area */}
                 <div
-                  className={`border-2 border-dashed rounded p-4 flex flex-col items-center justify-center cursor-pointer transition-all duration-150
-                    ${dragActive ? 'border-kgamify-500 bg-kgamify-50' : 'border-gray-300 bg-gray-50'}`}
+                  className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-150
+                    ${dragActive ? 'border-[#ff8200] bg-orange-50' : 'border-gray-300 bg-gray-50'}`}
                   onDragEnter={handleDrag}
                   onDragOver={handleDrag}
                   onDragLeave={handleDrag}
@@ -723,8 +749,8 @@ function Register({ isDarkMode }) {
                   onClick={() => document.getElementById('doc-upload').click()}
                   style={{ minHeight: 100 }}
                 >
-                  <FaCloudUploadAlt className="text-3xl text-kgamify-500 mb-2" />
-                  <div className="text-gray-700 mb-1">
+                  <FaCloudUploadAlt className="text-3xl text-[#ff8200] mb-2" />
+                  <div className="text-black mb-1">
                     {formData.documents ? (
                       <span className="font-medium">{formData.documents.name}</span>
                     ) : (
@@ -746,7 +772,19 @@ function Register({ isDarkMode }) {
             </>
           )}
 
-          {currentStep === 4 && summaryContent}
+          {currentStep === 4 && (
+            <div className="space-y-4">
+              <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
+                Review &amp; Confirm
+              </h2>
+              <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 text-black">
+                {/* ...existing summaryContent... */}
+                {/* ...existing code... */}
+                {summaryContent}
+              </div>
+              <div className="text-sm text-gray-500 mt-2">Please review your details before submitting.</div>
+            </div>
+          )}
 
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8">
@@ -754,7 +792,7 @@ function Register({ isDarkMode }) {
               <button
                 type="button"
                 onClick={() => setCurrentStep((prev) => prev - 1)}
-                className="btn-secondary half-width"
+                className="px-6 py-3 rounded-xl font-bold text-base shadow transition bg-gray-200 hover:bg-gray-300 text-black"
               >
                 Back
               </button>
@@ -763,7 +801,7 @@ function Register({ isDarkMode }) {
               <button
                 type="button"
                 onClick={() => setCurrentStep((prev) => prev + 1)}
-                className={`btn-primary ${currentStep > 1 ? 'half-width' : ''}`}
+                className={`px-6 py-3 rounded-xl font-bold text-base shadow transition bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] ${currentStep > 1 ? '' : ''}`}
                 disabled={
                   (currentStep === 3 && !formData.documents) ||
                   (currentStep === 2 && !formData.companyType)
@@ -774,7 +812,7 @@ function Register({ isDarkMode }) {
             ) : (
               <button
                 type="submit"
-                className={`btn-primary ${currentStep > 1 ? 'half-width' : ''}`}
+                className="px-6 py-3 rounded-xl font-bold text-base shadow transition bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347]"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (

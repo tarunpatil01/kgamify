@@ -83,9 +83,13 @@ export default function Applications({ isDarkMode }) {
   if (loading) {
     return (
       <div
-        className={`p-4 ${isDarkMode ? 'text-gray-100 bg-gray-900' : 'text-gray-800 bg-gray-100'}`}
+        className={`min-h-screen flex items-center justify-center ${
+          isDarkMode
+            ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white"
+            : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
+        }`}
       >
-        Loading applications...
+        <div className="text-lg font-semibold">Loading applications...</div>
       </div>
     );
   }
@@ -93,135 +97,174 @@ export default function Applications({ isDarkMode }) {
   if (error) {
     return (
       <div
-        className={`p-4 ${isDarkMode ? 'text-red-300 bg-gray-900' : 'text-red-600 bg-gray-100'}`}
+        className={`min-h-screen flex items-center justify-center ${
+          isDarkMode
+            ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white"
+            : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
+        }`}
       >
-        {error}
+        <div className="text-lg font-semibold text-red-500">{error}</div>
       </div>
     );
   }
 
   return (
     <div
-      className={`min-h-screen p-2 sm:p-4 md:p-6 ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-100 text-gray-900'}`}
+      className={`min-h-screen py-8 px-2 sm:px-6 lg:px-8 flex flex-col items-center ${
+        isDarkMode
+          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white"
+          : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
+      }`}
     >
-      {/* Search */}
-      <div className="card-kgamify p-3 sm:p-4 mb-3 sm:mb-4">
-        <div className="relative w-full max-w-md">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
-          <input
-            className="input-kgamify pl-10"
-            placeholder="Search by applicant or job title"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-          />
-        </div>
-      </div>
+      <div
+        className={`w-full max-w-5xl mx-auto rounded-3xl shadow-2xl border ${
+          isDarkMode
+            ? "bg-gray-800 border-gray-700"
+            : "bg-white border-orange-200"
+        } p-6 sm:p-10`}
+      >
+        <h1 className="text-3xl sm:text-4xl font-extrabold mb-8 text-center tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg">
+          Applications
+        </h1>
 
-      {/* Filters */}
-      <div className="card-kgamify p-3 sm:p-4 mb-3 sm:mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label className="block text-xs mb-1">Sort by</label>
-          <div className="flex gap-2 flex-wrap">
-            <button className={`px-3 py-1 rounded border ${sortBy === 'nameAsc' ? 'bg-[#ff8200] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`} onClick={() => setSortBy('nameAsc')}>
-              <FaSortAlphaDown className="inline mr-1" /> A–Z
-            </button>
-            <button className={`px-3 py-1 rounded border ${sortBy === 'nameDesc' ? 'bg-[#ff8200] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`} onClick={() => setSortBy('nameDesc')}>
-              <FaSortAmountDown className="inline mr-1" /> Z–A
-            </button>
-            <button className={`px-3 py-1 rounded border ${sortBy === 'dateDesc' ? 'bg-[#ff8200] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`} onClick={() => setSortBy('dateDesc')}>Newest</button>
-            <button className={`px-3 py-1 rounded border ${sortBy === 'dateAsc' ? 'bg-[#ff8200] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`} onClick={() => setSortBy('dateAsc')}>Oldest</button>
+        {/* Search */}
+        <div className="mb-6">
+          <div className="relative w-full max-w-md mx-auto">
+            <FaSearch className="absolute left-3 top-2/3 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+            <input
+              className={`pl-10 pr-3 py-2 w-full rounded-xl border font-medium ${
+                isDarkMode
+                  ? "bg-gray-800 border-gray-700 text-white"
+                  : "bg-white border-gray-300 text-gray-900"
+              } focus:ring-2 focus:ring-[#ff8200] outline-none transition`}
+              placeholder="Search by applicant or job title"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
           </div>
         </div>
-        <div>
-          <label className="block text-xs mb-1">Company</label>
-          <select value={companyFilter} onChange={e => setCompanyFilter(e.target.value)} className={`w-full py-2 px-3 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
-            <option value="all">All</option>
-            {companies.map(([name, count]) => (
-              <option key={name} value={name}>{name} ({count})</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs mb-1">Status</label>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={`w-full py-2 px-3 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
-            <option value="all">All</option>
-            <option value="new">New</option>
-            <option value="shortlisted">Shortlisted</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
-      </div>
 
-      {/* List */}
-      {sorted.length === 0 ? (
-        <div className="card-kgamify p-8 text-center">
-          <FaFileAlt className="mx-auto h-10 w-10 text-gray-400 mb-3" />
-          <div className="font-medium">No applications found</div>
-        </div>
-      ) : (
-        <div className="space-y-3 sm:space-y-4">
-          {sorted.map(app => (
-            <div
-              key={app.id}
-              className="card-kgamify p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 text-base sm:text-lg font-semibold">
-                      <FaUser /> <span>{app.applicantName}</span>
-                    </div>
-                    <div className="text-sm opacity-80">applied for</div>
-                    <div className="text-sm sm:text-base font-medium">{app.jobTitle}</div>
-                    <div className="text-sm opacity-80">at</div>
-                    <div className="flex items-center gap-2 text-sm sm:text-base">
-                      <FaBuilding /> <span>{app.companyName || 'Unknown'}</span>
-                    </div>
-                  </div>
-                  {app.resume && (
-                    <div className="mt-1">
-                      <a href={app.resume} target="_blank" rel="noreferrer" className="text-sm underline hover:text-kgamify-500">View Resume</a>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-4 text-xs sm:text-sm opacity-80">
-                  <FaCalendarAlt className="h-4 w-4" />
-                  <span>{new Date(app.appliedAt).toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <div className="text-xs sm:text-sm">
-                  Status: <span className={`px-2 py-0.5 rounded ${app.status === 'shortlisted' ? 'bg-green-100 text-green-700' : app.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{app.status || 'new'}</span>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
-                    onClick={async () => {
-                      try {
-                        await shortlistApplication(app.id);
-                        setApps(prev => prev.map(x => x.id === app.id ? { ...x, status: 'shortlisted' } : x));
-                      } catch { /* noop */ }
-                    }}
-                  >
-                    Shortlist
-                  </button>
-                  <button
-                    className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700"
-                    onClick={async () => {
-                      try {
-                        await rejectApplication(app.id);
-                        setApps(prev => prev.map(x => x.id === app.id ? { ...x, status: 'rejected' } : x));
-                      } catch { /* noop */ }
-                    }}
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
+        {/* Filters */}
+        <div className="mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs mb-1 font-semibold">Sort by</label>
+            <div className="flex gap-2 flex-wrap">
+              <button className={`px-4 py-2 rounded-xl border font-medium ${sortBy === 'nameAsc' ? 'bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`} onClick={() => setSortBy('nameAsc')}>
+                <FaSortAlphaDown className="inline mr-1" /> A–Z
+              </button>
+              <button className={`px-4 py-2 rounded-xl border font-medium ${sortBy === 'nameDesc' ? 'bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`} onClick={() => setSortBy('nameDesc')}>
+                <FaSortAmountDown className="inline mr-1" /> Z–A
+              </button>
+              <button className={`px-4 py-2 rounded-xl border font-medium ${sortBy === 'dateDesc' ? 'bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`} onClick={() => setSortBy('dateDesc')}>Newest</button>
+              <button className={`px-4 py-2 rounded-xl border font-medium ${sortBy === 'dateAsc' ? 'bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`} onClick={() => setSortBy('dateAsc')}>Oldest</button>
             </div>
-          ))}
+          </div>
+          <div>
+            <label className="block text-xs mb-1 font-semibold">Company</label>
+            <select value={companyFilter} onChange={e => setCompanyFilter(e.target.value)} className={`w-full py-2 px-3 rounded-xl border font-medium ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-[#ff8200] outline-none transition`}>
+              <option value="all">All</option>
+              {companies.map(([name, count]) => (
+                <option key={name} value={name}>{name} ({count})</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs mb-1 font-semibold">Status</label>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={`w-full py-2 px-3 rounded-xl border font-medium ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-[#ff8200] outline-none transition`}>
+              <option value="all">All</option>
+              <option value="new">New</option>
+              <option value="shortlisted">Shortlisted</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
         </div>
-      )}
+
+        {/* List */}
+        {sorted.length === 0 ? (
+          <div className={`p-10 text-center rounded-2xl flex flex-col items-center justify-center ${isDarkMode ? "bg-gray-800" : "bg-white"} border ${isDarkMode ? "border-gray-700" : "border-gray-200"} shadow-lg`}>
+            <FaFileAlt className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <div className="text-xl font-semibold mb-2">No applications found</div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {sorted.map(app => (
+              <div
+                key={app.id}
+                className={`rounded-2xl shadow-xl border p-6 transition-all group ${
+                  isDarkMode
+                    ? "bg-gray-900 border-gray-700 text-white"
+                    : "bg-white border-orange-200 text-black"
+                } hover:shadow-2xl hover:-translate-y-1`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 text-base sm:text-lg font-semibold">
+                        <FaUser /> <span>{app.applicantName}</span>
+                      </div>
+                      <div className="text-sm opacity-80">applied for</div>
+                      <div className="text-sm sm:text-base font-medium">{app.jobTitle}</div>
+                      <div className="text-sm opacity-80">at</div>
+                      <div className="flex items-center gap-2 text-sm sm:text-base">
+                        <FaBuilding /> <span>{app.companyName || 'Unknown'}</span>
+                      </div>
+                    </div>
+                    {app.resume && (
+                      <div className="mt-1">
+                        <a href={app.resume} target="_blank" rel="noreferrer" className="text-sm underline hover:text-[#ff8200]">View Resume</a>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 text-xs sm:text-sm opacity-80">
+                    <FaCalendarAlt className="h-4 w-4" />
+                    <span>{new Date(app.appliedAt).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="text-xs sm:text-sm">
+                    Status:{" "}
+                    <span
+                      className={`px-2 py-0.5 rounded font-semibold ${
+                        app.status === "shortlisted"
+                          ? "bg-green-100 text-green-700"
+                          : app.status === "rejected"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {app.status || "new"}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-green-400 text-white hover:from-green-700 hover:to-green-500 font-semibold shadow"
+                      onClick={async () => {
+                        try {
+                          await shortlistApplication(app.id);
+                          setApps(prev => prev.map(x => x.id === app.id ? { ...x, status: 'shortlisted' } : x));
+                        } catch { /* noop */ }
+                      }}
+                    >
+                      Shortlist
+                    </button>
+                    <button
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-red-400 text-white hover:from-red-700 hover:to-red-500 font-semibold shadow"
+                      onClick={async () => {
+                        try {
+                          await rejectApplication(app.id);
+                          setApps(prev => prev.map(x => x.id === app.id ? { ...x, status: 'rejected' } : x));
+                        } catch { /* noop */ }
+                      }}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

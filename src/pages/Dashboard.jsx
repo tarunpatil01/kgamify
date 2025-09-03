@@ -158,100 +158,107 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
     );
   }
 
+  // Company banner colors and logo fallback
+  const companyBannerBg = isDarkMode
+    ? "bg-gradient-to-r from-gray-900 to-[#ff8200]"
+    : "bg-gradient-to-r from-[#ff8200] to-[#ffb347]";
+  const companyLogo = userCompany?.logoUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(userCompany?.companyName || "Company") + "&background=ff8200&color=fff&size=128";
+
   return (
     <div
-      className={`flex flex-col p-1 sm:p-2 md:p-4 min-h-screen dashboard-spacing ${
-        isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"
+      className={`min-h-screen py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center ${
+        isDarkMode
+          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white"
+          : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
       }`}
     >
-      <div className="flex-0">
-  <div className={`rounded-lg flex md:flex-row justify-between items-center p-2 sm:p-3 md:p-5 ${isDarkMode ? "bg-gray-800 text-white" : "bg-kgamify-500 text-white"}`}>
-          <div className="flex flex-col text-center md:text-left mb-2 md:mb-0 md:ml-5">
-            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-light">Welcome To kgamify Job Portal</h1>
-            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-light">
+      {/* Company Banner */}
+      <div
+        className={`w-full max-w-6xl mx-auto mb-10 rounded-3xl shadow-2xl border-0 ${companyBannerBg} flex flex-col md:flex-row items-center justify-between p-8 sm:p-12`}
+      >
+        <div className="flex items-center gap-6">
+          <img
+            src={companyLogo}
+            alt="Company Logo"
+            className="w-24 h-24 rounded-2xl shadow-lg border-4 border-white bg-white object-cover"
+          />
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white drop-shadow-lg mb-2">
               {userCompany?.companyName || "Company Dashboard"}
             </h1>
+            <div className="text-white/90 font-medium text-lg sm:text-xl">
+              {userCompany?.industry && (
+                <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white font-semibold mr-2">
+                  {userCompany.industry}
+                </span>
+              )}
+              {userCompany?.location && (
+                <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white font-semibold">
+                  {userCompany.location}
+                </span>
+              )}
+            </div>
+            {userCompany?.description && (
+              <p className="mt-2 text-white/80 text-base max-w-md line-clamp-2">{userCompany.description}</p>
+            )}
           </div>
-          <img className="w-20 sm:w-24 md:w-32 lg:w-64 h-16 sm:h-20 md:h-24 lg:h-48 rounded-xl md:mr-5" src={DashboardImage} alt="Dashboard" />
         </div>
+        <img
+          className="hidden md:block w-36 h-36 lg:w-56 lg:h-56 rounded-xl object-contain"
+          src={DashboardImage}
+          alt="Dashboard"
+        />
       </div>
 
       {/* Job Statistics */}
-      <div className="mt-2 sm:mt-4 md:mt-6 grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-6">
-        <div className="card-kgamify p-3 sm:p-4 md:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className=" text-xs sm:text-sm font-semibold">Total Jobs</p>
-              <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-kgamify-500">{totalJobs}</h2>
-            </div>
-            <div className="p-2 sm:p-3 bg-kgamify-100 dark:bg-kgamify-900 rounded-full">
-              <FaBriefcase className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-kgamify-500" />
-            </div>
-          </div>
+      <div className="w-full max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+        <div className="rounded-2xl shadow-xl border p-8 bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 flex flex-col items-center">
+          <FaBriefcase className="text-4xl text-[#ff8200] mb-3" />
+          <div className="text-base font-semibold mb-1">Total Jobs</div>
+          <div className="text-3xl font-extrabold text-[#ff8200]">{totalJobs}</div>
         </div>
-
-        <div className="card-kgamify p-3 sm:p-4 md:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs sm:text-sm font-semibold">Total Applications</p>
-              <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-kgamify-pink-500">{totalApplications}</h2>
-            </div>
-            <div className="p-2 sm:p-3 bg-kgamify-pink-100 dark:bg-kgamify-pink-900 rounded-full">
-              <FaUsers className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-kgamify-pink-500" />
-            </div>
-          </div>
+        <div className="rounded-2xl shadow-xl border p-8 bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 flex flex-col items-center">
+          <FaUsers className="text-4xl text-blue-500 mb-3" />
+          <div className="text-base font-semibold mb-1">Total Applications</div>
+          <div className="text-3xl font-extrabold text-blue-500">{totalApplications}</div>
         </div>
-
-        <div className="card-kgamify p-3 sm:p-4 md:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs sm:text-sm font-semibold">Active Jobs</p>
-              <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-green-500">{activeJobs}</h2>
-            </div>
-            <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-full">
-              <FaCheckCircle className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-green-500" />
-            </div>
-          </div>
+        <div className="rounded-2xl shadow-xl border p-8 bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 flex flex-col items-center">
+          <FaCheckCircle className="text-4xl text-[#ff8200] mb-3" />
+          <div className="text-base font-semibold mb-1">Active Jobs</div>
+          <div className="text-3xl font-extrabold text-[#ff8200]">{activeJobs}</div>
         </div>
-
-        <div className="card-kgamify p-3 sm:p-4 md:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs sm:text-sm font-semibold">This Week</p>
-              <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-blue-500">{recentJobs}</h2>
-            </div>
-            <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-              <FaCalendarAlt className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-blue-500" />
-            </div>
-          </div>
+        <div className="rounded-2xl shadow-xl border p-8 bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 flex flex-col items-center">
+          <FaCalendarAlt className="text-4xl text-blue-500 mb-3" />
+          <div className="text-base font-semibold mb-1">This Week</div>
+          <div className="text-3xl font-extrabold text-blue-500">{recentJobs}</div>
         </div>
       </div>
 
       {/* Recent Job Posts */}
-      <div className="card-kgamify mt-2 sm:mt-4 md:mt-6 p-3 sm:p-4 md:p-6">
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4">
-          <h2 className="text-base sm:text-lg md:text-xl font-bold mb-2 sm:mb-0 ">Recent Job Posts</h2>
+      <div className="w-full max-w-6xl mx-auto rounded-3xl shadow-2xl border bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 p-8 sm:p-12">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg">
+            Recent Job Posts
+          </h2>
         </div>
-
         {/* Results Summary */}
         {!showSkeletons && (
-          <div className="mb-4 text-sm font-semibold">
+          <div className="mb-6 text-base font-semibold">
             Showing {currentJobs.length} of {displayJobs.length} jobs
           </div>
         )}
-
         {error && !showSkeletons && (
-          <div className="mt-3 sm:mt-4 p-3 sm:p-4 rounded bg-red-100 dark:bg-red-900/20">
-            <p className="text-red-500 dark:text-red-400 text-sm sm:text-base">{error}</p>
+          <div className="mt-3 sm:mt-4 p-4 rounded bg-red-100 dark:bg-red-900/20">
+            <p className="text-red-500 dark:text-red-400 text-base">{error}</p>
             {error.includes("No listed jobs") && (
               <div className="mt-2">
-                <p className="text-xs sm:text-sm ">
+                <p className="text-sm">
                   It appears that some jobs in the database may be missing the company email field.
                   Contact your administrator to run the fix-jobs script.
                 </p>
                 <div className="mt-2">
                   <Link to="/post-job">
-                    <button className="btn-primary px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base">
+                    <button className="btn-primary px-4 py-2 text-base">
                       Post a New Job
                     </button>
                   </Link>
@@ -260,132 +267,103 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
             )}
           </div>
         )}
-
         {/* Skeleton cards while loading */}
         {showSkeletons && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={`skeleton-${i}`}
-                className="card-kgamify p-4 md:p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 animate-pulse"
+                className="rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 animate-pulse p-8"
               >
-                {/* Header skeleton */}
-                <div className="flex justify-between items-start mb-3 md:mb-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="h-4 md:h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-blue-100 dark:bg-blue-900 rounded w-20"></div>
-                  </div>
-                  <div className="ml-4 h-5 w-5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
-                </div>
-
-                {/* Details skeleton */}
-                <div className="space-y-2 md:space-y-3 mb-3 md:mb-4">
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-                </div>
-
-                {/* Footer skeleton */}
-                <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
-                </div>
-
-                {/* Actions skeleton */}
-                <div className="mt-3 md:mt-4 grid grid-cols-2 gap-2">
-                  <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                  <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                </div>
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-blue-100 dark:bg-blue-900 rounded w-20 mb-4"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-3"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-3"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-3"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
               </div>
             ))}
           </div>
         )}
-
-  {!showSkeletons && !error && displayJobs.length === 0 && (
-          <div className="text-center py-8">
-            <FaBriefcase className="mx-auto h-12 w-12 text-gray-500 dark:text-gray-400 mb-4" />
-            <p className=" mb-4 font-medium">No jobs posted yet.</p>
+        {!showSkeletons && !error && displayJobs.length === 0 && (
+          <div className="text-center py-12">
+            <FaBriefcase className="mx-auto h-16 w-16 text-gray-400 mb-6" />
+            <p className="mb-6 font-semibold text-lg">No jobs posted yet.</p>
             <Link to="/post-job">
-              <button className="btn-primary">Post Your First Job</button>
+              <button className="btn-primary bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white px-8 py-4 rounded-xl font-bold shadow-lg text-xl hover:from-[#e57400] hover:to-[#ffb347]">
+                Post Your First Job
+              </button>
             </Link>
           </div>
         )}
-
         {!showSkeletons && !error && displayJobs.length > 0 && (
           <>
-            {/* Unified responsive grid so laptop and mobile both show jobs */}
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
               {currentJobs.map((job) => (
                 <div
                   key={`job-${job._id}`}
-                  className="card-kgamify transition-all duration-200 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-kgamify-300 dark:hover:border-kgamify-600 hover:shadow-md md:hover:shadow-lg cursor-pointer p-4 md:p-6 bg-white hover:bg-gray-50 dark:bg-gray-800/95 dark:hover:bg-gray-800"
+                  className="rounded-2xl shadow-xl border border-orange-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-all duration-200 hover:shadow-2xl hover:-translate-y-1 cursor-pointer p-8"
                   onClick={() => navigate(`/job/${job._id}`)}
                 >
-                  {/* Header */}
-                  <div className="flex justify-between items-start mb-3 md:mb-4">
+                  <div className="flex justify-between items-start mb-5">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-base md:text-lg text-kgamify-500 dark:text-kgamify-500 hover:text-kgamify-600 line-clamp-2">
+                      <h3 className="font-bold text-xl text-[#ff8200] dark:text-[#ff8200] hover:text-[#e57400] line-clamp-2">
                         {job.jobTitle}
                       </h3>
                       {job.category && (
-                        <span className="inline-block px-2 py-1 text-[11px] md:text-xs rounded bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 mt-2">
+                        <span className="inline-block px-3 py-1 text-sm rounded bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 mt-3">
                           {job.category}
                         </span>
                       )}
                     </div>
                     <div className="ml-4">
                       {job.status === "active" ? (
-                        <span className="flex items-center text-green-600 dark:text-green-400">
-                          <FaCheckCircle className="h-4 w-4 md:h-5 md:w-5" />
+                        <span className="flex items-center text-[#ff8200]">
+                          <FaCheckCircle className="h-6 w-6" />
                         </span>
                       ) : (
-                        <span className="flex items-center text-red-600 dark:text-red-400">
-                          <FaTimesCircle className="h-4 w-4 md:h-5 md:w-5" />
+                        <span className="flex items-center text-gray-400">
+                          <FaTimesCircle className="h-6 w-6" />
                         </span>
                       )}
                     </div>
                   </div>
-
-                  {/* Job Details */}
-                  <div className="space-y-2 md:space-y-3 mb-3 md:mb-4">
+                  <div className="space-y-3 mb-5">
                     <div className="flex items-center font-medium">
-                      <FaMapMarkerAlt className="h-3 w-3 md:h-4 md:w-4 mr-2 md:mr-3 text-gray-600 dark:text-gray-400" />
-                      <span className="text-sm">{job.location}</span>
+                      <FaMapMarkerAlt className="h-5 w-5 mr-3 text-gray-500 dark:text-gray-400" />
+                      <span className="text-base">{job.location}</span>
                     </div>
                     <div className="flex items-center font-medium">
-                      <FaBriefcase className="h-3 w-3 md:h-4 md:w-4 mr-2 md:mr-3 text-gray-600 dark:text-gray-400" />
-                      <span className="px-2 py-0.5 md:py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-[11px] md:text-xs">
+                      <FaBriefcase className="h-5 w-5 mr-3 text-gray-500 dark:text-gray-400" />
+                      <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm">
                         {job.employmentType}
                       </span>
                     </div>
                     <div className="flex items-center font-medium">
-                      <FaDollarSign className="h-3 w-3 md:h-4 md:w-4 mr-2 md:mr-3 text-gray-600 dark:text-gray-400" />
-                      <span className="text-sm font-medium">{job.salary}</span>
+                      <FaDollarSign className="h-5 w-5 mr-3 text-gray-500 dark:text-gray-400" />
+                      <span className="text-base font-medium">{job.salary}</span>
                     </div>
                   </div>
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-3 md:pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between pt-5 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex items-center">
-                      <FaUsers className="h-3 w-3 md:h-4 md:w-4 mr-2 text-gray-600 dark:text-gray-400" />
-                      <span className="text-xs md:text-sm font-medium">{job.applicants?.length || 0} applications</span>
+                      <FaUsers className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
+                      <span className="text-sm font-medium">{job.applicants?.length || 0} applications</span>
                     </div>
                     <div className="flex items-center">
-                      <FaCalendarAlt className="h-3 w-3 mr-2 text-gray-600 dark:text-gray-400" />
-                      <span className="text-xs">{new Date(job.createdAt || job.datePosted).toLocaleDateString()}</span>
+                      <FaCalendarAlt className="h-5 w-5 mr-2 text-gray-500 dark:text-gray-400" />
+                      <span className="text-sm">{new Date(job.createdAt || job.datePosted).toLocaleDateString()}</span>
                     </div>
                   </div>
-
-                  {/* Action Button */}
-                  <div className="mt-3 md:mt-4 grid grid-cols-2 gap-2">
+                  <div className="mt-5 grid grid-cols-2 gap-3">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         navigate(`/job/${job._id}`);
                       }}
-                      className="w-full px-4 py-2 bg-kgamify-500 hover:bg-kgamify-600 text-white rounded-md transition-colors duration-200 flex items-center justify-center"
+                      className="w-full px-5 py-3 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white rounded-xl font-bold shadow hover:from-[#e57400] hover:to-[#ffb347] flex items-center justify-center text-base"
                     >
-                      <FaEye className="h-4 w-4 mr-2" />
+                      <FaEye className="h-5 w-5 mr-2" />
                       View
                     </button>
                     <button
@@ -393,7 +371,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
                         e.stopPropagation();
                         navigate(`/apply/${job._id}`);
                       }}
-                      className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors duration-200"
+                      className="w-full px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow text-base"
                     >
                       Apply Now
                     </button>
@@ -401,23 +379,20 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
                 </div>
               ))}
             </div>
-
             {/* Pagination */}
             {!showSkeletons && totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
-                <div className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+              <div className="mt-10 flex items-center justify-between">
+                <div className="text-base text-gray-700 dark:text-gray-300 font-semibold">
                   Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, displayJobs.length)} of {displayJobs.length} results
                 </div>
-                
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 text-gray-700 dark:text-gray-300"
+                    className="px-4 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 text-gray-700 dark:text-gray-300"
                   >
                     Previous
                   </button>
-                  
                   {[...Array(totalPages)].map((_, index) => {
                     const pageNumber = index + 1;
                     if (
@@ -429,9 +404,9 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
                         <button
                           key={pageNumber}
                           onClick={() => setCurrentPage(pageNumber)}
-                          className={`px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md transition-all duration-200 ${
+                          className={`px-4 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-md transition-all duration-200 ${
                             currentPage === pageNumber
-                              ? 'bg-kgamify-500 text-white border-kgamify-500'
+                              ? 'bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white border-[#ff8200]'
                               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
                           }`}
                         >
@@ -446,11 +421,10 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
                     }
                     return null;
                   })}
-                  
                   <button
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 text-gray-700 dark:text-gray-300"
+                    className="px-4 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 text-gray-700 dark:text-gray-300"
                   >
                     Next
                   </button>
