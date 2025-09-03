@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { config as appConfig } from '../config/env';
 
 /**
  * API Client with Request/Response Interceptors
@@ -6,8 +7,11 @@ import axios from 'axios';
  */
 
 // Base configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const DEFAULT_TIMEOUT = 10000;
+// Prefer explicit VITE_API_URL; fall back to env config (which defaults to the deployed backend);
+// avoid localhost in production builds to prevent unreachable API in prod.
+const API_BASE_URL = import.meta.env.VITE_API_URL || appConfig.API_URL || 'https://job-portal-backend-629b.onrender.com/api';
+// Increase default timeout to better handle cold starts and file uploads
+const DEFAULT_TIMEOUT = 30000;
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY = 1000;
 

@@ -120,6 +120,7 @@ router.get('/company', async (req, res) => {
       resume: a.resume || null,
       testScore: a.testScore || null,
       skills: a.skills || [],
+      status: a.status || 'new',
     }));
 
     res.json({ count: payload.length, applications: payload });
@@ -180,7 +181,8 @@ router.get('/job/:jobId', checkCompany, async (req, res) => {
         resumePublicId: app.resumePublicId,
         testScore: app.testScore,
         skills: app.skills || [],
-        createdAt: app.createdAt
+        createdAt: app.createdAt,
+        status: app.status || 'new',
       }));
       
       return res.status(200).json(formattedApplications);
@@ -197,7 +199,8 @@ router.get('/job/:jobId', checkCompany, async (req, res) => {
       resumePublicId: app.resumePublicId,
       testScore: app.testScore,
       skills: app.skills || [],
-      createdAt: app.createdAt
+      createdAt: app.createdAt,
+      status: app.status || 'new',
     }));
     
     
@@ -233,6 +236,42 @@ router.get('/:id', checkCompany, async (req, res) => {
     });
   } catch (err) {
     console.error('Error fetching application:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update application status (shortlist)
+router.post('/:id/shortlist', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const app = await Application.findById(id);
+    if (!app) return res.status(404).json({ error: 'Application not found' });
+    const actorEmail = req.headers['company-email'] || req.body?.email;
+    if (!actorEmail || String(actorEmail).toLowerCase() !== String(app.companyEmail || '').toLowerCase()) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    app.status = 'shortlisted';
+    await app.save();
+    res.json({ success: true, status: app.status });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update application status (reject)
+router.post('/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const app = await Application.findById(id);
+    if (!app) return res.status(404).json({ error: 'Application not found' });
+    const actorEmail = req.headers['company-email'] || req.body?.email;
+    if (!actorEmail || String(actorEmail).toLowerCase() !== String(app.companyEmail || '').toLowerCase()) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    app.status = 'rejected';
+    await app.save();
+    res.json({ success: true, status: app.status });
+  } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });

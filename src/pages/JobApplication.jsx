@@ -96,11 +96,23 @@ const JobApplication = () => {
   const handleFileChange = (e, fileType) => {
     const file = e.target.files[0];
     if (file) {
+      // Basic validation: type and size (resume 5MB, portfolio 10MB)
+      const allowed = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const sizeLimit = fileType === 'resume' ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+      if (!allowed.includes(file.type)) {
+        alert('Only PDF, DOC, or DOCX files are allowed.');
+        return;
+      }
+      if (file.size > sizeLimit) {
+        alert(`File too large. Max ${fileType === 'resume' ? '5MB' : '10MB'}.`);
+        return;
+      }
+
       setFormData(prev => ({
         ...prev,
         [fileType]: file
       }));
-      
+
       if (fileType === 'resume') {
         setResumePreview(file.name);
       } else if (fileType === 'portfolio') {
@@ -126,16 +138,8 @@ const JobApplication = () => {
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
-      setFormData(prev => ({
-        ...prev,
-        [fileType]: file
-      }));
-      
-      if (fileType === 'resume') {
-        setResumePreview(file.name);
-      } else if (fileType === 'portfolio') {
-        setPortfolioPreview(file.name);
-      }
+      // Reuse selection validator
+      handleFileChange({ target: { files: [file] } }, fileType);
     }
   };
 
@@ -161,74 +165,55 @@ const JobApplication = () => {
     
     if (!validateForm()) return;
     
-    const applicationData = new FormData();
-    
-    // Add form fields
-    Object.keys(formData).forEach(key => {
-      if (formData[key] && key !== 'resume' && key !== 'portfolio') {
-        applicationData.append(key, formData[key]);
-      }
-    });
-    
-    // Add files
-    if (formData.resume) {
-      applicationData.append('resume', formData.resume);
-    }
-    if (formData.portfolio) {
-      applicationData.append('portfolio', formData.portfolio);
-    }
-    
-    // Add job ID
-    applicationData.append('jobId', jobId);
-    
     try {
-      // Preferred: Redux service which also does resume parsing and skill match
-      await dispatch(submitApplication({
-        jobId,
-        candidateId: null,
-        resume: formData.resume,
-        coverLetter: formData.coverLetter,
-        additionalInfo: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
-          linkedinUrl: formData.linkedinUrl,
-          githubUrl: formData.githubUrl,
-          portfolioUrl: formData.portfolioUrl
-        }
-      })).unwrap();
-      alert('Application submitted successfully!');
-      navigate('/dashboard');
-    } catch (err) {
+      // Try direct minimal POST to backend API first (works with current backend)
+      const minimal = new FormData();
+      minimal.append('jobId', jobId);
+      minimal.append('applicantName', `${formData.firstName} ${formData.lastName}`.trim());
+      minimal.append('email', formData.email);
+      minimal.append('phone', formData.phone);
+      minimal.append('coverLetter', formData.coverLetter);
+      if (formData.resume) minimal.append('resume', formData.resume);
+
+      const res = await apiClient.post('/application', minimal, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 45000
+      });
+      if (res?.status >= 200 && res?.status < 300) {
+        alert('Application submitted successfully!');
+        navigate('/dashboard');
+        return;
+      }
+      // If backend returns non-2xx, fall through to Redux path
+      throw new Error('Direct application submit did not succeed');
+    } catch (primaryErr) {
       if (import.meta.env.MODE === 'development') {
         // eslint-disable-next-line no-console
-        console.debug('Primary application submit failed:', err);
+        console.debug('Direct application submit failed:', primaryErr);
       }
-      // Fallback: direct minimal POST to backend API
+      // Secondary: Redux service which also does resume parsing and skill match
       try {
-        const minimal = new FormData();
-        minimal.append('jobId', jobId);
-        minimal.append('applicantName', `${formData.firstName} ${formData.lastName}`.trim());
-        minimal.append('email', formData.email);
-        minimal.append('phone', formData.phone);
-        minimal.append('coverLetter', formData.coverLetter);
-        if (formData.resume) minimal.append('resume', formData.resume);
-
-        const res = await apiClient.post('/application', minimal, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        if (res?.status >= 200 && res?.status < 300) {
-          alert('Application submitted successfully!');
-          navigate('/dashboard');
-          return;
-        }
-        alert('Failed to submit application. Please try again later.');
-      } catch (fallbackErr) {
+        await dispatch(submitApplication({
+          jobId,
+          candidateId: null,
+          resume: formData.resume,
+          coverLetter: formData.coverLetter,
+          additionalInfo: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            linkedinUrl: formData.linkedinUrl,
+            githubUrl: formData.githubUrl,
+            portfolioUrl: formData.portfolioUrl
+          }
+        })).unwrap();
+        alert('Application submitted successfully!');
+        navigate('/dashboard');
+      } catch (err) {
         if (import.meta.env.MODE === 'development') {
-          // Log only in development to avoid noise in production
           // eslint-disable-next-line no-console
-          console.debug('Fallback application submit failed:', fallbackErr);
+          console.debug('Redux application submit failed:', err);
         }
         alert('Failed to submit application. Please try again later.');
       }

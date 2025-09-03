@@ -16,6 +16,7 @@ const applicationSchema = new mongoose.Schema({
   },
   testScore: { type: String },
   skills: { type: [String] },
+  status: { type: String, enum: ['new', 'shortlisted', 'rejected'], default: 'new' },
 }, { timestamps: true }); // Add timestamps for tracking creation/update times
 
 module.exports = mongoose.model('Application', applicationSchema);

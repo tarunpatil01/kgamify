@@ -304,3 +304,16 @@ export const getApplicationsForCompany = async (email) => {
   });
   return response.data;
 };
+
+// Application status updates
+export const shortlistApplication = async (applicationId) => {
+  const email = localStorage.getItem('rememberedEmail') || (JSON.parse(localStorage.getItem('companyData') || 'null')?.email || undefined);
+  const response = await axios.post(`${API_URL}/application/${applicationId}/shortlist`, {}, { headers: email ? { 'company-email': email } : undefined });
+  return response.data;
+};
+
+export const rejectApplication = async (applicationId) => {
+  const email = localStorage.getItem('rememberedEmail') || (JSON.parse(localStorage.getItem('companyData') || 'null')?.email || undefined);
+  const response = await axios.post(`${API_URL}/application/${applicationId}/reject`, {}, { headers: email ? { 'company-email': email } : undefined });
+  return response.data;
+};
