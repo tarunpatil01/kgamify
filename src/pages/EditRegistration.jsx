@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { getCompanyInfo, updateCompanyProfile } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import QuillEditor from '../components/QuillEditor'; // Replace ReactQuill import
+import PropTypes from 'prop-types';
 
 function EditRegistration({ isDarkMode }) {
   const navigate = useNavigate();
@@ -94,9 +95,7 @@ function EditRegistration({ isDarkMode }) {
               // If address doesn't have enough parts, use the whole address as addressLine1
               addressComponents.addressLine1 = companyData.address;
             }
-          } catch (error) {
-            console.error("Error parsing address:", error);
-          }
+          } catch (error) { void error; }
         }
         
         // Parse socialMediaLinks if it exists
@@ -106,9 +105,7 @@ function EditRegistration({ isDarkMode }) {
             socialLinks = typeof companyData.socialMediaLinks === 'string' 
               ? JSON.parse(companyData.socialMediaLinks)
               : companyData.socialMediaLinks;
-          } catch (error) {
-            console.error("Error parsing social media links:", error);
-          }
+          } catch (error) { void error; }
         }
         
         // Set the form data with the fetched company information
@@ -149,7 +146,7 @@ function EditRegistration({ isDarkMode }) {
         }
         
       } catch (error) {
-        console.error("Error fetching company data:", error);
+        void error;
         setErrorMessage("Failed to load company data. Please try again.");
       } finally {
         setLoading(false);
@@ -225,9 +222,14 @@ function EditRegistration({ isDarkMode }) {
         formDataToSend.append('password', formData.newPassword);
       }
 
-      const response = await updateCompanyProfile(formData.email, formDataToSend);
+  await updateCompanyProfile(formData.email, formDataToSend);
       setErrorMessage('');
       setOpenSnackbar(true);
+      // Refresh latest company data into local cache so form reflects updates
+      try {
+        const latest = await getCompanyInfo(formData.email);
+        localStorage.setItem('companyData', JSON.stringify(latest));
+      } catch { /* ignore cache refresh errors */ }
       
       // Check if password was changed
       const wasPasswordChanged = formData.newPassword && formData.newPassword.trim().length > 0;
@@ -244,7 +246,7 @@ function EditRegistration({ isDarkMode }) {
       }, 3000);
     } catch (error) {
       setErrorMessage(error.response?.data?.error || error.message || 'Update failed. Please try again.');
-      console.error("Error updating company:", error);
+      void error;
     } finally {
       setIsSubmitting(false);
     }
@@ -640,10 +642,10 @@ function EditRegistration({ isDarkMode }) {
       </div>
       <Snackbar
         open={openSnackbar}
-        autoHideDuration={6000}
+        autoHideDuration={3000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ width: '100%' }}
+        sx={{ width: '100%', position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1400 }}
       >
         <Alert
           onClose={handleCloseSnackbar}
@@ -658,3 +660,7 @@ function EditRegistration({ isDarkMode }) {
 }
 
 export default EditRegistration;
+
+EditRegistration.propTypes = {
+  isDarkMode: PropTypes.bool,
+};

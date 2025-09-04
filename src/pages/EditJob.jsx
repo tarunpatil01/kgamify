@@ -337,13 +337,11 @@ export default function EditJob({ isDarkMode }) {
             
             <div className="mb-4 sm:mb-6">
               <label className="block">Recruitment Process</label>
-              <TextareaAutosize
-                name="recruitmentProcess"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 text-sm sm:text-base w-full ${isDarkMode ? "border-gray-600 bg-gray-700 text-white" : "border-gray-400"}`}
+              <QuillEditor
                 value={formData.recruitmentProcess}
-                onChange={handleChange}
-                minRows={2}
-                style={{ width: "100%" }}
+                onChange={(content) => setFormData({ ...formData, recruitmentProcess: content })}
+                isDarkMode={isDarkMode}
+                placeholder="Describe the recruitment process (stages, rounds, timelines)..."
               />
             </div>
             
