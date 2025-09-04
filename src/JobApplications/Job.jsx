@@ -21,6 +21,7 @@ const Job = ({ isDarkMode }) => {
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [applications, setApplications] = useState([]);
+  const [view, setView] = useState('table'); // 'table' | 'cards'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [authError] = useState(false);
@@ -265,33 +266,85 @@ const Job = ({ isDarkMode }) => {
 
         {/* Applicants section */}
         <div className="mt-10 pb-10">
-          <div className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Applicants</div>
+          <div className={`flex items-center justify-between mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className="text-xl font-semibold">Applicants</div>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="opacity-70">View:</span>
+              <button
+                className={`px-3 py-1 rounded border ${view === 'table' ? 'bg-[#ff8200] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`}
+                onClick={() => setView('table')}
+              >Table</button>
+              <button
+                className={`px-3 py-1 rounded border ${view === 'cards' ? 'bg-[#ff8200] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`}
+                onClick={() => setView('cards')}
+              >Cards</button>
+            </div>
+          </div>
+
           {applications.length === 0 ? (
             <div className={`p-4 rounded-lg text-center ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-50 text-gray-600'} shadow-sm`}>
               No applicants for this job yet
             </div>
+          ) : view === 'table' ? (
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-x-auto`}>
+              <table className="w-full table-auto text-sm">
+                <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
+                  <tr>
+                    <th className="text-left py-2 px-3">Name</th>
+                    <th className="text-left py-2 px-3">Status</th>
+                    <th className="text-left py-2 px-3">Skills</th>
+                    <th className="text-right py-2 px-3">Date</th>
+                    <th className="text-right py-2 px-3">Resume</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {applications.map(applicant => (
+                    <tr key={applicant._id} className={isDarkMode ? 'border-t border-gray-700' : 'border-top border-gray-200'}>
+                      <td className="py-2 px-3 whitespace-nowrap">{applicant.applicantName}</td>
+                      <td className="py-2 px-3">
+                        <span className={`px-2 py-0.5 rounded text-xs ${applicant.status === 'shortlisted' ? 'bg-green-100 text-green-700' : applicant.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{applicant.status || 'new'}</span>
+                      </td>
+                      <td className="py-2 px-3">
+                        {Array.isArray(applicant.skills) && applicant.skills.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {applicant.skills.slice(0, 4).map((s, i) => (
+                              <span key={i} className="text-xxs px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200 border border-blue-200/60">{s}</span>
+                            ))}
+                            {applicant.skills.length > 4 && (
+                              <span className="text-xxs px-2 py-0.5 rounded bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200 border border-gray-200/60">+{applicant.skills.length - 4}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="opacity-60">—</span>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">{new Date(applicant.createdAt).toLocaleDateString()}</td>
+                      <td className="py-2 px-3 text-right">
+                        {applicant.resume ? (
+                          <a href={applicant.resume} target="_blank" rel="noreferrer" className="px-2 py-1 rounded border hover:bg-gray-50 dark:hover:bg-gray-700">View</a>
+                        ) : (
+                          <span className="opacity-60">No resume</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <div className="space-y-4">
               {applications.map((applicant) => (
-                <div key={applicant._id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-sm`}> 
+                <div key={applicant._id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-sm`}>
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
-                      <div className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                        {applicant.applicantName}
-                      </div>
-                      <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Applied on: {new Date(applicant.createdAt).toLocaleDateString()}
-                      </div>
+                      <div className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{applicant.applicantName}</div>
+                      <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Applied on: {new Date(applicant.createdAt).toLocaleDateString()}</div>
                       {applicant.testScore && (
-                        <div className="mt-1">
-                          <span className="font-medium">Test Score: </span>
-                          <span className={`${parseInt(applicant.testScore) >= 70 ? 'text-green-500' : 'text-red-500'}`}>{applicant.testScore}</span>
-                        </div>
+                        <div className="mt-1"><span className="font-medium">Test Score: </span><span className={`${parseInt(applicant.testScore) >= 70 ? 'text-green-500' : 'text-red-500'}`}>{applicant.testScore}</span></div>
                       )}
                       {applicant.skills && applicant.skills.length > 0 && (
                         <div className="mt-2">
-                          <span className="font-medium">Skills: </span>
-                          <div className="flex flex-wrap gap-1 mt-1">
+                          <div className="flex flex-wrap gap-1">
                             {applicant.skills.map((skill, index) => (
                               <span key={index} className={`text-xs px-2 py-1 rounded ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>{skill}</span>
                             ))}

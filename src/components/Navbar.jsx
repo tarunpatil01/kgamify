@@ -190,7 +190,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
                 className="relative p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 aria-label="Notifications"
               >
-                <FaBell className="h-5 w-5 text-gray-800 dark:text-gray-300" />
+                <FaBell className={`h-5 w-5 ${isDarkMode ? 'text-gray-300' : 'dark:text-gray-800'}`} />
                 {unreadNotifications > 0 && (
                   <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                     {unreadNotifications}
