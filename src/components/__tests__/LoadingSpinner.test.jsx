@@ -37,16 +37,17 @@ describe('LoadingSpinner', () => {
   });
 
   test('renders fullscreen overlay when fullScreen is true', () => {
-    render(<LoadingSpinner fullScreen />);
-    const overlay = screen.getByText('Loading...').closest('div');
-    expect(overlay).toHaveClass('fixed', 'inset-0', 'z-50');
+  render(<LoadingSpinner fullScreen />);
+  const overlay = document.querySelector('.fixed.inset-0.z-50');
+  expect(overlay).toBeInTheDocument();
+  expect(overlay).toHaveClass('fixed', 'inset-0', 'z-50');
   });
 });
 
 describe('Skeleton', () => {
   test('renders with default props', () => {
-    render(<Skeleton />);
-    const skeleton = screen.getByRole('generic');
+  const { container } = render(<Skeleton />);
+  const skeleton = container.firstChild;
     expect(skeleton).toHaveClass('animate-pulse');
   });
 

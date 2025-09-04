@@ -202,16 +202,16 @@ export default function Applications({ isDarkMode }) {
     >
  
       {/* Quick Stats */}
-      <div className="card-kgamify p-3 sm:p-4 mb-3 sm:mb-4 flex flex-wrap gap-3 items-center">
+  <div className="card-kgamify p-3 sm:p-4 mb-3 sm:mb-4 flex flex-wrap gap-3 items-center shadow-sm">
         <span className="text-sm">Total: <span className="font-semibold">{statusStats.total}</span></span>
-        <span className="text-xs sm:text-sm px-2 py-1 rounded bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100">New: {statusStats.new}</span>
+        <span className={`text-xs sm:text-sm px-2 py-1 rounded ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-800'}`}>New: {statusStats.new}</span>
         <span className="text-xs sm:text-sm px-2 py-1 rounded bg-green-100 text-green-800">Shortlisted: {statusStats.shortlisted}</span>
         <span className="text-xs sm:text-sm px-2 py-1 rounded bg-red-100 text-red-800">Rejected: {statusStats.rejected}</span>
       </div>
       {/* Search */}
       <div className="card-kgamify p-3 sm:p-4 mb-3 sm:mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full max-w-md">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+          <FaSearch className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
           <input
             className="input-kgamify pl-10"
             placeholder="Search by applicant or job title"
@@ -306,7 +306,7 @@ export default function Applications({ isDarkMode }) {
 
       {/* Quick-select Skills */}
       {topSkills.length > 0 && (
-        <div className="card-kgamify p-3 sm:p-4 mb-3 sm:mb-4">
+  <div className="card-kgamify p-3 sm:p-4 mb-3 sm:mb-4 shadow-sm">
           <div className="text-xs mb-2">Top skills</div>
           <div className="flex flex-wrap gap-2">
             {topSkills.map(([skill, count]) => {
@@ -326,7 +326,7 @@ export default function Applications({ isDarkMode }) {
             })}
             {selectedSkills.length > 0 && (
               <button
-                className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700"
+                className={`text-xs px-2 py-1 rounded ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900'}`}
                 onClick={() => setSelectedSkills([])}
               >
                 Clear skills
@@ -345,16 +345,16 @@ export default function Applications({ isDarkMode }) {
 
       {/* List */}
       {sorted.length === 0 ? (
-        <div className="card-kgamify p-8 text-center">
+  <div className="card-kgamify p-8 text-center shadow-sm">
           <FaFileAlt className="mx-auto h-10 w-10 text-gray-400 mb-3" />
           <div className="font-medium">No applications found</div>
         </div>
       ) : (
         <div>
           {view === 'table' ? (
-            <div className="card-kgamify p-0 overflow-x-auto">
+            <div className="card-kgamify p-0 overflow-x-auto shadow-sm">
               <table className="w-full table-auto text-sm">
-                <thead className={isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}>
+                <thead className={`${isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-50 text-gray-900'} sticky top-0 z-10`}>
                   <tr>
                     <th className="text-left py-2 px-3">Name</th>
                     <th className="text-left py-2 px-3">Role</th>
@@ -366,7 +366,7 @@ export default function Applications({ isDarkMode }) {
                 </thead>
                 <tbody>
                   {sorted.slice(0, itemsToShow).map(app => (
-                    <tr key={app.id} className={isDarkMode ? 'border-t border-gray-800' : 'border-t border-gray-200'}>
+                    <tr key={app.id} className={`${isDarkMode ? 'border-t border-gray-800 hover:bg-gray-800/50' : 'border-t border-gray-200 hover:bg-gray-50'} transition-colors`}>
                       <td className="py-2 px-3 whitespace-nowrap">
                         <div className="flex items-center gap-2"><FaUser /> {app.applicantName}</div>
                       </td>
@@ -379,7 +379,14 @@ export default function Applications({ isDarkMode }) {
                       <td className="py-2 px-3 text-right">
                         <div className="inline-flex gap-2">
                           {app.resume && (
-                            <a href={app.resume} target="_blank" rel="noreferrer" className="px-2 py-1 rounded border hover:bg-gray-50 dark:hover:bg-gray-800">View</a>
+                            <a
+                              href={app.resume}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={`px-2 py-1 rounded border ${isDarkMode ? 'hover:bg-gray-800 text-white border-gray-700' : 'hover:bg-gray-50 text-gray-900 border-gray-300'}`}
+                            >
+                              View
+                            </a>
                           )}
               <button
                             className="px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700"
@@ -431,18 +438,27 @@ export default function Applications({ isDarkMode }) {
                       {Array.isArray(app.skills) && app.skills.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {app.skills.slice(0, 6).map((sk, idx) => (
-                            <span key={idx} className="text-xxs sm:text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200 border border-blue-200/60">{sk}</span>
+                            <span
+                              key={idx}
+                              className={`text-xxs sm:text-xs px-2 py-0.5 rounded border ${isDarkMode ? 'bg-blue-900/30 text-blue-200 border-blue-700/60' : 'bg-blue-50 text-blue-700 border-blue-200/60'}`}
+                            >
+                              {sk}
+                            </span>
                           ))}
                           {app.skills.length > 6 && (
-                            <span className="text-xxs sm:text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200 border border-gray-200/60">+{app.skills.length - 6}</span>
+                            <span
+                              className={`text-xxs sm:text-xs px-2 py-0.5 rounded border ${isDarkMode ? 'bg-gray-800 text-gray-200 border-gray-700/60' : 'bg-gray-100 text-gray-700 border-gray-200/60'}`}
+                            >
+                              +{app.skills.length - 6}
+                            </span>
                           )}
                         </div>
                       )}
-                      {app.resume && (
+            {app.resume && (
                         <div className="mt-1">
-                          <a href={app.resume} target="_blank" rel="noreferrer" className="text-sm underline hover:text-kgamify-500">View Resume</a>
+              <a href={app.resume} target="_blank" rel="noreferrer" className={`text-sm underline ${isDarkMode ? 'hover:text-[#ffb347]' : 'hover:text-[#ff8200]'}`}>View Resume</a>
                         </div>
-                      )}
+            )}
                     </div>
                     <div className="flex items-center gap-4 text-xs sm:text-sm opacity-80">
                       <FaCalendarAlt className="h-4 w-4" />
