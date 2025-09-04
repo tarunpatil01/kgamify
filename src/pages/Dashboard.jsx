@@ -212,22 +212,22 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
 
       {/* Job Statistics */}
       <div className="w-full max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-        <div className="rounded-2xl shadow-xl border p-8 bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 flex flex-col items-center">
+        <div className={`rounded-2xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
           <FaBriefcase className="text-4xl text-[#ff8200] mb-3" />
           <div className="text-base font-semibold mb-1">Total Jobs</div>
           <div className="text-3xl font-extrabold text-[#ff8200]">{totalJobs}</div>
         </div>
-        <div className="rounded-2xl shadow-xl border p-8 bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 flex flex-col items-center">
+        <div className={`rounded-2xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
           <FaUsers className="text-4xl text-blue-500 mb-3" />
           <div className="text-base font-semibold mb-1">Total Applications</div>
           <div className="text-3xl font-extrabold text-blue-500">{totalApplications}</div>
         </div>
-        <div className="rounded-2xl shadow-xl border p-8 bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 flex flex-col items-center">
+        <div className={`rounded-2xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
           <FaCheckCircle className="text-4xl text-[#ff8200] mb-3" />
           <div className="text-base font-semibold mb-1">Active Jobs</div>
           <div className="text-3xl font-extrabold text-[#ff8200]">{activeJobs}</div>
         </div>
-        <div className="rounded-2xl shadow-xl border p-8 bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 flex flex-col items-center">
+        <div className={`rounded-2xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
           <FaCalendarAlt className="text-4xl text-blue-500 mb-3" />
           <div className="text-base font-semibold mb-1">This Week</div>
           <div className="text-3xl font-extrabold text-blue-500">{recentJobs}</div>
@@ -235,7 +235,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
       </div>
 
       {/* Recent Job Posts */}
-      <div className="w-full max-w-6xl mx-auto rounded-3xl shadow-2xl border bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 p-8 sm:p-12">
+  <div className={`w-full max-w-6xl mx-auto rounded-3xl shadow-2xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} p-8 sm:p-12`}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg">
             Recent Job Posts
@@ -303,7 +303,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
               {currentJobs.map((job) => (
                 <div
                   key={`job-${job._id}`}
-                  className="rounded-2xl shadow-xl border border-orange-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-all duration-200 hover:shadow-2xl hover:-translate-y-1 cursor-pointer p-8"
+                  className={`rounded-2xl shadow-xl border ${isDarkMode ? 'border-gray-700 bg-gray-900' : 'border-orange-200 bg-white'} transition-all duration-200 hover:shadow-2xl hover:-translate-y-1 cursor-pointer p-8`}
                   onClick={() => navigate(`/job/${job._id}`)}
                 >
                   <div className="flex justify-between items-start mb-5">
@@ -355,7 +355,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
                       <span className="text-sm">{new Date(job.createdAt || job.datePosted).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="mt-5 grid grid-cols-1 gap-3">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -365,15 +365,6 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
                     >
                       <FaEye className="h-5 w-5 mr-2" />
                       View
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/apply/${job._id}`);
-                      }}
-                      className="w-full px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow text-base"
-                    >
-                      Apply Now
                     </button>
                   </div>
                 </div>

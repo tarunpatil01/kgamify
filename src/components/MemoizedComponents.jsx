@@ -1,3 +1,4 @@
+/* eslint-disable no-console, react-refresh/only-export-components, react-hooks/exhaustive-deps */
 import { memo, useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
@@ -61,14 +62,7 @@ export const withMemoization = (Component, customCompare = null, options = {}) =
 /**
  * Memoized JobCard component optimized for large lists
  */
-export const MemoizedJobCard = memo(({ job, onApply, onSave, isApplied = false, isSaved = false }) => {
-  const handleApply = useCallback(() => {
-    onApply(job.id);
-  }, [onApply, job.id]);
-
-  const handleSave = useCallback(() => {
-    onSave(job.id);
-  }, [onSave, job.id]);
+export const MemoizedJobCard = memo(({ job }) => {
 
   // Memoize expensive calculations
   const formattedSalary = useMemo(() => {
@@ -129,42 +123,17 @@ export const MemoizedJobCard = memo(({ job, onApply, onSave, isApplied = false, 
         </div>
       )}
 
-      <div className="flex gap-2">
-        <button
-          onClick={handleApply}
-          disabled={isApplied}
-          className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
-            isApplied
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-        >
-          {isApplied ? 'Applied' : 'Apply Now'}
-        </button>
-        
-        <button
-          onClick={handleSave}
-          className={`p-2 rounded-md border transition-colors ${
-            isSaved
-              ? 'bg-yellow-100 border-yellow-300 text-yellow-800'
-              : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          {isSaved ? '★' : '☆'}
-        </button>
-      </div>
+  {/* Actions removed (Apply, Save) */}
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison for JobCard - only re-render if meaningful data changes
+  // Custom comparison for JobCard - only re-render if meaningful job data changes
   return (
     prevProps.job.id === nextProps.job.id &&
     prevProps.job.title === nextProps.job.title &&
     prevProps.job.company === nextProps.job.company &&
     prevProps.job.salary === nextProps.job.salary &&
-    prevProps.job.location === nextProps.job.location &&
-    prevProps.isApplied === nextProps.isApplied &&
-    prevProps.isSaved === nextProps.isSaved
+    prevProps.job.location === nextProps.job.location
   );
 });
 
@@ -181,10 +150,6 @@ MemoizedJobCard.propTypes = {
     skills: PropTypes.arrayOf(PropTypes.string),
     createdAt: PropTypes.string.isRequired,
   }).isRequired,
-  onApply: PropTypes.func.isRequired,
-  onSave: PropTypes.func.isRequired,
-  isApplied: PropTypes.bool,
-  isSaved: PropTypes.bool,
 };
 
 /**

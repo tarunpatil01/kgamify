@@ -222,14 +222,67 @@ function EditRegistration({ isDarkMode }) {
         formDataToSend.append('password', formData.newPassword);
       }
 
-  await updateCompanyProfile(formData.email, formDataToSend);
+      await updateCompanyProfile(formData.email, formDataToSend);
       setErrorMessage('');
       setOpenSnackbar(true);
-      // Refresh latest company data into local cache so form reflects updates
+      // Refresh latest company data into local cache and UI state so form reflects updates
       try {
         const latest = await getCompanyInfo(formData.email);
         localStorage.setItem('companyData', JSON.stringify(latest));
-      } catch { /* ignore cache refresh errors */ }
+
+        // Derive address fields from combined address
+        let addressComponents = { addressLine1: '', addressLine2: '', city: '', state: '', pinCode: '' };
+        if (latest.address) {
+          try {
+            const parts = latest.address.split(',').map(p => p.trim());
+            if (parts.length >= 4) {
+              addressComponents = {
+                addressLine1: parts[0] || '',
+                addressLine2: parts.length > 4 ? parts[1] : '',
+                city: parts.length > 4 ? parts[2] : parts[1],
+                state: parts.length > 4 ? parts[3] : parts[2],
+                pinCode: parts[parts.length - 1] || ''
+              };
+            } else {
+              addressComponents.addressLine1 = latest.address;
+            }
+          } catch (e) { void e; }
+        }
+
+        // Parse social links
+        let socialLinks = { instagram: '', twitter: '', linkedin: '', youtube: '' };
+        try {
+          socialLinks = typeof latest.socialMediaLinks === 'string' ? JSON.parse(latest.socialMediaLinks) : (latest.socialMediaLinks || socialLinks);
+        } catch (e) { void e; }
+
+        setFormData(prev => ({
+          ...prev,
+          companyName: latest.companyName || '',
+          website: latest.website || '',
+          industry: latest.industry || '',
+          type: latest.type || '',
+          size: latest.size || '',
+          contactName: latest.contactName || '',
+          email: latest.email || prev.email,
+          phone: latest.phone || '',
+          addressLine1: addressComponents.addressLine1,
+          addressLine2: addressComponents.addressLine2,
+          city: addressComponents.city,
+          state: addressComponents.state,
+          pinCode: addressComponents.pinCode,
+          username: latest.registrationNumber || prev.username,
+          yearEstablished: latest.yearEstablished || '',
+          description: latest.description || '',
+          instagram: socialLinks.instagram || '',
+          twitter: socialLinks.twitter || '',
+          linkedin: socialLinks.linkedin || '',
+          youtube: socialLinks.youtube || '',
+          // keep password fields untouched
+        }));
+
+        if (latest.logo) setCurrentLogo(latest.logo);
+        if (latest.documents) setCurrentDocuments(latest.documents);
+      } catch { /* ignore refresh errors */ }
       
       // Check if password was changed
       const wasPasswordChanged = formData.newPassword && formData.newPassword.trim().length > 0;

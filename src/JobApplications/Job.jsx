@@ -1,18 +1,7 @@
 import { useState, useEffect } from "react";
 import PropTypes from 'prop-types';
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  FaCheckCircle,
-  FaTimesCircle,
-  FaMapMarkerAlt,
-  FaBriefcase,
-  FaClock,
-  FaMoneyBillWave,
-  FaBuilding,
-  FaGlobe,
-  FaBookmark,
-  FaShareAlt
-} from "react-icons/fa";
+import { FaCheckCircle, FaTimesCircle, FaMapMarkerAlt, FaBriefcase, FaClock, FaMoneyBillWave, FaBuilding, FaGlobe, FaBookmark } from "react-icons/fa";
 import { getJobById, getApplicationsByJobId } from "../api";
 import ResumeViewer from "../components/ResumeViewer";
 
@@ -215,16 +204,13 @@ const Job = ({ isDarkMode }) => {
           <div className="space-y-6">
             <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6 sticky top-24`}>
               <div className="flex flex-col gap-3">
+                {/* Apply/Save/Share removed as requested */}
                 <button
-                  onClick={() => navigate(`/apply/${job._id || job.id || jobId}`)}
-                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold"
+                  onClick={() => navigate(-1)}
+                  className="w-full px-4 py-2 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white rounded-md font-semibold"
                 >
-                  Apply Now
+                  Back
                 </button>
-                <div className="flex gap-2">
-                  <SaveButton isDarkMode={isDarkMode} />
-                  <ShareButton isDarkMode={isDarkMode} />
-                </div>
               </div>
               <div className="mt-5 border-t pt-5 space-y-3 text-sm">
                 <div className="flex items-center gap-2"><FaBriefcase className="text-[#ff8200]" /> {job.employmentType || 'N/A'}</div>
@@ -376,55 +362,3 @@ Job.propTypes = {
   isDarkMode: PropTypes.bool
 };
 
-// Local UI components
-function SaveButton({ isDarkMode }) {
-  const [saved, setSaved] = useState(false);
-  return (
-    <button
-      onClick={() => setSaved(!saved)}
-      className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md border ${
-        isDarkMode
-          ? `border-gray-600 ${saved ? 'bg-gray-700 text-yellow-400' : 'bg-gray-800 text-gray-200 hover:bg-gray-700'}`
-          : `border-gray-200 ${saved ? 'bg-yellow-50 text-yellow-700' : 'bg-white text-gray-700 hover:bg-gray-50'}`
-      }`}
-      aria-pressed={saved}
-    >
-      <FaBookmark className={saved ? 'text-yellow-500' : ''} />
-      {saved ? 'Saved' : 'Save'}
-    </button>
-  );
-}
-
-function ShareButton({ isDarkMode }) {
-  const [copied, setCopied] = useState(false);
-  const onShare = async () => {
-    const url = window.location.href;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: document.title, url });
-      } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      }
-    } catch {
-      // ignore
-    }
-  };
-  return (
-    <button
-      onClick={onShare}
-      className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md border ${
-        isDarkMode
-          ? 'border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700'
-          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-      }`}
-    >
-      <FaShareAlt />
-      {copied ? 'Link copied' : 'Share'}
-    </button>
-  );
-}
-
-SaveButton.propTypes = { isDarkMode: PropTypes.bool };
-ShareButton.propTypes = { isDarkMode: PropTypes.bool };
