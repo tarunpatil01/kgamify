@@ -1,4 +1,4 @@
-// React import not required with automatic JSX runtime
+import React from 'react';
 
 const LoadingSpinner = ({ 
   size = 'md', 
