@@ -47,10 +47,20 @@ function EditRegistration({ isDarkMode }) {
   useEffect(() => {
     const fetchCompanyData = async () => {
       try {
-        const email = localStorage.getItem("rememberedEmail");
+        let email = localStorage.getItem("rememberedEmail");
+        // Fix: If not found in localStorage, try to get from companyData or session
+        if (!email) {
+          try {
+            const cd = JSON.parse(localStorage.getItem("companyData") || "null");
+            if (cd?.email) email = cd.email;
+          } catch {
+            // ignore
+          }
+        }
         if (!email) {
           setErrorMessage("Please login first");
-          navigate("/");
+          // Do NOT navigate away, just show error and let user login manually
+          setLoading(false);
           return;
         }
 
@@ -250,106 +260,127 @@ function EditRegistration({ isDarkMode }) {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
-        <p className="text-xl">Loading company data...</p>
+      <div className={`flex justify-center items-center h-screen ${isDarkMode ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white" : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"}`}>
+        <p className="text-xl font-bold">Loading company data...</p>
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div className={`flex flex-col justify-center items-center h-screen ${isDarkMode ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white" : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"}`}>
+        <p className="text-xl font-bold mb-4">{errorMessage}</p>
+        <button
+          className="px-6 py-3 rounded-xl font-bold text-base shadow transition bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347]"
+          onClick={() => navigate('/')}
+        >
+          Go to Login
+        </button>
       </div>
     );
   }
 
   return (
     <div
-      className={`px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-[calc(100vh-4rem)] ${
-        isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"
+      className={`min-h-screen flex items-center justify-center py-8 px-2 sm:px-6 lg:px-8 relative overflow-hidden ${
+        isDarkMode
+          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white"
+          : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
       }`}
     >
       <div
-        className={`p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-3xl mx-auto ${
-          isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"
-        }`}
+        className={`w-full max-w-3xl mx-auto rounded-3xl shadow-2xl border ${
+          isDarkMode
+            ? "bg-gray-800 border-gray-700"
+            : "bg-white border-orange-200"
+        } p-6 sm:p-10 relative z-10`}
       >
-        <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">Edit Company Profile</h1>
-        <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
+        <h1 className="text-3xl sm:text-4xl font-extrabold mb-8 text-center tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg">
+          Edit Company Profile
+        </h1>
+        <form className="space-y-8" onSubmit={handleSubmit}>
+          {/* Basic Info */}
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-[#ff8200]">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
               Basic Info
             </h2>
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
+            <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Company Name</label>
+                <label className="block mb-2 font-medium text-black">Company Name</label>
                 <input
                   type="text"
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Logo</label>
+                <label className="block mb-2 font-medium text-black">Logo</label>
                 {currentLogo && (
                   <div className="mb-2">
-                    <img 
-                      src={currentLogo} 
-                      alt="Current Logo" 
-                      className="h-16 w-auto object-contain"
+                    <img
+                      src={currentLogo}
+                      alt="Current Logo"
+                      className="h-16 w-auto object-contain rounded-lg border"
                     />
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Current logo</p>
+                    <p className="text-sm text-gray-500 mt-1">Current logo</p>
                   </div>
                 )}
                 <input
                   type="file"
                   name="logo"
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
             </div>
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
+            <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Website</label>
+                <label className="block mb-2 font-medium text-black">Website</label>
                 <input
                   type="url"
                   name="website"
                   value={formData.website}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Industry</label>
+                <label className="block mb-2 font-medium text-black">Industry</label>
                 <input
                   type="text"
                   name="industry"
                   value={formData.industry}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
             </div>
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
+            <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Type</label>
+                <label className="block mb-2 font-medium text-black">Type</label>
                 <input
                   type="text"
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Size</label>
+                <label className="block mb-2 font-medium text-black">Size</label>
                 <input
                   type="text"
                   name="size"
                   value={formData.size}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-gray-700 dark:text-gray-300">Description</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium text-black">Description</label>
               <QuillEditor
                 value={formData.description}
                 onChange={(content) => setFormData({...formData, description: content})}
@@ -357,129 +388,131 @@ function EditRegistration({ isDarkMode }) {
               />
             </div>
           </div>
+          {/* Contact */}
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-[#ff8200]">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
               Contact
             </h2>
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
+            <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Contact Name</label>
+                <label className="block mb-2 font-medium text-black">Contact Name</label>
                 <input
                   type="text"
                   name="contactName"
                   value={formData.contactName}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Email</label>
+                <label className="block mb-2 font-medium text-black">Email</label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   disabled
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 bg-gray-100 ${isDarkMode ? "bg-gray-600 text-gray-300 border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-gray-100 text-gray-500 focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Email cannot be changed</p>
+                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
               </div>
             </div>
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
+            <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Phone</label>
+                <label className="block mb-2 font-medium text-black">Phone</label>
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block text-gray-700 dark:text-gray-300">Username</label>
+                <label className="block mb-2 font-medium text-black">Username</label>
                 <input
                   type="text"
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
             </div>
             {/* Address fields */}
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-gray-700 dark:text-gray-300">Address Line 1</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium text-black">Address Line 1</label>
               <input
                 type="text"
                 name="addressLine1"
                 value={formData.addressLine1}
                 onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-gray-700 dark:text-gray-300">Address Line 2</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium text-black">Address Line 2</label>
               <input
                 type="text"
                 name="addressLine2"
                 value={formData.addressLine2}
                 onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-gray-700 dark:text-gray-300">State</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium text-black">State</label>
               <input
                 type="text"
                 name="state"
                 value={formData.state}
                 onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-gray-700 dark:text-gray-300">City</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium text-black">City</label>
               <input
                 type="text"
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-gray-700 dark:text-gray-300">Pin Code</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium text-black">Pin Code</label>
               <input
                 type="text"
                 name="pinCode"
                 value={formData.pinCode}
                 onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
               />
             </div>
           </div>
+          {/* Registration */}
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-[#ff8200]">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
               Registration
             </h2>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-gray-700 dark:text-gray-300">Year Established</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium text-black">Year Established</label>
               <input
                 type="text"
                 name="yearEstablished"
                 value={formData.yearEstablished}
                 onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-gray-700 dark:text-gray-300">Documents</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium text-black">Documents</label>
               {currentDocuments && (
                 <div className="mb-2">
-                  <a 
-                    href={currentDocuments} 
-                    target="_blank" 
+                  <a
+                    href={currentDocuments}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#ff8200] hover:underline"
                   >
@@ -491,20 +524,23 @@ function EditRegistration({ isDarkMode }) {
                 type="file"
                 name="documents"
                 onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                className="w-full px-4 py-2 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
               />
             </div>
           </div>
+          {/* Password */}
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-[#ff8200]">Password</h2>
-            <div className="mb-4 sm:mb-6 relative">
-              <label className="block text-gray-700 dark:text-gray-300">New Password</label>
+            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
+              Password
+            </h2>
+            <div className="mb-6 relative">
+              <label className="block mb-2 font-medium text-black">New Password</label>
               <input
                 type={passwordVisible ? "text" : "password"}
                 name="newPassword"
                 value={formData.newPassword}
                 onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
                 title="Must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters"
               />
@@ -516,81 +552,81 @@ function EditRegistration({ isDarkMode }) {
                 {passwordVisible ? <FaEyeSlash className={`${isDarkMode ? "text-white" : ""}`} /> : <FaEye className={`${isDarkMode ? "text-white" : ""}`} />}
               </button>
             </div>
-            
-            <div className="mb-4 sm:mb-6 relative">
-              <label className="block text-gray-700 dark:text-gray-300">Confirm New Password</label>
+            <div className="mb-6 relative">
+              <label className="block mb-2 font-medium text-black">Confirm New Password</label>
               <input
                 type={passwordVisible ? "text" : "password"}
                 name="confirmPassword"
                 value={formData.confirmPassword || ""}
                 onChange={handleChange}
-                className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
               />
             </div>
-            
-            <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"} mt-1`}>
+            <p className="text-sm text-gray-500 mt-1">
               Enter a new password only if you want to change it. Leave blank to keep your current password.
             </p>
-            <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"} mt-1`}>
+            <p className="text-sm text-gray-500 mt-1">
               Password must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters.
             </p>
           </div>
+          {/* Other */}
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-[#ff8200]">Other</h2>
-            
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-gray-700 dark:text-gray-300">Social Media Links</label>
-              <div className="mb-4 sm:mb-6">
-                <label className="block text-gray-700 dark:text-gray-300">Instagram</label>
+            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
+              Other
+            </h2>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium text-black">Social Media Links</label>
+              <div className="mb-4">
+                <label className="block mb-2 font-medium text-black">Instagram</label>
                 <input
                   type="url"
                   name="instagram"
                   value={formData.instagram || ""}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block text-gray-700 dark:text-gray-300">Twitter</label>
+              <div className="mb-4">
+                <label className="block mb-2 font-medium text-black">Twitter</label>
                 <input
                   type="url"
                   name="twitter"
                   value={formData.twitter || ""}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block text-gray-700 dark:text-gray-300">LinkedIn</label>
+              <div className="mb-4">
+                <label className="block mb-2 font-medium text-black">LinkedIn</label>
                 <input
                   type="url"
                   name="linkedin"
                   value={formData.linkedin || ""}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
-              <div className="mb-4 sm:mb-6">
-                <label className="block text-gray-700 dark:text-gray-300">YouTube</label>
+              <div className="mb-4">
+                <label className="block mb-2 font-medium text-black">YouTube</label>
                 <input
                   type="url"
                   name="youtube"
                   value={formData.youtube || ""}
                   onChange={handleChange}
-                  className={`w-full p-2 sm:p-4 border border-gray-300 rounded mt-2 ${isDarkMode ? "bg-gray-700 text-white border-gray-600" : ""}`}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
                 />
               </div>
             </div>
           </div>
           {errorMessage && (
-            <div className="mb-4 sm:mb-6">
-              <p className="text-red-500">{errorMessage}</p>
+            <div className="mb-6">
+              <p className="text-red-500 font-semibold">{errorMessage}</p>
             </div>
           )}
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full p-4 rounded transition duration-300 bg-[#ff8200] text-white hover:bg-[#e57400]`}
+            className="w-full py-4 rounded-xl font-bold text-lg shadow-lg transition duration-300 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] flex items-center justify-center"
           >
             {isSubmitting ? (
               <div className="flex items-center justify-center">
@@ -602,16 +638,16 @@ function EditRegistration({ isDarkMode }) {
           </button>
         </form>
       </div>
-      <Snackbar 
-        open={openSnackbar} 
-        autoHideDuration={6000} 
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         sx={{ width: '100%' }}
       >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity="success" 
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity="success"
           sx={{ width: '100%', maxWidth: '600px', fontSize: '1.1rem', '& .MuiAlert-message': { fontSize: '1.1rem' } }}
         >
           Company information updated successfully!

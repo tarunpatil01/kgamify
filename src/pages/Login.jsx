@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaSpinner, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
-import backgroundImage from '../assets/background.jpg';
 import Klogo from '../assets/KLOGO.png';
 import { loginCompany } from '../api';
 import PropTypes from 'prop-types';
@@ -127,187 +126,208 @@ const Login = ({ setLoggedInEmail }) => {
   };
 
   useEffect(() => {
-    const img = new Image();
-    img.src = backgroundImage;
+    // Removed preloading of background image
   }, []);
 
   return (
-    <div 
-      className="min-h-screen font-primary relative flex items-center justify-center p-2 sm:p-4 overflow-auto"
-      style={{
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundAttachment: 'fixed'
-      }}
+    <div
+      className="min-h-screen flex items-center justify-center py-8 px-2 sm:px-6 lg:px-8 relative overflow-hidden"
     >
-      {/* Background Overlay */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"></div>
-      <div className="absolute inset-0 bg-gradient-to-br from-kgamify-500/20 via-transparent to-kgamify-pink-500/20"></div>
-      
-      {/* Content Container */}
-      <div className="relative z-10 w-full max-w-md my-4 sm:my-8">
+      {/* Modern animated gradient background with subtle pattern overlay */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            "linear-gradient(120deg, #fff7e6 0%, #ffecd2 40%, #ffe3b3 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(circle at 80% 20%, #ffb34733 0%, transparent 60%), radial-gradient(circle at 20% 80%, #ff820033 0%, transparent 60%)",
+            opacity: 0.7,
+          }}
+        />
+        <div
+          className="absolute inset-0 animate-gradient-move"
+          style={{
+            background:
+              "linear-gradient(120deg, #ffecd2 0%, #ffb347 100%)",
+            opacity: 0.15,
+            mixBlendMode: "multiply",
+          }}
+        />
+        <style>
+          {`
+            @keyframes gradient-move {
+              0% { background-position: 0% 50%; }
+              50% { background-position: 100% 50%; }
+              100% { background-position: 0% 50%; }
+            }
+            .animate-gradient-move {
+              background-size: 200% 200%;
+              animation: gradient-move 10s ease-in-out infinite;
+            }
+          `}
+        </style>
+      </div>
+      <div className="w-full max-w-md mx-auto rounded-3xl shadow-2xl border bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 p-6 sm:p-10 relative z-10">
         {/* Logo Section */}
-        <div className="text-center mb-4 sm:mb-6">
-          <div className="relative">
-            <div className="absolute -inset-4 bg-white/10 backdrop-blur-md rounded-full"></div>
-            <img
-              src={Klogo}
-              alt="Kgamify Logo"
-              className="relative w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 object-contain drop-shadow-lg"
-            />
-          </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-white mb-1 sm:mb-2 drop-shadow-lg">
+        <div className="text-center mb-6">
+          <img
+            src={Klogo}
+            alt="Kgamify Logo"
+            className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 object-contain drop-shadow-lg"
+          />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-center tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg mb-1">
             Welcome Back
           </h1>
-          <p className="text-white/90 text-sm sm:text-base md:text-lg drop-shadow">
+          <p className="text-black text-base sm:text-lg">
             Sign in to your Kgamify account
           </p>
         </div>
 
         {/* Login Form Card */}
-        <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl border border-white/20 p-4 sm:p-6 md:p-8">
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-            {/* Email Field */}
-            <div>
-              <label className="block font-medium text-gray-800 mb-1 sm:mb-2">
-                Email Address *
-              </label>
-              <div className="relative">
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  placeholder="Enter your email address"
-                  className={`input-kgamify ${
-                    validationErrors.email 
-                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
-                      : touched.email && !validationErrors.email 
-                        ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
-                        : ''
-                  }`}
-                  aria-describedby={validationErrors.email ? "email-error" : undefined}
-                  required
-                />
-                {touched.email && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    {validationErrors.email ? (
-                      <FaTimesCircle className="text-red-500" />
-                    ) : (
-                      <FaCheckCircle className="text-green-500" />
-                    )}
-                  </div>
-                )}
-              </div>
-              {validationErrors.email && (
-                <p id="email-error" className="mt-1 text-sm text-red-600" role="alert">
-                  {validationErrors.email}
-                </p>
-              )}
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label className="block font-medium text-gray-800 mb-1 sm:mb-2">
-                Password *
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  placeholder="Enter your password"
-                  className={`input-kgamify has-icon ${
-                    validationErrors.password 
-                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
-                      : touched.password && !validationErrors.password 
-                        ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
-                        : ''
-                  }`}
-                  aria-describedby={validationErrors.password ? "password-error" : undefined}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={togglePasswordVisibility}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none transition-colors"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <FaEyeSlash /> : <FaEye />}
-                </button>
-              </div>
-              {validationErrors.password && (
-                <p id="password-error" className="mt-1 text-sm text-red-600" role="alert">
-                  {validationErrors.password}
-                </p>
-              )}
-            </div>
-
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={handleRememberMeChange}
-                  className="w-4 h-4 text-kgamify-500 bg-white/80 border-gray-300 rounded focus:ring-kgamify-500 focus:ring-2"
-                />
-                <span className="ml-2 text-sm text-gray-700">
-                  Remember me
-                </span>
-              </label>
-              <Link 
-                to="/forgot-password" 
-                className="text-sm text-kgamify-600 hover:text-kgamify-700 font-medium transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
-
-            {/* Error Message */}
-            {errorMessage && (
-              <div className="bg-red-50/90 backdrop-blur-sm border border-red-200 rounded-lg p-3" role="alert">
-                <p className="text-red-600 text-sm font-medium">{errorMessage}</p>
-              </div>
-            )}
-
-            {/* Login Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn-primary"
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center">
-                  <FaSpinner className="animate-spin mr-2" />
-                  Signing in...
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Email Field */}
+          <div>
+            <label className="block font-semibold text-black mb-2">
+              Email Address *
+            </label>
+            <div className="relative">
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder="Enter your email address"
+                className={`w-full px-4 py-3 rounded-xl border text-base font-medium bg-white dark:bg-gray-900 border-gray-900 dark:border-gray-300 text-black dark:text-white focus:ring-2 focus:ring-[#ff8200] outline-none transition ${
+                  validationErrors.email
+                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                    : touched.email && !validationErrors.email
+                      ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
+                      : ''
+                }`}
+                aria-describedby={validationErrors.email ? "email-error" : undefined}
+                required
+              />
+              {touched.email && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  {validationErrors.email ? (
+                    <FaTimesCircle className="text-red-500" />
+                  ) : (
+                    <FaCheckCircle className="text-green-500" />
+                  )}
                 </div>
-              ) : (
-                "Sign In"
               )}
-            </button>
-
-            {/* Register Link */}
-            <div className="text-center pt-3 border-t border-gray-200/50">
-              <p className="text-gray-700 text-sm">
-                Don&apos;t have an account?{" "}
-                <Link 
-                  to="/register" 
-                  className="text-kgamify-600 hover:text-kgamify-700 font-medium transition-colors"
-                >
-                  Create account
-                </Link>
-              </p>
             </div>
+            {validationErrors.email && (
+              <p id="email-error" className="mt-1 text-sm text-red-600" role="alert">
+                {validationErrors.email}
+              </p>
+            )}
+          </div>
 
-            {/* Admin Portal Link removed as per requirements */}
-          </form>
-        </div>
+          {/* Password Field */}
+          <div>
+            <label className="block font-semibold text-black mb-2">
+              Password *
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder="Enter your password"
+                className={`w-full px-4 py-3 rounded-xl border text-base font-medium bg-white dark:bg-gray-900 border-gray-900 dark:border-gray-300 text-black dark:text-white focus:ring-2 focus:ring-[#ff8200] outline-none transition ${
+                  validationErrors.password
+                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                    : touched.password && !validationErrors.password
+                      ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
+                      : ''
+                }`}
+                aria-describedby={validationErrors.password ? "password-error" : undefined}
+                required
+              />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-black dark:text-white hover:text-[#ff8200] focus:outline-none transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                tabIndex={-1}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
+            {validationErrors.password && (
+              <p id="password-error" className="mt-1 text-sm text-red-600" role="alert">
+                {validationErrors.password}
+              </p>
+            )}
+          </div>
+
+          {/* Remember Me & Forgot Password */}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={handleRememberMeChange}
+                className="w-4 h-4 text-[#ff8200] bg-white border-gray-900 rounded focus:ring-[#ff8200] focus:ring-2"
+              />
+              <span className="ml-2 text-sm text-black">
+                Remember me
+              </span>
+            </label>
+            <Link
+              to="/forgot-password"
+              className="text-sm text-[#ff8200] hover:text-[#e57400] font-semibold transition-colors"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="bg-red-50/90 border border-red-200 rounded-lg p-3" role="alert">
+              <p className="text-red-600 text-sm font-medium">{errorMessage}</p>
+            </div>
+          )}
+
+          {/* Login Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 rounded-xl font-bold text-lg shadow-lg transition duration-300 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] flex items-center justify-center"
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <FaSpinner className="animate-spin mr-2" />
+                Signing in...
+              </span>
+            ) : (
+              "Sign In"
+            )}
+          </button>
+
+          {/* Register Link */}
+          <div className="text-center pt-4 border-t border-gray-200/50">
+            <p className="text-black text-sm">
+              Don&apos;t have an account?{" "}
+              <Link
+                to="/register"
+                className="text-[#ff8200] hover:text-[#e57400] font-semibold transition-colors"
+              >
+                Create account
+              </Link>
+            </p>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -315,6 +335,3 @@ const Login = ({ setLoggedInEmail }) => {
 
 export default Login;
 
-Login.propTypes = {
-  setLoggedInEmail: PropTypes.func,
-};

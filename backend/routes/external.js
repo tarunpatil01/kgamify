@@ -29,7 +29,7 @@ router.get('/jobs', requireApiKey, async (req, res) => {
     const format = (req.query.format || '').toLowerCase(); // 'plain' to include stripped text
     const minimal = String(req.query.minimal || '').toLowerCase() === 'true';
 
-    let query = {};
+  const query = {};
     if (companyEmail) {
       query.companyEmail = companyEmail;
     } else if (companyName) {

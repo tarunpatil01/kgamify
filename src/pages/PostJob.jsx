@@ -135,25 +135,27 @@ export default function PostJob({ isDarkMode, email }) {
 
   return (
     <div
-      className={`flex p-4 sm:p-10 justify-center items-center h-fit ${
-        isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-black"
+      className={`min-h-screen flex items-center justify-center py-8 px-2 sm:px-6 lg:px-8 ${
+        isDarkMode ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white" : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
       }`}
     >
       <div
-        className={`p-4 sm:p-8 rounded-2xl shadow-lg w-full max-w-4xl ${
-          isDarkMode ? "bg-gray-800 text-white" : "bg-white text-black"
-        }`}
+        className={`w-full max-w-3xl mx-auto rounded-3xl shadow-2xl border ${
+          isDarkMode
+            ? "bg-gray-800 border-gray-700"
+            : "bg-white border-orange-200"
+        } p-6 sm:p-10`}
       >
-        <h1 className="text-2xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">
+        <h1 className="text-3xl sm:text-4xl font-extrabold mb-8 text-center tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg">
           Create a Job Post
         </h1>
-        <form className="space-y-4 sm:space-y-8" onSubmit={handleSubmit}>
+        <form className="space-y-8" onSubmit={handleSubmit}>
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300">
               Job Details
             </h2>
-            <div className="mb-4 sm:mb-6">
-              <label className="block mb-2 sm:mb-3">Job Title</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Job Title</label>
               <Autocomplete
                 freeSolo
                 options={jobTitles}
@@ -187,8 +189,8 @@ export default function PostJob({ isDarkMode, email }) {
                 )}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block mb-2 sm:mb-3">Job Description</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Job Description</label>
               <QuillEditor
                 value={formData.jobDescription}
                 onChange={(content) => setFormData({...formData, jobDescription: content})}
@@ -196,9 +198,9 @@ export default function PostJob({ isDarkMode, email }) {
                 placeholder="Enter detailed job description..."
               />
             </div>
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
+            <div className="mb-6 flex flex-col sm:flex-row gap-6">
               <div className="w-full sm:w-1/2">
-                <label className="block">Employment Type</label>
+                <label className="block mb-2 font-medium">Employment Type</label>
                 <Select
                   name="employmentType"
                   value={formData.employmentType}
@@ -228,7 +230,7 @@ export default function PostJob({ isDarkMode, email }) {
               </div>
 
               <div className="w-full sm:w-1/2">
-                <label className="block">Experience Level</label>
+                <label className="block mb-2 font-medium">Experience Level</label>
                 <Select
                   name="experienceLevel"
                   value={formData.experienceLevel}
@@ -258,9 +260,9 @@ export default function PostJob({ isDarkMode, email }) {
                 </Select>
               </div>
             </div>
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
+            <div className="mb-6 flex flex-col sm:flex-row gap-6">
               <div className="w-full sm:w-1/2">
-                <label className="block">Remote or Onsite</label>
+                <label className="block mb-2 font-medium">Remote or Onsite</label>
                 <Select
                   name="remoteOrOnsite"
                   value={formData.remoteOrOnsite}
@@ -288,7 +290,7 @@ export default function PostJob({ isDarkMode, email }) {
                 </Select>
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block">Location</label>
+                <label className="block mb-2 font-medium">Location</label>
                 <TextField
                   name="location"
                   value={formData.location}
@@ -307,40 +309,38 @@ export default function PostJob({ isDarkMode, email }) {
                 />
               </div>
             </div>
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-x-4">
-              <div className="mb-4 sm:mb-6">
-                <label className="block">Salary Range ₹(INR)</label>
-                <Select
-                  name="salary"
-                  value={formData.salary}
-                  onChange={handleChange}
-                  fullWidth
-                  sx={{
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Salary Range ₹(INR)</label>
+              <Select
+                name="salary"
+                value={formData.salary}
+                onChange={handleChange}
+                fullWidth
+                sx={{
+                  color: isDarkMode ? 'white' : 'inherit',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                  },
+                  '& .MuiSvgIcon-root': {
                     color: isDarkMode ? 'white' : 'inherit',
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
-                    },
-                    '& .MuiSvgIcon-root': {
-                      color: isDarkMode ? 'white' : 'inherit',
-                    }
-                  }}
-                  MenuProps={{
-                    PaperProps: {
-                      sx: { backgroundColor: 'white' }
-                    }
-                  }}
-                >
-                  <MenuItem value="">Select Salary Range</MenuItem>
-                  {salaryOptions.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {option}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </div>
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: { backgroundColor: 'white' }
+                  }
+                }}
+              >
+                <MenuItem value="">Select Salary Range</MenuItem>
+                {salaryOptions.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </Select>
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Relocation Benefits</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Relocation Benefits</label>
               <TextField
                 name="relocationBenefits"
                 value={formData.relocationBenefits}
@@ -358,8 +358,8 @@ export default function PostJob({ isDarkMode, email }) {
                 }}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Recruitment Process</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Recruitment Process</label>
               <TextareaAutosize
                 name="recruitmentProcess"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -373,8 +373,8 @@ export default function PostJob({ isDarkMode, email }) {
                 style={{ width: "100%" }}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Responsibilities</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Responsibilities</label>
               <TextareaAutosize
                 name="responsibilities"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -388,8 +388,8 @@ export default function PostJob({ isDarkMode, email }) {
                 style={{ width: "100%" }}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Skills</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Skills</label>
               <TextareaAutosize
                 name="skills"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -403,8 +403,8 @@ export default function PostJob({ isDarkMode, email }) {
                 style={{ width: "100%" }}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Benefits</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Benefits</label>
               <TextareaAutosize
                 name="benefits"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -418,8 +418,8 @@ export default function PostJob({ isDarkMode, email }) {
                 style={{ width: "100%" }}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Eligibility</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Eligibility</label>
               <TextareaAutosize
                 name="eligibility"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -433,8 +433,8 @@ export default function PostJob({ isDarkMode, email }) {
                 style={{ width: "100%" }}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Company Description</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Company Description</label>
               <TextareaAutosize
                 name="companyDescription"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -448,8 +448,8 @@ export default function PostJob({ isDarkMode, email }) {
                 style={{ width: "100%" }}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Additional Information</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Additional Information</label>
               <TextareaAutosize
                 name="additionalInformation"
                 className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
@@ -464,8 +464,8 @@ export default function PostJob({ isDarkMode, email }) {
               />
             </div>
             {/* JD attachments upload */}
-            <div className="mb-4 sm:mb-6">
-              <label className="block mb-2">Attach JD files (PDF/DOC/DOCX, optional)</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Attach JD files (PDF/DOC/DOCX, optional)</label>
               <input
                 type="file"
                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -475,7 +475,7 @@ export default function PostJob({ isDarkMode, email }) {
                   setJdError("");
                   setJdFiles(files);
                 }}
-                className="block w-full text-sm text-gray-900 bg-white border border-gray-300 rounded-lg cursor-pointer focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#ff8200] file:text-white hover:file:bg-[#e57400]"
+                className="block w-full text-sm text-gray-900 bg-white border border-gray-300 rounded-lg cursor-pointer focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#ff8200] file:text-white hover:file:bg-[#e57400] transition"
               />
               {jdFiles && jdFiles.length > 0 && (
                 <ul className="mt-2 text-sm list-disc list-inside">
@@ -488,8 +488,8 @@ export default function PostJob({ isDarkMode, email }) {
                 <p className="mt-1 text-sm text-red-500">{jdError}</p>
               )}
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Status</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Status</label>
               <Select
                 name="status"
                 value={formData.status}
@@ -515,8 +515,8 @@ export default function PostJob({ isDarkMode, email }) {
                 <MenuItem value="inactive">Inactive</MenuItem>
               </Select>
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Number of Positions</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Number of Positions</label>
               <TextField
                 name="numberOfPositions"
                 value={formData.numberOfPositions}
@@ -540,8 +540,8 @@ export default function PostJob({ isDarkMode, email }) {
                 }}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Category</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Category</label>
               <Autocomplete
                 freeSolo
                 options={[
@@ -587,8 +587,8 @@ export default function PostJob({ isDarkMode, email }) {
                 }}
               />
             </div>
-            <div className="mb-4 sm:mb-6">
-              <label className="block">Tags</label>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Tags</label>
               <TextField
                 name="tags"
                 value={formData.tags}
@@ -609,10 +609,10 @@ export default function PostJob({ isDarkMode, email }) {
           </div>
           <button
             type="submit"
-            className={`w-full p-4 rounded transition duration-300 ${
+            className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition duration-300 ${
               isDarkMode
-                ? "bg-[#ff8200] text-white hover:bg-[#e57400]"
-                : "bg-[#ff8200] text-white hover:bg-[#e57400]"
+                ? "bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347]"
+                : "bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347]"
             }`}
           >
             Post Job
@@ -632,6 +632,11 @@ export default function PostJob({ isDarkMode, email }) {
               width: "100%",
               maxWidth: "600px",
               fontSize: "1.1rem",
+              borderRadius: "12px",
+              background: isDarkMode
+                ? "linear-gradient(90deg, #232526 0%, #ff8200 100%)"
+                : "linear-gradient(90deg, #fffbe6 0%, #ffb347 100%)",
+              color: isDarkMode ? "white" : "#232526",
               "& .MuiAlert-message": { fontSize: "1.1rem" },
             }}
           >

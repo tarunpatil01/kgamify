@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { FaCalendarAlt, FaFileAlt, FaSearch, FaSortAlphaDown, FaSortAmountDown, FaBuilding, FaUser } from 'react-icons/fa';
+import { FaCalendarAlt, FaFileAlt, FaSearch, FaSortAlphaDown, FaSortAmountDown, FaUser } from 'react-icons/fa';
 import { getApplicationsForCompany, shortlistApplication, rejectApplication } from '../api';
 
 export default function Applications({ isDarkMode }) {
@@ -167,9 +167,13 @@ export default function Applications({ isDarkMode }) {
   if (loading) {
     return (
       <div
-        className={`p-4 ${isDarkMode ? 'text-gray-100 bg-gray-900' : 'text-gray-800 bg-gray-100'}`}
+        className={`min-h-screen flex items-center justify-center ${
+          isDarkMode
+            ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white"
+            : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
+        }`}
       >
-        Loading applications...
+        <div className="text-lg font-semibold">Loading applications...</div>
       </div>
     );
   }
@@ -177,17 +181,26 @@ export default function Applications({ isDarkMode }) {
   if (error) {
     return (
       <div
-        className={`p-4 ${isDarkMode ? 'text-red-300 bg-gray-900' : 'text-red-600 bg-gray-100'}`}
+        className={`min-h-screen flex items-center justify-center ${
+          isDarkMode
+            ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white"
+            : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
+        }`}
       >
-        {error}
+        <div className="text-lg font-semibold text-red-500">{error}</div>
       </div>
     );
   }
 
   return (
     <div
-      className={`min-h-screen p-2 sm:p-4 md:p-6 ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-100 text-gray-900'}`}
+      className={`min-h-screen py-8 px-2 sm:px-6 lg:px-8 flex flex-col items-center ${
+        isDarkMode
+          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white"
+          : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
+      }`}
     >
+ 
       {/* Quick Stats */}
       <div className="card-kgamify p-3 sm:p-4 mb-3 sm:mb-4 flex flex-wrap gap-3 items-center">
         <span className="text-sm">Total: <span className="font-semibold">{statusStats.total}</span></span>
@@ -368,13 +381,13 @@ export default function Applications({ isDarkMode }) {
                           {app.resume && (
                             <a href={app.resume} target="_blank" rel="noreferrer" className="px-2 py-1 rounded border hover:bg-gray-50 dark:hover:bg-gray-800">View</a>
                           )}
-                          <button
+              <button
                             className="px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700"
                             onClick={async () => {
                               try {
                                 await shortlistApplication(app.id);
                                 setApps(prev => prev.map(x => x.id === app.id ? { ...x, status: 'shortlisted' } : x));
-                              } catch { /* noop */ }
+                } catch (e) { void e; }
                             }}
                           >
                             Shortlist
@@ -386,7 +399,7 @@ export default function Applications({ isDarkMode }) {
                                 if (!window.confirm('Reject this applicant?')) return;
                                 await rejectApplication(app.id);
                                 setApps(prev => prev.map(x => x.id === app.id ? { ...x, status: 'rejected' } : x));
-                              } catch { /* noop */ }
+                } catch (e) { void e; }
                             }}
                           >
                             Reject
@@ -447,10 +460,10 @@ export default function Applications({ isDarkMode }) {
                     </div>
                     <div className="flex gap-2">
                       <button className="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700" onClick={async () => {
-                        try { await shortlistApplication(app.id); setApps(prev => prev.map(x => x.id === app.id ? { ...x, status: 'shortlisted' } : x)); } catch {}
+                        try { await shortlistApplication(app.id); setApps(prev => prev.map(x => x.id === app.id ? { ...x, status: 'shortlisted' } : x)); } catch (e) { void e; }
                       }}>Shortlist</button>
                       <button className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700" onClick={async () => {
-                        try { if (!window.confirm('Reject this applicant?')) return; await rejectApplication(app.id); setApps(prev => prev.map(x => x.id === app.id ? { ...x, status: 'rejected' } : x)); } catch {}
+                        try { if (!window.confirm('Reject this applicant?')) return; await rejectApplication(app.id); setApps(prev => prev.map(x => x.id === app.id ? { ...x, status: 'rejected' } : x)); } catch (e) { void e; }
                       }}>Reject</button>
                     </div>
                   </div>
