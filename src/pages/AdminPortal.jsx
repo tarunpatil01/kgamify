@@ -27,6 +27,11 @@ const AdminPortal = ({ isDarkMode }) => {
   const [passwordError, setPasswordError] = useState(null);
   const navigate = useNavigate();
 
+  // Reason modal for Hold / Deny
+  const [reasonModal, setReasonModal] = useState({ open: false, mode: null, company: null, reason: "" });
+
+  // (Optional) Filters & sorting could be added here if needed
+
   // Initial load: auth + admin data + initial fetches
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -57,7 +62,7 @@ const AdminPortal = ({ isDarkMode }) => {
 
     // Fetch pending companies
     setIsLoading(true);
-    axios
+  axios
       .get(`${baseUrl}/api/admin/pending-companies`, { headers })
       .then((response) => setPendingCompanies(response.data))
       .catch((error) => {
@@ -171,53 +176,33 @@ const AdminPortal = ({ isDarkMode }) => {
     }
   };
 
-  const handleDeny = async (companyId) => {
-    try {
-      const reason = window.prompt('Please provide a reason for denial (required):');
-      if (!reason || !reason.trim()) {
-        return;
-      }
-      await denyCompanyWithReason(companyId, reason.trim());
-      
-      setPendingCompanies(pendingCompanies.filter((company) => company._id !== companyId));
-      setNotification({
-        show: true,
-        message: "Company registration denied",
-        type: "success"
-      });
-      setTimeout(() => setNotification({ show: false, message: "", type: "" }), 3000);
-    } catch (error) {
-      // Error handling without console.error
-      setNotification({
-        show: true,
-        message: "Error denying company",
-        type: "error" 
-      });
-      setTimeout(() => setNotification({ show: false, message: "", type: "" }), 3000);
-      
-      // If unauthorized, logout
-      if (error.response?.status === 401) {
-        handleLogout();
-      }
-    }
+  const openReasonModal = (mode, company) => {
+    setReasonModal({ open: true, mode, company, reason: "" });
   };
 
-  const handleHold = async (companyId) => {
+  const submitReasonModal = async () => {
+    const { mode, company, reason } = reasonModal;
+    if (!mode || !company) { setReasonModal({ open: false, mode: null, company: null, reason: "" }); return; }
+    const trimmed = (reason || "").trim();
+    if (!trimmed) { return; }
     try {
-      const reason = window.prompt('Enter a reason to put this company on hold (required):');
-      if (!reason || !reason.trim()) {
-        return;
+      if (mode === 'hold') {
+        const resp = await holdCompanyWithReason(company._id, trimmed);
+        const updated = resp?.company || { ...company, status: 'hold', approved: false, adminMessages: [ ...(company.adminMessages||[]), { type: 'hold', message: trimmed, createdAt: new Date().toISOString() } ] };
+        setPendingCompanies(prev => prev.map(c => c._id === company._id ? updated : c));
+        setNotification({ show: true, message: 'Company put on hold', type: 'success' });
+      } else if (mode === 'deny') {
+        const resp = await denyCompanyWithReason(company._id, trimmed);
+        const updated = resp?.company || { ...company, status: 'denied', approved: false, adminMessages: [ ...(company.adminMessages||[]), { type: 'deny', message: trimmed, createdAt: new Date().toISOString() } ] };
+        // Keep in the list; update status and messages
+        setPendingCompanies(prev => prev.map(c => c._id === company._id ? updated : c));
+        setNotification({ show: true, message: 'Company denied (email sent)', type: 'success' });
       }
-      await holdCompanyWithReason(companyId, reason.trim());
-      setPendingCompanies(prev => prev.map(c => c._id === companyId ? { ...c, status: 'hold' } : c));
-      setNotification({ show: true, message: 'Company put on hold', type: 'success' });
-      setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
     } catch (error) {
-      setNotification({ show: true, message: 'Error putting company on hold', type: 'error' });
+      setNotification({ show: true, message: error?.response?.data?.message || 'Action failed', type: 'error' });
+    } finally {
       setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
-      if (error.response?.status === 401) {
-        handleLogout();
-      }
+      setReasonModal({ open: false, mode: null, company: null, reason: '' });
     }
   };
 
@@ -499,7 +484,7 @@ const AdminPortal = ({ isDarkMode }) => {
                         </div>
                       </div>
                       
-                      <div className="flex space-x-4">
+            <div className="flex space-x-4">
                         <button
                           onClick={() => handleApprove(company._id)}
                           className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-sm"
@@ -507,13 +492,13 @@ const AdminPortal = ({ isDarkMode }) => {
                           <FaCheck className="mr-2" /> Approve
                         </button>
                         <button
-                          onClick={() => handleHold(company._id)}
+              onClick={() => openReasonModal('hold', company)}
                           className="flex items-center px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors shadow-sm"
                         >
                           <FaClock className="mr-2" /> Hold
                         </button>
                         <button
-                          onClick={() => handleDeny(company._id)}
+              onClick={() => openReasonModal('deny', company)}
                           className="flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors shadow-sm"
                         >
                           <FaTimes className="mr-2" /> Deny
@@ -569,6 +554,18 @@ const AdminPortal = ({ isDarkMode }) => {
                               <p className="font-medium">{company.industry || "Not specified"}</p>
                             </div>
                           </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Status:</span>
+                            {company.status === 'hold' && (
+                              <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">On Hold</span>
+                            )}
+                            {company.status === 'denied' && (
+                              <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Denied</span>
+                            )}
+                            {(!company.status || company.status === 'pending') && (
+                              <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">Pending</span>
+                            )}
+                          </div>
                           
                           {company.documents && (
                             <div className="flex items-start">
@@ -591,6 +588,19 @@ const AdminPortal = ({ isDarkMode }) => {
                         </div>
                       </div>
                     </div>
+                    {/* Admin message (latest) */}
+                    {Array.isArray(company.adminMessages) && company.adminMessages.length > 0 && (
+                      <div className={`mt-6 p-4 rounded ${company.status === 'denied' ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700' : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700'}`}>
+                        <div className="text-sm font-medium mb-1">{company.status === 'denied' ? 'Denial Reason' : 'Hold Reason'}</div>
+                        <div className="text-sm">
+                          {(() => {
+                            const msgs = company.adminMessages.filter(m => m.type === (company.status === 'denied' ? 'deny' : 'hold'));
+                            const last = msgs[msgs.length - 1];
+                            return last?.message || '—';
+                          })()}
+                        </div>
+                      </div>
+                    )}
                     
                     {company.description && (
                       <div className={`mt-6 p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
@@ -933,6 +943,51 @@ const AdminPortal = ({ isDarkMode }) => {
           </div>
         </div>
       )}
+
+          {/* Reason Modal */}
+          {reasonModal.open && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+              <div className={`w-full max-w-md rounded-lg shadow-lg ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
+                <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold">
+                    {reasonModal.mode === 'hold' ? 'Put Company on Hold' : 'Deny Company Registration'}
+                  </h3>
+                </div>
+                <div className="px-5 py-4 space-y-3">
+                  <div className="text-sm opacity-80">
+                    {reasonModal.mode === 'hold'
+                      ? 'Please provide a reason. The company will be able to log in but cannot post jobs.'
+                      : 'Please provide a reason. The company will not be able to log in and will receive an email notification.'}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Reason</label>
+                    <textarea
+                      rows={4}
+                      value={reasonModal.reason}
+                      onChange={(e) => setReasonModal(s => ({ ...s, reason: e.target.value }))}
+                      className={`w-full rounded border px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                      placeholder="Enter a clear, actionable reason..."
+                    />
+                  </div>
+                </div>
+                <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => setReasonModal({ open: false, mode: null, company: null, reason: '' })}
+                    className={`px-4 py-2 rounded ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitReasonModal}
+                    className={`px-4 py-2 rounded text-white ${reasonModal.mode === 'hold' ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}
+                    disabled={!reasonModal.reason.trim()}
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
       </div>
       
       {/* Custom Admin Footer */}

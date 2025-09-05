@@ -39,6 +39,31 @@ router.get('/approved-companies', adminAuth, async (req, res) => {
   }
 });
 
+// All companies with filters/sorting for admin portal
+router.get('/companies', adminAuth, async (req, res) => {
+  try {
+    const { status, q, sort = 'createdAt', order = 'desc' } = req.query;
+    const filter = {};
+    if (status && ['pending', 'approved', 'hold', 'denied'].includes(status)) {
+      filter.status = status;
+    }
+    if (q) {
+      filter.$or = [
+        { companyName: { $regex: new RegExp(q, 'i') } },
+        { email: { $regex: new RegExp(q, 'i') } },
+        { industry: { $regex: new RegExp(q, 'i') } },
+      ];
+    }
+    // Map to real fields; createdAt is available by default timestamps? If not, fallback to _id time
+    const sortField = sort === 'name' ? 'companyName' : (sort === 'status' ? 'status' : (sort === 'updatedAt' ? 'updatedAt' : '_id'));
+    const sortOrder = String(order).toLowerCase() === 'asc' ? 1 : -1;
+    const list = await Company.find(filter).sort({ [sortField]: sortField === '_id' ? sortOrder : sortOrder });
+    res.json(list);
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Admin login route with database-stored credentials
 router.post('/login', loginLimiter, async (req, res) => {
   try {
@@ -133,30 +158,29 @@ router.post('/deny-company/:id', adminAuth, auditLogger({
     const company = await Company.findById(req.params.id);
     if (!company) return res.status(404).json({ message: 'Company not found' });
 
-    // Store message then remove account
-    if (reason) {
-      company.adminMessages = company.adminMessages || [];
-      company.adminMessages.push({ type: 'deny', message: reason });
+    // Store message & retain account with denied status (do NOT delete)
+    company.adminMessages = company.adminMessages || [];
+    if (reason && String(reason).trim().length) {
+      company.adminMessages.push({ type: 'deny', message: String(reason).trim() });
     }
     company.status = 'denied';
+    company.approved = false;
     await company.save();
 
-    // Send denial email
+    // Send denial email (non-blocking)
     if (company.email) {
       sendEmail(company.email, 'custom', {
         subject: 'KGamify Registration Denied',
         html: `<div style="font-family: Arial, sans-serif;">
           <h2 style="color:#dc2626;">Registration Denied</h2>
           <p>Hi ${company.companyName},</p>
-          <p>Your registration was denied.${reason ? ` Reason: <strong>${reason}</strong>.` : ''}</p>
-          <p>You may re-register after addressing the issues.</p>
+          <p>Your registration was denied.${reason ? ` Reason: <strong>${String(reason).trim()}</strong>.` : ''}</p>
+          <p>You will not be able to log in. You may re-register after addressing the issues.</p>
         </div>`
       }).catch(() => {});
     }
 
-    // Finally delete company
-    await Company.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Company denied and removed' });
+    res.json({ message: 'Company denied', company });
   } catch {
     res.status(500).json({ message: 'Server error' });
   }
