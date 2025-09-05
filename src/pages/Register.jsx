@@ -411,8 +411,8 @@ function Register({ isDarkMode }) {
 
   // Stepper steps
   const steps = [
-    "Company Registration",
-    "Company Details",
+    "Registration & Account",
+    "Address & Contact",
     "Document Upload",
     "Summary"
   ];
@@ -533,10 +533,10 @@ function Register({ isDarkMode }) {
         </h1>
 
         <form className="space-y-8" onSubmit={handleSubmit}>
-          {currentStep === 1 && (
+      {currentStep === 1 && (
             <>
               <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
-                Basic Information
+        Basic Information & Account
               </h2>
               <div className="mb-6">
                 <label className="block font-medium text-black mb-2">
@@ -603,18 +603,63 @@ function Register({ isDarkMode }) {
                   isDarkMode={isDarkMode}
                 />
               </div>
+              {/* Account credentials */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block font-medium text-black mb-2">
+                    Username <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
+                    placeholder="Choose a unique username"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-black mb-2">
+                    Password <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
+                    placeholder="Create a strong password"
+                    minLength={6}
+                    required
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block font-medium text-black mb-2">
+                    Confirm Password <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
+                    placeholder="Re-enter your password"
+                    minLength={6}
+                    required
+                  />
+                </div>
+              </div>
             </>
           )}
 
           {currentStep === 2 && (
             <>
               <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
-                Company Details
+                Company Address & Contact
               </h2>
               <div className="mb-6">
-                <label className="block font-medium text-black mb-2">
-                  Contact Name <span className="text-red-500">*</span>
-                </label>
+                <label className="block font-medium text-black mb-2">Contact Person Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="contactName"
@@ -625,9 +670,7 @@ function Register({ isDarkMode }) {
                 />
               </div>
               <div className="mb-6">
-                <label className="block font-medium text-black mb-2">
-                  Email <span className="text-red-500">*</span>
-                </label>
+                <label className="block font-medium text-black mb-2">Contact Email <span className="text-red-500">*</span></label>
                 <input
                   type="email"
                   name="email"
@@ -638,9 +681,7 @@ function Register({ isDarkMode }) {
                 />
               </div>
               <div className="mb-6">
-                <label className="block font-medium text-black mb-2">
-                  Phone <span className="text-red-500">*</span>
-                </label>
+                <label className="block font-medium text-black mb-2">Contact Phone <span className="text-red-500">*</span></label>
                 <input
                   type="tel"
                   name="phone"
@@ -651,9 +692,7 @@ function Register({ isDarkMode }) {
                 />
               </div>
               <div className="mb-6">
-                <label className="block font-medium text-black mb-2">
-                  Address Line 1 <span className="text-red-500">*</span>
-                </label>
+                <label className="block font-medium text-black mb-2">Company Address <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="addressLine1"
@@ -664,7 +703,7 @@ function Register({ isDarkMode }) {
                 />
               </div>
               <div className="mb-6">
-                <label className="block font-medium text-black mb-2">Address Line 2</label>
+                <label className="block font-medium text-black mb-2">Company Address Line 2</label>
                 <input
                   type="text"
                   name="addressLine2"
@@ -674,9 +713,7 @@ function Register({ isDarkMode }) {
                 />
               </div>
               <div className="mb-6">
-                <label className="block font-medium text-black mb-2">
-                  State <span className="text-red-500">*</span>
-                </label>
+                <label className="block font-medium text-black mb-2">Company State <span className="text-red-500">*</span></label>
                 <select
                   name="state"
                   value={formData.state}
@@ -693,9 +730,7 @@ function Register({ isDarkMode }) {
                 </select>
               </div>
               <div className="mb-6">
-                <label className="block font-medium text-black mb-2">
-                  City <span className="text-red-500">*</span>
-                </label>
+                <label className="block font-medium text-black mb-2">Company City <span className="text-red-500">*</span></label>
                 <select
                   name="city"
                   value={formData.city}
@@ -724,6 +759,21 @@ function Register({ isDarkMode }) {
                   className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
                   required
                 />
+              </div>
+              <div className="mb-6">
+                <label className="block font-medium text-black mb-2">Company Type <span className="text-red-500">*</span></label>
+                <select
+                  name="companyType"
+                  value={formData.companyType}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
+                  required
+                >
+                  <option value="">Select Company Type</option>
+                  {Object.keys(companyTypeDocs).map((k) => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
               </div>
             </>
           )}
@@ -811,12 +861,12 @@ function Register({ isDarkMode }) {
             )}
 
             {/* Right-side Next/Submit */}
-            {currentStep < steps.length ? (
+      {currentStep < steps.length ? (
               <button
                 type="button"
                 onClick={() => setCurrentStep((prev) => prev + 1)}
                 className={`px-6 py-3 rounded-xl font-bold text-base shadow transition bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] ${currentStep > 1 ? '' : ''}`}
-                disabled={(currentStep === 3 && !formData.documents)}
+        disabled={(currentStep === 3 && !formData.documents) || (currentStep === 2 && !formData.companyType)}
               >
                 Next
               </button>

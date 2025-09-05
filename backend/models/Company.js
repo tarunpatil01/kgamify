@@ -25,7 +25,9 @@ const companySchema = new mongoose.Schema({
   // Made optional to support minimal registration; complete later in profile
   phone: { type: String },
   address: { type: String },
-  Username: { type: String, required: true },
+  // Optional government/company registration number; must be unique when provided
+  registrationNumber: { type: String, default: undefined },
+  Username: { type: String, required: true, unique: true },
   yearEstablished: { type: String, required: true },
   documents: {
     type: String, // Cloudinary URL
@@ -59,6 +61,13 @@ const companySchema = new mongoose.Schema({
   otpCode: String,
   otpExpiry: Date,
 }, { toJSON: { getters: true } });
+
+// Ensure uniqueness of registrationNumber only when it exists (string values)
+// Prevents duplicate-key errors for null/undefined values created by a non-partial unique index
+companySchema.index(
+  { registrationNumber: 1 },
+  { unique: true, partialFilterExpression: { registrationNumber: { $exists: true, $type: 'string' } } }
+);
 
 // Pre-save hook to hash password before saving
 companySchema.pre('save', async function(next) {

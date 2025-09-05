@@ -36,17 +36,32 @@ router.post('/', upload.fields([
 ]), async (req, res) => {
   try {
 
-    // Check for existing company with same email
-    const existingCompany = await Company.findOne({ email: req.body.email });
+    // Check for existing company with same email or username
+    const { email, Username } = req.body;
+    const existingCompany = await Company.findOne({
+      $or: [
+        { email },
+        { Username }
+      ]
+    });
     if (existingCompany) {
-      // Clean up uploaded files if email already exists
+      // Clean up uploaded files if a conflict exists
       if (req.files?.logo) {
-        await cloudinary.uploader.destroy(req.files.logo[0].filename);
+        try {
+          await cloudinary.uploader.destroy(req.files.logo[0].filename);
+  } catch {
+          // ignore cleanup failure
+        }
       }
       if (req.files?.documents) {
-        await cloudinary.uploader.destroy(req.files.documents[0].filename);
+        try {
+          await cloudinary.uploader.destroy(req.files.documents[0].filename);
+  } catch {
+          // ignore cleanup failure
+        }
       }
-      return res.status(400).json({ error: 'Email already registered' });
+      const conflictField = existingCompany.email === email ? 'Email' : 'Username';
+      return res.status(400).json({ error: `${conflictField} already registered` });
     }
 
     // Parse socialMediaLinks if it's provided as a string
@@ -67,6 +82,7 @@ router.post('/', upload.fields([
       phone: companyData.phone || undefined,
       address: companyData.address || undefined,
       size: companyData.size || undefined,
+      registrationNumber: companyData.registrationNumber ? companyData.registrationNumber : undefined,
       logo: req.files?.logo ? req.files.logo[0].path : null,
       documents: req.files?.documents ? req.files.documents[0].path : null,
       approved: false,
@@ -77,6 +93,11 @@ router.post('/', upload.fields([
     res.status(201).json({ message: 'Company registration request sent for approval' });
   } catch (error) {
     console.error('Server error:', error);
+    // Handle duplicate key error for unique Username/email
+    if (error?.code === 11000) {
+      const key = Object.keys(error.keyPattern || {})[0] || 'Field';
+      return res.status(400).json({ error: `${key} already registered` });
+    }
     res.status(400).json({ error: error.message });
   }
 });
@@ -84,14 +105,20 @@ router.post('/', upload.fields([
 // Login a company (only regular companies now)
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, email, password } = req.body;
+    const userIdentifier = identifier || email; // backwards compatibility
     
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    if (!userIdentifier || !password) {
+      return res.status(400).json({ error: 'Email/Username and password are required' });
     }
     
-    // Check regular company collection
-    const company = await Company.findOne({ email });
+    // Check regular company collection by email or Username
+    const company = await Company.findOne({
+      $or: [
+        { email: userIdentifier },
+        { Username: userIdentifier }
+      ]
+    });
     
     if (!company) {
       return res.status(401).json({ error: 'Invalid credentials' });

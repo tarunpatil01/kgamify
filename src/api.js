@@ -34,7 +34,11 @@ export const loginCompany = async (loginData) => {
       // Continue with login attempt anyway
     }
     
-    const response = await apiClient.post('/companies/login', loginData);
+    // Support username or email via 'identifier'
+    const payload = loginData.identifier
+      ? loginData
+      : (loginData.email ? { identifier: loginData.email, password: loginData.password } : loginData);
+    const response = await apiClient.post('/companies/login', payload);
     
     // Store the company type in localStorage
     if (response.data.success) {

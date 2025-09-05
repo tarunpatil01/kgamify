@@ -8,7 +8,7 @@ import PropTypes from 'prop-types';
 const Login = ({ setLoggedInEmail }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: localStorage.getItem("rememberedEmail") || "",
+    identifier: localStorage.getItem("rememberedIdentifier") || "",
     password: "",
   });
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem("rememberedEmail"));
@@ -22,11 +22,9 @@ const Login = ({ setLoggedInEmail }) => {
   const validateField = (name, value) => {
     const errors = {};
     
-    if (name === 'email') {
+    if (name === 'identifier') {
       if (!value) {
-        errors.email = 'Email is required';
-      } else if (!/\S+@\S+\.\S+/.test(value)) {
-        errors.email = 'Please enter a valid email address';
+        errors.identifier = 'Username or Email is required';
       }
     }
     
@@ -88,27 +86,30 @@ const Login = ({ setLoggedInEmail }) => {
     setErrorMessage(""); // Clear previous errors
     
     // Validate all fields
-    const emailErrors = validateField('email', formData.email);
+  const emailErrors = validateField('identifier', formData.identifier);
     const passwordErrors = validateField('password', formData.password);
     const allErrors = { ...emailErrors, ...passwordErrors };
     
     if (Object.keys(allErrors).length > 0) {
       setValidationErrors(allErrors);
-      setTouched({ email: true, password: true });
+  setTouched({ identifier: true, password: true });
       return;
     }
     
     setIsLoading(true);
     try {
-      const response = await loginCompany(formData);
+  const response = await loginCompany({ identifier: formData.identifier, password: formData.password });
       
       if (response.success) {
         if (rememberMe) {
-          localStorage.setItem("rememberedEmail", formData.email);
+          localStorage.setItem("rememberedIdentifier", formData.identifier);
+          if (response.company?.email) {
+            localStorage.setItem("rememberedEmail", response.company.email);
+          }
         } else {
-          localStorage.removeItem("rememberedEmail");
+          localStorage.removeItem("rememberedIdentifier");
         }
-        setLoggedInEmail(formData.email);
+        setLoggedInEmail(response.company?.email || "");
         localStorage.setItem('companyType', response.type);
         navigate("/dashboard");
       }
@@ -116,7 +117,7 @@ const Login = ({ setLoggedInEmail }) => {
       if (error?.error === 'Your company is not approved by Admin yet') {
         setErrorMessage("Your company is not approved by Admin yet. Please wait for approval.");
       } else if (error?.error === 'Invalid credentials') {
-        setErrorMessage("Invalid email or password. Please try again.");
+        setErrorMessage("Invalid username/email or password. Please try again.");
       } else {
         setErrorMessage("An error occurred during login. Please try again.");
       }
@@ -191,34 +192,34 @@ const Login = ({ setLoggedInEmail }) => {
 
         {/* Login Form Card */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email Field */}
+          {/* Username or Email Field */}
           <div>
             <label className="block font-semibold text-black mb-2">
-              Email Address <span className="text-red-500">*</span>
+              Username or Email <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
-                type="email"
-                name="email"
-                value={formData.email}
+                type="text"
+                name="identifier"
+                value={formData.identifier}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                placeholder="Enter your email address"
-                autoComplete="email"
+                placeholder="Enter your username or email address"
+                autoComplete="username email"
                 className={`w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition ${
-                  validationErrors.email
+                  validationErrors.identifier
                     ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
-                    : touched.email && !validationErrors.email
+                    : touched.identifier && !validationErrors.identifier
                       ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
                       : ''
                 } caret-black placeholder-gray-400`}
-                aria-describedby={validationErrors.email ? "email-error" : undefined}
+                aria-describedby={validationErrors.identifier ? "identifier-error" : undefined}
                 required
                 style={{ color: '#111', background: '#fff', caretColor: '#111' }}
               />
-              {touched.email && (
+              {touched.identifier && (
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  {validationErrors.email ? (
+                  {validationErrors.identifier ? (
                     <FaTimesCircle className="text-red-500" />
                   ) : (
                     <FaCheckCircle className="text-green-500" />
@@ -226,9 +227,9 @@ const Login = ({ setLoggedInEmail }) => {
                 </div>
               )}
             </div>
-            {validationErrors.email && (
-              <p id="email-error" className="mt-1 text-sm text-red-600" role="alert">
-                {validationErrors.email}
+            {validationErrors.identifier && (
+              <p id="identifier-error" className="mt-1 text-sm text-red-600" role="alert">
+                {validationErrors.identifier}
               </p>
             )}
           </div>
