@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaSpinner, FaCloudUploadAlt, FaCheckCircle } from "react-icons/fa";
+import { FaSpinner, FaCloudUploadAlt, FaCheckCircle, FaEye, FaEyeSlash } from "react-icons/fa";
 import { registerCompany } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
@@ -252,6 +252,8 @@ import PropTypes from 'prop-types';
 function Register({ isDarkMode }) {
   const navigate = useNavigate();
   // const [passwordVisible, setPasswordVisible] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     companyName: "",
     logo: null,
@@ -498,6 +500,11 @@ function Register({ isDarkMode }) {
               background-size: 200% 200%;
               animation: gradient-move 10s ease-in-out infinite;
             }
+            /* Hide native Edge password reveal/clear to avoid double eye */
+            input.hide-native-reveal::-ms-reveal,
+            input.hide-native-reveal::-ms-clear {
+              display: none;
+            }
           `}
         </style>
       </div>
@@ -623,31 +630,55 @@ function Register({ isDarkMode }) {
                   <label className="block font-medium text-black mb-2">
                     Password <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
-                    placeholder="Create a strong password"
-                    minLength={6}
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition hide-native-reveal"
+                      placeholder="Create a strong password"
+                      minLength={6}
+                      required
+                      style={{ WebkitTextSecurity: showPassword ? 'none' : 'disc', color: '#111', background: '#fff', caretColor: '#111' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-black hover:text-[#ff8200] focus:outline-none transition-colors"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block font-medium text-black mb-2">
                     Confirm Password <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition"
-                    placeholder="Re-enter your password"
-                    minLength={6}
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition hide-native-reveal"
+                      placeholder="Re-enter your password"
+                      minLength={6}
+                      required
+                      style={{ WebkitTextSecurity: showConfirmPassword ? 'none' : 'disc', color: '#111', background: '#fff', caretColor: '#111' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(v => !v)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-black hover:text-[#ff8200] focus:outline-none transition-colors"
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </>

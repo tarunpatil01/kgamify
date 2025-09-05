@@ -7,7 +7,6 @@ import {
   FaBuilding, 
   FaChevronLeft,
   FaChevronRight,
-  FaCog,
   FaSignOutAlt
 } from "react-icons/fa";
 import PropTypes from 'prop-types';
@@ -144,14 +143,7 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false }) {
             isDarkMode ? 'border-gray-800' : 'border-gray-200'
           }`} />
           
-          <SidebarLink
-            to="/settings"
-            icon={FaCog}
-            text="Settings"
-            isOpen={localIsOpen}
-            isActive={isActivePath('/settings')}
-            isDarkMode={isDarkMode}
-          />
+          {/* Settings link removed per request */}
           
           <button
             onClick={handleLogout}

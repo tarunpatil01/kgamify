@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { FaFilePdf, FaDownload, FaExternalLinkAlt } from 'react-icons/fa';
+import PropTypes from 'prop-types';
 
-const ResumeViewer = ({ resumeUrl, applicantName }) => {
+// variant: 'card' | 'inline'
+const ResumeViewer = ({ resumeUrl, applicantName, variant = 'card' }) => {
   const [isLoading, setIsLoading] = useState(false);
   
   if (!resumeUrl) {
@@ -18,23 +20,52 @@ const ResumeViewer = ({ resumeUrl, applicantName }) => {
     setIsLoading(false);
   };
 
-  // Determine file type (PDF or other)
-  const isPDF = resumeUrl.toLowerCase().includes('.pdf') || resumeUrl.toLowerCase().includes('pdf');
-  
+  // Filename for display
+  const fileName = resumeUrl.split('/').pop();
+
+  if (variant === 'inline') {
+    return (
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-lg">
+          <FaFilePdf className="w-5 h-5 text-red-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate" title={fileName}>{fileName}</div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={handleViewResume}
+            disabled={isLoading}
+            className="flex items-center px-2.5 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs"
+          >
+            <FaExternalLinkAlt className="mr-1.5" /> View
+          </button>
+          <a
+            href={resumeUrl}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center px-2.5 py-1.5 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors text-xs"
+          >
+            <FaDownload className="mr-1.5" /> Download
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="border border-gray-300 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
         <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-lg">
           <FaFilePdf className="w-6 h-6 text-red-500" />
         </div>
-        
         <div className="flex-grow text-center sm:text-left">
           <h3 className="font-medium">{applicantName}&apos;s Resume</h3>
-          <p className="text-sm text-gray-500 truncate max-w-xs">
-            {resumeUrl.split('/').pop()}
+          <p className="text-sm text-gray-500 truncate max-w-xs" title={fileName}>
+            {fileName}
           </p>
         </div>
-        
         <div className="flex gap-2">
           <button
             onClick={handleViewResume}
@@ -43,7 +74,6 @@ const ResumeViewer = ({ resumeUrl, applicantName }) => {
           >
             <FaExternalLinkAlt className="mr-2" /> View
           </button>
-          
           <a
             href={resumeUrl}
             download
@@ -60,3 +90,9 @@ const ResumeViewer = ({ resumeUrl, applicantName }) => {
 };
 
 export default ResumeViewer;
+
+ResumeViewer.propTypes = {
+  resumeUrl: PropTypes.string,
+  applicantName: PropTypes.string,
+  variant: PropTypes.oneOf(['card', 'inline'])
+};

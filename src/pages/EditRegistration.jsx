@@ -44,6 +44,28 @@ function EditRegistration({ isDarkMode }) {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Tailwind utility classes that adapt to dark mode
+  const sectionHeadingClass = `text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 ${
+    isDarkMode ? "text-white" : "text-black"
+  }`;
+  const labelClass = `block mb-2 font-medium ${isDarkMode ? "text-gray-200" : "text-black"}`;
+  const inputBase =
+    "w-full rounded-xl border text-base font-medium focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm";
+  const inputClass = `${inputBase} ${
+    isDarkMode
+      ? "bg-gray-900 border-gray-700 text-white placeholder-gray-400"
+      : "bg-white border-gray-300 text-black"
+  }`;
+  const inputSmY = `px-4 py-2 ${inputClass}`;
+  const inputMdY = `px-4 py-3 ${inputClass}`;
+  const disabledInputClass = `${inputBase} ${
+    isDarkMode
+      ? "bg-gray-700 border-gray-600 text-gray-300"
+      : "bg-gray-100 border-gray-300 text-gray-500"
+  } px-4 py-3`;
+  const helperXs = `text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"} mt-1`;
+  const helperSm = `text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"} mt-1`;
+
   // Fetch company data on component mount
   useEffect(() => {
     const fetchCompanyData = async () => {
@@ -356,22 +378,20 @@ function EditRegistration({ isDarkMode }) {
         <form className="space-y-8" onSubmit={handleSubmit}>
           {/* Basic Info */}
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
-              Basic Info
-            </h2>
+            <h2 className={sectionHeadingClass}>Basic Info</h2>
             <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className="block mb-2 font-medium text-black">Company Name</label>
+                <label className={labelClass}>Company Name</label>
                 <input
                   type="text"
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block mb-2 font-medium text-black">Logo</label>
+                <label className={labelClass}>Logo</label>
                 {currentLogo && (
                   <div className="mb-2">
                     <img
@@ -379,63 +399,63 @@ function EditRegistration({ isDarkMode }) {
                       alt="Current Logo"
                       className="h-16 w-auto object-contain rounded-lg border"
                     />
-                    <p className="text-sm text-gray-500 mt-1">Current logo</p>
+                    <p className={helperSm}>Current logo</p>
                   </div>
                 )}
                 <input
                   type="file"
                   name="logo"
                   onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputSmY}
                 />
               </div>
             </div>
             <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className="block mb-2 font-medium text-black">Website</label>
+                <label className={labelClass}>Website</label>
                 <input
                   type="url"
                   name="website"
                   value={formData.website}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block mb-2 font-medium text-black">Industry</label>
+                <label className={labelClass}>Industry</label>
                 <input
                   type="text"
                   name="industry"
                   value={formData.industry}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
             </div>
             <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className="block mb-2 font-medium text-black">Type</label>
+                <label className={labelClass}>Type</label>
                 <input
                   type="text"
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block mb-2 font-medium text-black">Size</label>
+                <label className={labelClass}>Size</label>
                 <input
                   type="text"
                   name="size"
                   value={formData.size}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
             </div>
             <div className="mb-6">
-              <label className="block mb-2 font-medium text-black">Description</label>
+              <label className={labelClass}>Description</label>
               <QuillEditor
                 value={formData.description}
                 onChange={(content) => setFormData({...formData, description: content})}
@@ -445,124 +465,120 @@ function EditRegistration({ isDarkMode }) {
           </div>
           {/* Contact */}
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
-              Contact
-            </h2>
+            <h2 className={sectionHeadingClass}>Contact</h2>
             <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className="block mb-2 font-medium text-black">Contact Name</label>
+                <label className={labelClass}>Contact Name</label>
                 <input
                   type="text"
                   name="contactName"
                   value={formData.contactName}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block mb-2 font-medium text-black">Email</label>
+                <label className={labelClass}>Email</label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   disabled
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-gray-100 text-gray-500 focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={disabledInputClass}
                 />
-                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                <p className={helperXs}>Email cannot be changed</p>
               </div>
             </div>
             <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className="block mb-2 font-medium text-black">Phone</label>
+                <label className={labelClass}>Phone</label>
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className="block mb-2 font-medium text-black">Username</label>
+                <label className={labelClass}>Username</label>
                 <input
                   type="text"
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
             </div>
             {/* Address fields */}
             <div className="mb-6">
-              <label className="block mb-2 font-medium text-black">Address Line 1</label>
+              <label className={labelClass}>Address Line 1</label>
               <input
                 type="text"
                 name="addressLine1"
                 value={formData.addressLine1}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                className={inputMdY}
               />
             </div>
             <div className="mb-6">
-              <label className="block mb-2 font-medium text-black">Address Line 2</label>
+              <label className={labelClass}>Address Line 2</label>
               <input
                 type="text"
                 name="addressLine2"
                 value={formData.addressLine2}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                className={inputMdY}
               />
             </div>
             <div className="mb-6">
-              <label className="block mb-2 font-medium text-black">State</label>
+              <label className={labelClass}>State</label>
               <input
                 type="text"
                 name="state"
                 value={formData.state}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                className={inputMdY}
               />
             </div>
             <div className="mb-6">
-              <label className="block mb-2 font-medium text-black">City</label>
+              <label className={labelClass}>City</label>
               <input
                 type="text"
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                className={inputMdY}
               />
             </div>
             <div className="mb-6">
-              <label className="block mb-2 font-medium text-black">Pin Code</label>
+              <label className={labelClass}>Pin Code</label>
               <input
                 type="text"
                 name="pinCode"
                 value={formData.pinCode}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                className={inputMdY}
               />
             </div>
           </div>
           {/* Registration */}
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
-              Registration
-            </h2>
+            <h2 className={sectionHeadingClass}>Registration</h2>
             <div className="mb-6">
-              <label className="block mb-2 font-medium text-black">Year Established</label>
+              <label className={labelClass}>Year Established</label>
               <input
                 type="text"
                 name="yearEstablished"
                 value={formData.yearEstablished}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                className={inputMdY}
               />
             </div>
             <div className="mb-6">
-              <label className="block mb-2 font-medium text-black">Documents</label>
+              <label className={labelClass}>Documents</label>
               {currentDocuments && (
                 <div className="mb-2">
                   <a
@@ -579,23 +595,21 @@ function EditRegistration({ isDarkMode }) {
                 type="file"
                 name="documents"
                 onChange={handleChange}
-                className="w-full px-4 py-2 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                className={inputSmY}
               />
             </div>
           </div>
           {/* Password */}
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
-              Password
-            </h2>
+            <h2 className={sectionHeadingClass}>Password</h2>
             <div className="mb-6 relative">
-              <label className="block mb-2 font-medium text-black">New Password</label>
+              <label className={labelClass}>New Password</label>
               <input
                 type={passwordVisible ? "text" : "password"}
                 name="newPassword"
                 value={formData.newPassword}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                className={inputMdY}
                 pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
                 title="Must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters"
               />
@@ -608,67 +622,65 @@ function EditRegistration({ isDarkMode }) {
               </button>
             </div>
             <div className="mb-6 relative">
-              <label className="block mb-2 font-medium text-black">Confirm New Password</label>
+              <label className={labelClass}>Confirm New Password</label>
               <input
                 type={passwordVisible ? "text" : "password"}
                 name="confirmPassword"
                 value={formData.confirmPassword || ""}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                className={inputMdY}
               />
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className={helperSm}>
               Enter a new password only if you want to change it. Leave blank to keep your current password.
             </p>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className={helperSm}>
               Password must contain at least one number, one uppercase and lowercase letter, and at least 8 or more characters.
             </p>
           </div>
           {/* Other */}
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 text-black">
-              Other
-            </h2>
+            <h2 className={sectionHeadingClass}>Other</h2>
             <div className="mb-6">
-              <label className="block mb-2 font-medium text-black">Social Media Links</label>
+              <label className={labelClass}>Social Media Links</label>
               <div className="mb-4">
-                <label className="block mb-2 font-medium text-black">Instagram</label>
+                <label className={labelClass}>Instagram</label>
                 <input
                   type="url"
                   name="instagram"
                   value={formData.instagram || ""}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
               <div className="mb-4">
-                <label className="block mb-2 font-medium text-black">Twitter</label>
+                <label className={labelClass}>Twitter</label>
                 <input
                   type="url"
                   name="twitter"
                   value={formData.twitter || ""}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
               <div className="mb-4">
-                <label className="block mb-2 font-medium text-black">LinkedIn</label>
+                <label className={labelClass}>LinkedIn</label>
                 <input
                   type="url"
                   name="linkedin"
                   value={formData.linkedin || ""}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
               <div className="mb-4">
-                <label className="block mb-2 font-medium text-black">YouTube</label>
+                <label className={labelClass}>YouTube</label>
                 <input
                   type="url"
                   name="youtube"
                   value={formData.youtube || ""}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 text-base font-medium bg-white text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm"
+                  className={inputMdY}
                 />
               </div>
             </div>

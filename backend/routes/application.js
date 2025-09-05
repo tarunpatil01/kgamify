@@ -78,6 +78,11 @@ router.post('/', upload.single('resume'), async (req, res) => {
       
     }
 
+    // Map applicant email if provided as `email` from form
+    if (req.body.email && !applicationData.applicantEmail) {
+      applicationData.applicantEmail = req.body.email;
+    }
+
     const newApplication = new Application(applicationData);
     await newApplication.save();
 
@@ -252,6 +257,18 @@ router.post('/:id/shortlist', async (req, res) => {
     }
     app.status = 'shortlisted';
     await app.save();
+    // Try sending email notification via email service if available
+    try {
+      const { sendEmail } = require('../utils/emailService');
+      if (app.applicantEmail) {
+        await sendEmail(app.applicantEmail, 'applicationStatusUpdate', {
+          jobTitle: app.jobTitle || 'Your Application',
+          companyName: app.CompanyName || 'Company',
+          status: 'shortlisted',
+          message: 'Congratulations! You have been shortlisted. We will contact you soon with next steps.'
+        });
+      }
+  } catch (e) { if (process.env.NODE_ENV === 'development') console.debug('Email send failed:', e?.message); }
     res.json({ success: true, status: app.status });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -270,6 +287,17 @@ router.post('/:id/reject', async (req, res) => {
     }
     app.status = 'rejected';
     await app.save();
+    try {
+      const { sendEmail } = require('../utils/emailService');
+      if (app.applicantEmail) {
+        await sendEmail(app.applicantEmail, 'applicationStatusUpdate', {
+          jobTitle: app.jobTitle || 'Your Application',
+          companyName: app.CompanyName || 'Company',
+          status: 'rejected',
+          message: 'Thank you for applying. We appreciate your interest, but we will not be moving forward at this time.'
+        });
+      }
+  } catch (e) { if (process.env.NODE_ENV === 'development') console.debug('Email send failed:', e?.message); }
     res.json({ success: true, status: app.status });
   } catch (err) {
     res.status(400).json({ error: err.message });

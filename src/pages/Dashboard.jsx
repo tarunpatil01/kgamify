@@ -162,6 +162,9 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   const companyBannerBg = isDarkMode
     ? "bg-gradient-to-r from-gray-900 to-[#ff8200]"
     : "bg-gradient-to-r from-[#ff8200] to-[#ffb347]";
+  const cleanDescription = userCompany?.description
+    ? String(userCompany.description).replace(/<[^>]+>/g, '')
+    : '';
   const companyLogo = userCompany?.logoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userCompany?.companyName || "Company")}&background=ff8200&color=fff&size=128`;
 
   return (
@@ -174,7 +177,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
     >
       {/* Company Banner */}
       <div
-        className={`w-full max-w-6xl mx-auto mb-10 rounded-3xl shadow-2xl border-0 ${companyBannerBg} flex flex-col md:flex-row items-center justify-between p-8 sm:p-12`}
+        className={`w-full max-w-6xl mx-auto mb-8 rounded-3xl shadow-2xl border-0 ${companyBannerBg} flex flex-col md:flex-row items-center justify-between p-6 sm:p-8`}
       >
         <div className="flex items-center gap-6">
           <img
@@ -183,10 +186,10 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
             className="w-24 h-24 rounded-2xl shadow-lg border-4 border-white bg-white object-cover"
           />
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white drop-shadow-lg mb-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-lg mb-1">
               {userCompany?.companyName || "Company Dashboard"}
             </h1>
-            <div className="text-white/90 font-medium text-lg sm:text-xl">
+            <div className="text-white/90 font-medium text-sm sm:text-base">
               {userCompany?.industry && ( 
                 <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white font-semibold mr-2">
                   {userCompany.industry}
@@ -198,16 +201,17 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
                 </span>
               )}
             </div>
-            {userCompany?.description && (
-              <p className="mt-2 text-white/80 text-base max-w-md line-clamp-2">{userCompany.description}</p>
+            {cleanDescription && (
+              <p className="mt-2 text-white/85 text-sm sm:text-base max-w-xl line-clamp-2">{cleanDescription}</p>
             )}
           </div>
-        </div>
+        
         <img
-          className="hidden md:block w-36 h-36 lg:w-56 lg:h-56 rounded-xl object-contain"
+          className="hidden md:block w-28 h-28 lg:w-44 lg:h-44 rounded-xl object-contain opacity-90"
           src={DashboardImage}
           alt="Dashboard"
         />
+        </div>
       </div>
 
       {/* Job Statistics */}

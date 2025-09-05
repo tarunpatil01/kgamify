@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import PropTypes from 'prop-types';
 import { useParams, useNavigate } from "react-router-dom";
 import { FaCheckCircle, FaTimesCircle, FaMapMarkerAlt, FaBriefcase, FaClock, FaMoneyBillWave, FaBuilding, FaGlobe, FaBookmark } from "react-icons/fa";
-import { getJobById, getApplicationsByJobId, getRecommendationsForJob } from "../api";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
+import { getJobById, getApplicationsByJobId, getRecommendationsForJob, shortlistApplication, rejectApplication } from "../api";
 import sanitizeHTML from "../utils/sanitizeHTML";
 import ResumeViewer from "../components/ResumeViewer";
 
@@ -15,6 +17,8 @@ const Job = ({ isDarkMode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [authError] = useState(false);
+  const [updatingIds, setUpdatingIds] = useState(new Set());
+  const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
   // AI state
   const [showAI, setShowAI] = useState(true);
   const [ai, setAi] = useState({ loading: false, error: '', items: [] });
@@ -188,6 +192,28 @@ const Job = ({ isDarkMode }) => {
     return getSanitizedHTML(html);
   };
 
+  // Handlers: shortlist/reject
+  const handleStatusChange = async (applicationId, target) => {
+    const prev = applications.find(a => a._id === applicationId)?.status;
+    setUpdatingIds(prevSet => new Set(prevSet).add(applicationId));
+    setApplications(prevApps => prevApps.map(a => a._id === applicationId ? { ...a, status: target } : a));
+    try {
+      if (target === 'shortlisted') {
+        await shortlistApplication(applicationId);
+        setSnack({ open: true, message: 'Applicant shortlisted. Email notification sent.', severity: 'success' });
+      } else {
+        await rejectApplication(applicationId);
+        setSnack({ open: true, message: 'Application rejected.', severity: 'success' });
+      }
+    } catch (e) {
+      // rollback
+      setApplications(prevApps => prevApps.map(a => a._id === applicationId ? { ...a, status: prev } : a));
+      setSnack({ open: true, message: e?.response?.data?.error || e?.message || 'Action failed', severity: 'error' });
+    } finally {
+      setUpdatingIds(prevSet => { const n = new Set(prevSet); n.delete(applicationId); return n; });
+    }
+  };
+
   const renderMaybeHTML = (value, extraClasses = '') => {
     if (!value) return <span className="opacity-60">—</span>;
     const hasTags = /<[^>]+>/.test(value);
@@ -209,6 +235,17 @@ const Job = ({ isDarkMode }) => {
       </div>
     );
   };
+
+  // Normalize skills into an array of labels (supports array, comma/newline separated string)
+  const skillsArray = (() => {
+    const s = job?.skills;
+    if (!s) return [];
+    if (Array.isArray(s)) return s.filter(Boolean).map((v) => String(v).trim()).filter(Boolean);
+    return String(s)
+      .split(/[\n,]+/)
+      .map((v) => v.trim())
+      .filter(Boolean);
+  })();
 
   return (
     <div className={`${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-black'}`}>
@@ -267,16 +304,7 @@ const Job = ({ isDarkMode }) => {
                     </div>
                   ) : null
                 )}
-                {job.skills && (
-                  <div className="mt-4">
-                    <div className="text-sm font-medium mb-2">Skills</div>
-                    <div className="flex flex-wrap gap-2">
-                      {String(job.skills).split(',').map((s, i) => (
-                        <span key={i} className={`px-2 py-1 rounded text-xs ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>{s.trim()}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Skills moved to the right sidebar */}
               </div>
               <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
                 <h3 className="font-semibold mb-3">Compensation & Location</h3>
@@ -365,6 +393,16 @@ const Job = ({ isDarkMode }) => {
                     </div>
                   ) : null
                 )}
+                {skillsArray.length > 0 && (
+                  <div className="mt-4">
+                    <div className="text-sm font-medium mb-2">Skills</div>
+                    <div className="flex flex-wrap gap-2">
+                      {skillsArray.map((s, i) => (
+                        <span key={i} className={`px-2 py-1 rounded text-xs ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -401,6 +439,7 @@ const Job = ({ isDarkMode }) => {
                     <th className="text-left py-2 px-3">Skills</th>
                     <th className="text-right py-2 px-3">Date</th>
                     <th className="text-right py-2 px-3">Resume</th>
+                    <th className="text-right py-2 px-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -432,44 +471,128 @@ const Job = ({ isDarkMode }) => {
                           <span className="opacity-60">No resume</span>
                         )}
                       </td>
+                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={updatingIds.has(applicant._id) || applicant.status === 'shortlisted'}
+                            onClick={() => handleStatusChange(applicant._id, 'shortlisted')}
+                            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                              updatingIds.has(applicant._id) || applicant.status === 'shortlisted'
+                                ? 'opacity-60 cursor-not-allowed '
+                                : ''
+                            } ${isDarkMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
+                          >
+                            Shortlist
+                          </button>
+                          <button
+                            type="button"
+                            disabled={updatingIds.has(applicant._id) || applicant.status === 'rejected'}
+                            onClick={() => handleStatusChange(applicant._id, 'rejected')}
+                            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                              updatingIds.has(applicant._id) || applicant.status === 'rejected'
+                                ? 'opacity-60 cursor-not-allowed '
+                                : ''
+                            } ${isDarkMode ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {applications.map((applicant) => (
-                <div key={applicant._id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-sm`}>
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                      <div className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{applicant.applicantName}</div>
-                      <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Applied on: {new Date(applicant.createdAt).toLocaleDateString()}</div>
-                      {applicant.testScore && (
-                        <div className="mt-1"><span className="font-medium">Test Score: </span><span className={`${parseInt(applicant.testScore) >= 70 ? 'text-green-500' : 'text-red-500'}`}>{applicant.testScore}</span></div>
-                      )}
-                      {applicant.skills && applicant.skills.length > 0 && (
-                        <div className="mt-2">
-                          <div className="flex flex-wrap gap-1">
-                            {applicant.skills.map((skill, index) => (
-                              <span key={index} className={`text-xs px-2 py-1 rounded ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>{skill}</span>
-                            ))}
-                          </div>
-                        </div>
+                <div
+                  key={applicant._id}
+                  className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-sm flex flex-col gap-2`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className={`text-base font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{applicant.applicantName}</div>
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Applied on: {new Date(applicant.createdAt).toLocaleDateString()}</div>
+                    </div>
+                    <div className="shrink-0">
+                      {applicant.status ? (
+                        <span className={`px-2 py-0.5 rounded text-xxs capitalize ${
+                          applicant.status === 'shortlisted' ? 'bg-green-100 text-green-700' :
+                          applicant.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+                        }`}>{applicant.status}</span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {applicant.testScore && (
+                    <div className="text-xs">
+                      <span className="font-medium">Test Score: </span>
+                      <span className={`${parseInt(applicant.testScore) >= 70 ? 'text-green-500' : 'text-red-500'}`}>{applicant.testScore}</span>
+                    </div>
+                  )}
+
+                  {Array.isArray(applicant.skills) && applicant.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {applicant.skills.slice(0, 6).map((skill, index) => (
+                        <span key={index} className={`text-xxs px-2 py-0.5 rounded ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>{skill}</span>
+                      ))}
+                      {applicant.skills.length > 6 && (
+                        <span className={`text-xxs px-2 py-0.5 rounded ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>+{applicant.skills.length - 6}</span>
                       )}
                     </div>
-                    <div className="md:min-w-[220px]">
-                      {applicant.resume ? (
-                        <ResumeViewer resumeUrl={applicant.resume} applicantName={applicant.applicantName} />
-                      ) : (
-                        <div className="text-gray-500">No resume provided</div>
-                      )}
-                    </div>
+                  )}
+
+                  <div className="mt-1">
+                    {applicant.resume ? (
+                      <ResumeViewer resumeUrl={applicant.resume} applicantName={applicant.applicantName} variant="inline" />
+                    ) : (
+                      <div className="text-xs text-gray-500">No resume provided</div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={updatingIds.has(applicant._id) || applicant.status === 'shortlisted'}
+                      onClick={() => handleStatusChange(applicant._id, 'shortlisted')}
+                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        updatingIds.has(applicant._id) || applicant.status === 'shortlisted'
+                          ? 'opacity-60 cursor-not-allowed '
+                          : ''
+                      } ${isDarkMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
+                    >
+                      Shortlist
+                    </button>
+                    <button
+                      type="button"
+                      disabled={updatingIds.has(applicant._id) || applicant.status === 'rejected'}
+                      onClick={() => handleStatusChange(applicant._id, 'rejected')}
+                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        updatingIds.has(applicant._id) || applicant.status === 'rejected'
+                          ? 'opacity-60 cursor-not-allowed '
+                          : ''
+                      } ${isDarkMode ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}
+                    >
+                      Reject
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           )}
+          <Snackbar
+            open={snack.open}
+            autoHideDuration={3000}
+            onClose={() => setSnack(s => ({ ...s, open: false }))}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          >
+            <Alert onClose={() => setSnack(s => ({ ...s, open: false }))} severity={snack.severity} sx={{ width: '100%' }}>
+              {snack.message}
+            </Alert>
+          </Snackbar>
           {/* AI recommendations for this job */}
           {showAI && (
             <div className="mt-6">

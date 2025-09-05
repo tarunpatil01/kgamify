@@ -10,7 +10,6 @@ import {
   FaSearch,
   FaBell,
   FaUser,
-  FaCog,
   FaChevronDown
 } from "react-icons/fa";
 import Klogo from '../assets/KLOGO.png';
@@ -75,7 +74,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
       case "/applications": return "Job Applications";
       case "/Edit-Registration": return "Edit Registration";
       case "/edit-registration": return "Edit Registration";
-      case "/settings": return "Settings";
+  // Settings route removed
       case "/admin": return "Admin Portal";
       default: return "Kgamify Job Portal";
     }
@@ -290,18 +289,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
                       <FaEdit className="mr-3 h-4 w-4" />
                       Edit Profile
                     </button>
-                    <button
-                      onClick={() => {
-                        navigate('/settings');
-                        setShowUserDropdown(false);
-                      }}
-                      className={`flex items-center w-full px-4 py-2 text-sm ${
-                        isDarkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <FaCog className="mr-3 h-4 w-4" />
-                      Settings
-                    </button>
+                    {/* Settings removed from user dropdown */}
                     <div className={`border-t my-1 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}></div>
                     <button
                       onClick={handleLogout}
