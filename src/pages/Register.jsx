@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaEye, FaEyeSlash, FaSpinner, FaCloudUploadAlt, FaCheckCircle } from "react-icons/fa";
+import { FaSpinner, FaCloudUploadAlt, FaCheckCircle } from "react-icons/fa";
 import { registerCompany } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import QuillEditor from '../components/QuillEditor';
-import backgroundImage from '../assets/background.jpg';
+// backgroundImage removed (not used)
 import Klogo from '../assets/KLOGO.png';
 
 // Expanded list of Indian states and cities
@@ -247,9 +247,11 @@ const companyTypeDocs = {
   },
 };
 
+import PropTypes from 'prop-types';
+
 function Register({ isDarkMode }) {
   const navigate = useNavigate();
-  const [passwordVisible, setPasswordVisible] = useState(false);
+  // const [passwordVisible, setPasswordVisible] = useState(false);
   const [formData, setFormData] = useState({
     companyName: "",
     logo: null,
@@ -282,7 +284,7 @@ function Register({ isDarkMode }) {
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
-  const [errorMessage, setErrorMessage] = useState("");
+  // const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
@@ -300,12 +302,11 @@ function Register({ isDarkMode }) {
     }));
   };
 
-  const handleNext = () => setCurrentStep((prev) => prev + 1);
-  const handlePrevious = () => setCurrentStep((prev) => prev - 1);
+  // Navigation handlers inline in buttons
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setErrorMessage("");
+  // clear prior errors if any
     setIsSubmitting(true);
 
     try {
@@ -364,7 +365,7 @@ function Register({ isDarkMode }) {
       submissionData.append("socialMediaLinks", JSON.stringify(socialMediaLinks));
 
       // Submit the form
-      const response = await registerCompany(submissionData);
+  await registerCompany(submissionData);
 
       // Handle successful registration
       setSnackbarMessage("Registration successful! Waiting for admin approval.");
@@ -376,7 +377,8 @@ function Register({ isDarkMode }) {
         navigate("/");
       }, 3000);
     } catch (error) {
-      console.error("Registration error:", error);
+  // eslint-disable-next-line no-console
+  console.error("Registration error:", error);
       setSnackbarMessage(error.message || "Registration failed. Please try again.");
       setSnackbarSeverity("error");
       setOpenSnackbar(true);
@@ -385,9 +387,7 @@ function Register({ isDarkMode }) {
     }
   };
 
-  const togglePasswordVisibility = () => {
-    setPasswordVisible(!passwordVisible);
-  };
+  // Password visibility reserved; using plain password fields in this flow
 
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
@@ -754,7 +754,7 @@ function Register({ isDarkMode }) {
                     {formData.documents ? (
                       <span className="font-medium">{formData.documents.name}</span>
                     ) : (
-                      "Drag & drop your document here, or click to select"
+                      `Drag & drop ${docInfo.label} here, or click to select`
                     )}
                   </div>
                   <div className="text-xs text-gray-500">{docInfo.help}</div>
@@ -768,6 +768,9 @@ function Register({ isDarkMode }) {
                     required
                   />
                 </div>
+              </div>
+              <div className="text-xs text-gray-500">
+                Tip: Only the required document for your selected company type is shown to keep things simple.
               </div>
             </>
           )}
@@ -788,7 +791,16 @@ function Register({ isDarkMode }) {
 
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8">
-            {currentStep > 1 && (
+            {/* Left-side Back control */}
+            {currentStep === 1 ? (
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="px-6 py-3 rounded-xl font-bold text-base shadow transition bg-gray-200 hover:bg-gray-300 text-black"
+              >
+                Back to Login
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={() => setCurrentStep((prev) => prev - 1)}
@@ -797,15 +809,14 @@ function Register({ isDarkMode }) {
                 Back
               </button>
             )}
+
+            {/* Right-side Next/Submit */}
             {currentStep < steps.length ? (
               <button
                 type="button"
                 onClick={() => setCurrentStep((prev) => prev + 1)}
                 className={`px-6 py-3 rounded-xl font-bold text-base shadow transition bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] ${currentStep > 1 ? '' : ''}`}
-                disabled={
-                  (currentStep === 3 && !formData.documents) ||
-                  (currentStep === 2 && !formData.companyType)
-                }
+                disabled={(currentStep === 3 && !formData.documents)}
               >
                 Next
               </button>
@@ -852,4 +863,8 @@ function Register({ isDarkMode }) {
 }
 
 export default Register;
+
+Register.propTypes = {
+  isDarkMode: PropTypes.bool,
+};
 

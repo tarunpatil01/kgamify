@@ -173,7 +173,7 @@ const Login = ({ setLoggedInEmail }) => {
           `}
         </style>
       </div>
-      <div className="w-full max-w-md mx-auto rounded-3xl shadow-2xl border bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 p-6 sm:p-10 relative z-10">
+  <div className="w-full max-w-md mx-auto rounded-3xl shadow-2xl border bg-white border-orange-200 p-6 sm:p-10 relative z-10">
         {/* Logo Section */}
         <div className="text-center mb-6">
           <img
@@ -194,7 +194,7 @@ const Login = ({ setLoggedInEmail }) => {
           {/* Email Field */}
           <div>
             <label className="block font-semibold text-black mb-2">
-              Email Address *
+              Email Address <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -204,15 +204,17 @@ const Login = ({ setLoggedInEmail }) => {
                 onChange={handleChange}
                 onBlur={handleBlur}
                 placeholder="Enter your email address"
-                className={`w-full px-4 py-3 rounded-xl border text-base font-medium bg-white dark:bg-gray-900 border-gray-900 dark:border-gray-300 text-black dark:text-white focus:ring-2 focus:ring-[#ff8200] outline-none transition ${
+                autoComplete="email"
+                className={`w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition ${
                   validationErrors.email
                     ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                     : touched.email && !validationErrors.email
                       ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
                       : ''
-                }`}
+                } caret-black placeholder-gray-400`}
                 aria-describedby={validationErrors.email ? "email-error" : undefined}
                 required
+                style={{ color: '#111', background: '#fff', caretColor: '#111' }}
               />
               {touched.email && (
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -234,7 +236,7 @@ const Login = ({ setLoggedInEmail }) => {
           {/* Password Field */}
           <div>
             <label className="block font-semibold text-black mb-2">
-              Password *
+              Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -244,20 +246,22 @@ const Login = ({ setLoggedInEmail }) => {
                 onChange={handleChange}
                 onBlur={handleBlur}
                 placeholder="Enter your password"
-                className={`w-full px-4 py-3 rounded-xl border text-base font-medium bg-white dark:bg-gray-900 border-gray-900 dark:border-gray-300 text-black dark:text-white focus:ring-2 focus:ring-[#ff8200] outline-none transition ${
+                autoComplete="current-password"
+                className={`w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition ${
                   validationErrors.password
                     ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                     : touched.password && !validationErrors.password
                       ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
                       : ''
-                }`}
+                } caret-black placeholder-gray-400`}
                 aria-describedby={validationErrors.password ? "password-error" : undefined}
                 required
+                style={{ WebkitTextSecurity: showPassword ? 'none' : 'disc', color: '#111', background: '#fff', caretColor: '#111' }}
               />
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-black dark:text-white hover:text-[#ff8200] focus:outline-none transition-colors"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-black hover:text-[#ff8200] focus:outline-none transition-colors"
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 tabIndex={-1}
               >
@@ -334,4 +338,8 @@ const Login = ({ setLoggedInEmail }) => {
 };
 
 export default Login;
+
+Login.propTypes = {
+  setLoggedInEmail: PropTypes.func,
+};
 
