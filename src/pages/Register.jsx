@@ -861,12 +861,44 @@ function Register({ isDarkMode }) {
             )}
 
             {/* Right-side Next/Submit */}
-      {currentStep < steps.length ? (
+            {currentStep < steps.length ? (
               <button
                 type="button"
-                onClick={() => setCurrentStep((prev) => prev + 1)}
+                onClick={() => {
+                  // Validate per-step requirements before advancing
+                  if (currentStep === 1) {
+                    if (!formData.companyName || !formData.logo || !formData.website || !formData.industry || !formData.username || !formData.password || !formData.confirmPassword) {
+                      setSnackbarMessage("Please fill all required fields in Step 1");
+                      setSnackbarSeverity("error");
+                      setOpenSnackbar(true);
+                      return;
+                    }
+                    if (formData.password !== formData.confirmPassword) {
+                      setSnackbarMessage("Passwords don't match");
+                      setSnackbarSeverity("error");
+                      setOpenSnackbar(true);
+                      return;
+                    }
+                  }
+                  if (currentStep === 2) {
+                    if (!formData.contactName || !formData.email || !formData.phone || !formData.addressLine1 || !formData.state || !formData.city || !formData.pinCode || !formData.companyType) {
+                      setSnackbarMessage("Please complete all required fields in Step 2");
+                      setSnackbarSeverity("error");
+                      setOpenSnackbar(true);
+                      return;
+                    }
+                  }
+                  if (currentStep === 3) {
+                    if (!formData.documents) {
+                      setSnackbarMessage("Please upload the required document");
+                      setSnackbarSeverity("error");
+                      setOpenSnackbar(true);
+                      return;
+                    }
+                  }
+                  setCurrentStep((prev) => prev + 1);
+                }}
                 className={`px-6 py-3 rounded-xl font-bold text-base shadow transition bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] ${currentStep > 1 ? '' : ''}`}
-        disabled={(currentStep === 3 && !formData.documents) || (currentStep === 2 && !formData.companyType)}
               >
                 Next
               </button>

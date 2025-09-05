@@ -2,6 +2,7 @@ import axios from 'axios';
 import { config } from './config/env.js';
 
 const API_URL = config.API_URL;
+const AI_API_URL = config.AI_API_URL;
 
 // Create a custom axios instance with default settings
 const apiClient = axios.create({
@@ -175,6 +176,14 @@ export const holdCompanyWithReason = async (companyId, reason) => {
   return response.data;
 };
 
+export const revokeCompanyAccess = async (companyId, reason) => {
+  const token = localStorage.getItem('adminToken');
+  const response = await axios.post(`${API_URL}/admin/revoke-access/${companyId}`, { reason }, {
+    headers: token ? { 'x-auth-token': token } : undefined
+  });
+  return response.data;
+};
+
 export const adminLogin = async (loginData) => {
   try {
     const response = await axios.post(`${API_URL}/admin/login`, loginData);
@@ -320,4 +329,12 @@ export const rejectApplication = async (applicationId) => {
   const email = localStorage.getItem('rememberedEmail') || (JSON.parse(localStorage.getItem('companyData') || 'null')?.email || undefined);
   const response = await axios.post(`${API_URL}/application/${applicationId}/reject`, {}, { headers: email ? { 'company-email': email } : undefined });
   return response.data;
+};
+
+// AI recommendations for a job
+export const getRecommendationsForJob = async (jobId, topN = 5) => {
+  const response = await axios.get(`${AI_API_URL}/recommend`, {
+    params: { job_id: jobId, top_n: topN }
+  });
+  return response.data?.recommendations || [];
 };

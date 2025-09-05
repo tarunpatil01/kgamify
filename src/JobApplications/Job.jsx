@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import PropTypes from 'prop-types';
 import { useParams, useNavigate } from "react-router-dom";
 import { FaCheckCircle, FaTimesCircle, FaMapMarkerAlt, FaBriefcase, FaClock, FaMoneyBillWave, FaBuilding, FaGlobe, FaBookmark } from "react-icons/fa";
-import { getJobById, getApplicationsByJobId } from "../api";
+import { getJobById, getApplicationsByJobId, getRecommendationsForJob } from "../api";
+import sanitizeHTML from "../utils/sanitizeHTML";
 import ResumeViewer from "../components/ResumeViewer";
 
 const Job = ({ isDarkMode }) => {
@@ -14,6 +15,9 @@ const Job = ({ isDarkMode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [authError] = useState(false);
+  // AI state
+  const [showAI, setShowAI] = useState(true);
+  const [ai, setAi] = useState({ loading: false, error: '', items: [] });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -30,6 +34,14 @@ const Job = ({ isDarkMode }) => {
           setApplications(Array.isArray(applicationsData) ? applicationsData : []);
   } catch {
           setApplications([]);
+        }
+        // Fetch AI recommendations for this job (best-effort)
+        try {
+          setAi({ loading: true, error: '', items: [] });
+          const recs = await getRecommendationsForJob(jobId, 5);
+          setAi({ loading: false, error: '', items: recs });
+        } catch (e) {
+          setAi({ loading: false, error: e?.message || 'Failed to fetch recommendations', items: [] });
         }
         
         setLoading(false);
@@ -87,10 +99,115 @@ const Job = ({ isDarkMode }) => {
     );
   }
 
-  // Function to safely render HTML content
-  const renderHTML = (htmlContent) => {
-    if (!htmlContent) return null;
-    return { __html: htmlContent };
+  // Helpers: sanitize and render rich content
+  const getSanitizedHTML = (htmlContent) => {
+    if (!htmlContent || typeof htmlContent !== 'string') return null;
+    const clean = sanitizeHTML(htmlContent);
+    return { __html: clean };
+  };
+
+  // Convert plain text with bullet-like prefixes to proper HTML lists
+  const convertPlainTextToHTML = (text) => {
+    if (!text) return '';
+    const lines = String(text).split(/\r?\n/);
+    const bulletRe = /^\s*([-*•◆▪◦►▶➤‣∙·])\s+(.*)$/;
+    let html = '';
+    let inList = false;
+    for (const raw of lines) {
+      const line = raw.trimEnd();
+      const m = line.match(bulletRe);
+      if (m) {
+        if (!inList) {
+          inList = true;
+          html += '<ul>';
+        }
+        const item = m[2];
+        html += `<li>${item}</li>`;
+      } else {
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        if (line.length) {
+          html += `<p>${line}</p>`;
+        } else {
+          // preserve blank line spacing
+          html += '<p></p>';
+        }
+      }
+    }
+    if (inList) html += '</ul>';
+    return html;
+  };
+
+  // Normalize existing HTML: convert paragraphs starting with bullet markers into lists
+  const normalizeBulletedHTML = (html) => {
+    try {
+      if (typeof window === 'undefined' || !html) return html;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const body = doc.body;
+      const bulletRe = /^\s*([-*•◆▪◦►▶➤‣∙·])\s+(.*)$/;
+      const newFrag = doc.createDocumentFragment();
+      let ul = null;
+      const flushList = () => {
+        if (ul) {
+          newFrag.appendChild(ul);
+          ul = null;
+        }
+      };
+      Array.from(body.childNodes).forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE && (node.nodeName === 'P' || node.nodeName === 'DIV')) {
+          const text = node.textContent || '';
+          const m = text.match(bulletRe);
+          if (m) {
+            if (!ul) ul = doc.createElement('ul');
+            const li = doc.createElement('li');
+            li.textContent = m[2];
+            ul.appendChild(li);
+            return; // handled
+          }
+        }
+        // Non-bullet element or text node
+        flushList();
+        newFrag.appendChild(node.cloneNode(true));
+      });
+      flushList();
+      const wrapper = doc.createElement('div');
+      wrapper.appendChild(newFrag);
+      return wrapper.innerHTML;
+    } catch {
+      return html;
+    }
+  };
+
+  const getFormattedHTML = (value) => {
+    if (!value) return null;
+    const hasTags = /<[^>]+>/.test(value);
+    const html = hasTags ? normalizeBulletedHTML(value) : convertPlainTextToHTML(value);
+    return getSanitizedHTML(html);
+  };
+
+  const renderMaybeHTML = (value, extraClasses = '') => {
+    if (!value) return <span className="opacity-60">—</span>;
+    const hasTags = /<[^>]+>/.test(value);
+    if (hasTags) {
+      return (
+        <div
+          className={`prose max-w-none ${isDarkMode ? 'prose-invert' : ''} ${extraClasses}`}
+          dangerouslySetInnerHTML={getSanitizedHTML(value)}
+        />
+      );
+    }
+    // Plain text: convert new lines to <br/>
+    const textWithBreaks = String(value).split('\n').map((line, i) => (
+      <p key={i} className="mb-2 last:mb-0">{line}</p>
+    ));
+    return (
+      <div className={`prose max-w-none ${isDarkMode ? 'prose-invert' : ''} ${extraClasses}`}>
+        {textWithBreaks}
+      </div>
+    );
   };
 
   return (
@@ -110,11 +227,11 @@ const Job = ({ isDarkMode }) => {
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Job description */}
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
+      <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
               <h2 className="text-xl font-semibold mb-3">Job Description</h2>
               <div
-                className={`prose max-w-none ${isDarkMode ? 'prose-invert' : ''}`}
-                dangerouslySetInnerHTML={renderHTML(job.jobDescription)}
+        className={`job-description-content ${isDarkMode ? '' : ''}`}
+                dangerouslySetInnerHTML={getFormattedHTML(job.jobDescription)}
               />
             </div>
 
@@ -173,29 +290,32 @@ const Job = ({ isDarkMode }) => {
             </div>
 
             {/* Rich sections */}
-            {job.responsibilities && (
+      {job.responsibilities && (
               <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
                 <h3 className="font-semibold mb-2">Responsibilities</h3>
-                <div dangerouslySetInnerHTML={renderHTML(job.responsibilities)} />
+        {renderMaybeHTML(job.responsibilities, 'job-description-content')}
               </div>
             )}
             {job.eligibility && (
               <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
                 <h3 className="font-semibold mb-2">Eligibility</h3>
-                <div dangerouslySetInnerHTML={renderHTML(job.eligibility)} />
+        {renderMaybeHTML(job.eligibility, 'job-description-content')}
               </div>
             )}
             {job.benefits && (
               <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
                 <h3 className="font-semibold mb-2">Benefits</h3>
-                <div dangerouslySetInnerHTML={renderHTML(job.benefits)} />
+        {renderMaybeHTML(job.benefits, 'job-description-content')}
               </div>
             )}
 
-            {job.recruitmentProcess && (
+    {job.recruitmentProcess && (
               <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
                 <h3 className="font-semibold mb-2">Recruitment Process</h3>
-                <div dangerouslySetInnerHTML={renderHTML(job.recruitmentProcess)} />
+                <div
+      className={`job-description-content ${isDarkMode ? '' : ''}`}
+                  dangerouslySetInnerHTML={getFormattedHTML(job.recruitmentProcess)}
+                />
               </div>
             )}
           </div>
@@ -348,6 +468,59 @@ const Job = ({ isDarkMode }) => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          {/* AI recommendations for this job */}
+          {showAI && (
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-lg font-semibold">AI Top Candidates</div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAI(v => !v)}
+                    className="text-xs px-2 py-1 rounded border"
+                  >
+                    {showAI ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+              {ai.loading && <div className="text-sm opacity-70">Fetching recommendations…</div>}
+              {ai.error && <div className="text-sm text-red-500">{ai.error}</div>}
+              {!ai.loading && !ai.error && (
+                <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-x-auto`}>
+                  <table className="w-full table-auto text-sm">
+                    <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
+                      <tr>
+                        <th className="text-left py-2 px-3">Name</th>
+                        <th className="text-left py-2 px-3">Test</th>
+                        <th className="text-left py-2 px-3">Skill</th>
+                        <th className="text-left py-2 px-3">Exp</th>
+                        <th className="text-left py-2 px-3">Edu</th>
+                        <th className="text-left py-2 px-3">Final</th>
+                        <th className="text-left py-2 px-3">Resume</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(ai.items || []).map((r, idx) => (
+                        <tr key={idx} className={isDarkMode ? 'border-t border-gray-700' : 'border-t border-gray-200'}>
+                          <td className="py-2 px-3">{r.name || 'N/A'}</td>
+                          <td className="py-2 px-3">{r.test_score ?? '—'}</td>
+                          <td className="py-2 px-3">{r.skill_score ?? '—'}</td>
+                          <td className="py-2 px-3">{r.exp_score ?? '—'}</td>
+                          <td className="py-2 px-3">{r.edu_score ?? '—'}</td>
+                          <td className="py-2 px-3 font-medium">{r.final_score ?? '—'}</td>
+                          <td className="py-2 px-3">
+                            {r.resume_url ? (
+                              <a href={r.resume_url} target="_blank" rel="noreferrer" className="text-blue-600 underline">View</a>
+                            ) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>

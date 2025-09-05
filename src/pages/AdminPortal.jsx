@@ -7,7 +7,7 @@ import {
   FaPhone, FaGlobeAmericas, FaUserCircle, FaKey, FaLock,
   FaSignOutAlt, FaHome, FaClock, FaCheckCircle, FaUser
 } from "react-icons/fa";
-import { changeAdminPassword, denyCompanyWithReason, holdCompanyWithReason } from "../api";
+import { changeAdminPassword, denyCompanyWithReason, holdCompanyWithReason, revokeCompanyAccess } from "../api";
 import logoUrl from "../assets/KLOGO.png";
 
 const AdminPortal = ({ isDarkMode }) => {
@@ -214,6 +214,29 @@ const AdminPortal = ({ isDarkMode }) => {
       setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
     } catch (error) {
       setNotification({ show: true, message: 'Error putting company on hold', type: 'error' });
+      setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+      if (error.response?.status === 401) {
+        handleLogout();
+      }
+    }
+  };
+
+  const handleRevoke = async (companyId) => {
+    try {
+      const reason = window.prompt('Enter a reason to revoke access (optional):') || '';
+      const resp = await revokeCompanyAccess(companyId, reason.trim());
+      const updated = resp?.company;
+      setApprovedCompanies(prev => prev.filter(c => c._id !== companyId));
+      setPendingCompanies(prev => {
+        const list = Array.isArray(prev) ? prev : [];
+        return updated ? [updated, ...list] : list;
+      });
+      // Refresh approved list in background
+      fetchApprovedCompanies();
+      setNotification({ show: true, message: 'Access revoked; company moved to pending', type: 'success' });
+      setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+    } catch (error) {
+      setNotification({ show: true, message: 'Error revoking access', type: 'error' });
       setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
       if (error.response?.status === 401) {
         handleLogout();
@@ -584,7 +607,7 @@ const AdminPortal = ({ isDarkMode }) => {
       )}
 
       {/* Approved Companies Tab Content */}
-      {activeTab === "approved" && (
+  {activeTab === "approved" && (
         <>
           {approvedCompanies.length === 0 ? (
             <div className="text-center p-16 bg-white rounded-lg shadow-sm dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
@@ -624,6 +647,14 @@ const AdminPortal = ({ isDarkMode }) => {
                             </span>
                           </div>
                         </div>
+                      </div>
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => handleRevoke(company._id)}
+                          className="flex items-center px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors shadow-sm"
+                        >
+                          <FaTimes className="mr-2" /> Deny Access
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -682,6 +713,54 @@ const AdminPortal = ({ isDarkMode }) => {
                             <p className="font-medium">Active Account</p>
                           </div>
                         </div>
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Username</p>
+                            <p className="font-medium break-all">{company.Username}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Company Type</p>
+                            <p className="font-medium">{company.type || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Company Size</p>
+                            <p className="font-medium">{company.size || '—'}</p>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Address</p>
+                            <p className="font-medium break-words">{company.address || '—'}</p>
+                          </div>
+                          {company.registrationNumber && (
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Registration Number</p>
+                              <p className="font-medium">{company.registrationNumber}</p>
+                            </div>
+                          )}
+                        </div>
+                        {company.socialMediaLinks && (
+                          <div className="mt-4">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Social</p>
+                            <div className="flex flex-wrap gap-3 mt-1">
+                              {company.socialMediaLinks.instagram && <a className="text-blue-500 hover:underline" href={company.socialMediaLinks.instagram} target="_blank" rel="noopener noreferrer">Instagram</a>}
+                              {company.socialMediaLinks.twitter && <a className="text-blue-500 hover:underline" href={company.socialMediaLinks.twitter} target="_blank" rel="noopener noreferrer">Twitter</a>}
+                              {company.socialMediaLinks.linkedin && <a className="text-blue-500 hover:underline" href={company.socialMediaLinks.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>}
+                              {company.socialMediaLinks.youtube && <a className="text-blue-500 hover:underline" href={company.socialMediaLinks.youtube} target="_blank" rel="noopener noreferrer">YouTube</a>}
+                            </div>
+                          </div>
+                        )}
+                        {company.documents && (
+                          <div className="mt-4">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Verification Document</p>
+                            <a
+                              href={company.documents}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:underline font-medium"
+                            >
+                              View Document
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
                     

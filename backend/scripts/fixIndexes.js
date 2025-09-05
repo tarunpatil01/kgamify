@@ -37,6 +37,15 @@ async function main() {
   // Find any existing index on registrationNumber
   const regIdx = before.filter((i) => i.key && i.key.registrationNumber === 1);
 
+  // Clean data: unset registrationNumber where it's explicitly null
+  const nullFix = await collection.updateMany(
+    { registrationNumber: null },
+    { $unset: { registrationNumber: "" } }
+  );
+  if (nullFix?.modifiedCount) {
+    console.log(`Unset registrationNumber on ${nullFix.modifiedCount} documents where it was null.`);
+  }
+
   // Drop incorrect registrationNumber indexes (non-partial or non-unique)
   for (const idx of regIdx) {
     const isPartial = !!(idx.partialFilterExpression && idx.partialFilterExpression.registrationNumber);

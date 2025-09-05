@@ -186,4 +186,28 @@ router.post('/hold-company/:id', adminAuth, auditLogger({
   }
 });
 
+// Revoke access: move an approved company back to pending without deleting
+router.post('/revoke-access/:id', adminAuth, auditLogger({
+  action: 'revoke_company_access',
+  entityType: 'company'
+}), async (req, res) => {
+  try {
+    const { reason } = req.body || {};
+    const company = await Company.findById(req.params.id);
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+
+    company.approved = false;
+    company.status = 'pending';
+    company.adminMessages = company.adminMessages || [];
+    if (reason) {
+      company.adminMessages.push({ type: 'system', message: `Access revoked: ${reason}` });
+    }
+    await company.save();
+
+    res.json({ message: 'Company access revoked and moved to pending', company });
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

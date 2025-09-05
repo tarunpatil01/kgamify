@@ -26,6 +26,7 @@ export default function EditJob({ isDarkMode }) {
     remoteOrOnsite: "",
     location: "",
     salary: "",
+  relocationBenefits: "",
     equity: "",
     sponsorship: "",
     recruitmentProcess: "",
@@ -334,6 +335,19 @@ export default function EditJob({ isDarkMode }) {
                 size="small"
               />
             </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block">Relocation Benefits</label>
+              <TextField
+                name="relocationBenefits"
+                value={formData.relocationBenefits}
+                onChange={handleChange}
+                fullWidth
+                className="focus:border-blue-500"
+                InputProps={{ style: isDarkMode ? { color: '#e5e7eb' } : undefined }}
+                InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
+                size="small"
+              />
+            </div>
             
             <div className="mb-4 sm:mb-6">
               <label className="block">Recruitment Process</label>
@@ -342,6 +356,86 @@ export default function EditJob({ isDarkMode }) {
                 onChange={(content) => setFormData({ ...formData, recruitmentProcess: content })}
                 isDarkMode={isDarkMode}
                 placeholder="Describe the recruitment process (stages, rounds, timelines)..."
+              />
+            </div>
+
+            {/* Additional text sections mirroring PostJob */}
+            <div className="mb-4 sm:mb-6">
+              <label className="block">Responsibilities</label>
+              <TextareaAutosize
+                name="responsibilities"
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
+                }`}
+                value={formData.responsibilities}
+                onChange={handleChange}
+                minRows={3}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block">Skills</label>
+              <TextareaAutosize
+                name="skills"
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
+                }`}
+                value={formData.skills}
+                onChange={handleChange}
+                minRows={3}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block">Benefits</label>
+              <TextareaAutosize
+                name="benefits"
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
+                }`}
+                value={formData.benefits}
+                onChange={handleChange}
+                minRows={3}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block">Eligibility</label>
+              <TextareaAutosize
+                name="eligibility"
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
+                }`}
+                value={formData.eligibility}
+                onChange={handleChange}
+                minRows={3}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block">Company Description</label>
+              <TextareaAutosize
+                name="companyDescription"
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
+                }`}
+                value={formData.companyDescription}
+                onChange={handleChange}
+                minRows={3}
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <label className="block">Additional Information</label>
+              <TextareaAutosize
+                name="additionalInformation"
+                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
+                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
+                }`}
+                value={formData.additionalInformation}
+                onChange={handleChange}
+                minRows={3}
+                style={{ width: '100%' }}
               />
             </div>
             

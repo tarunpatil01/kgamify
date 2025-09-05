@@ -13,36 +13,29 @@ export default function Applications({ isDarkMode }) {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState('dateDesc');
-  const [statusFilter, setStatusFilter] = useState('all'); // new | shortlisted | rejected | all
-  const [dateRange, setDateRange] = useState('all'); // all | 7d | 30d | 90d
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState('all');
   const [skillQuery, setSkillQuery] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [minScore, setMinScore] = useState('');
 
-  // Infinite scroll / pagination
+  // Infinite scroll
   const [itemsToShow, setItemsToShow] = useState(20);
   const pageSize = 20;
   const sentinelRef = useRef(null);
-  const [view, setView] = useState('table'); // 'table' | 'cards'
-  const scrollRootRef = useRef(null); // scrollable container for applicants
-  // Mobile sheet reserved
-  // const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
-  // const [mobileSheetTab, setMobileSheetTab] = useState('sort'); // 'sort' | 'filters'
+  const scrollRootRef = useRef(null);
 
-  // Company email for status updates
-  // company email is resolved in API helpers
+  // Table / Card toggle
+  const [view, setView] = useState('table');
+  // AI recommendations moved to Job detail page
 
   useEffect(() => {
     let email = '';
     try {
       const cd = JSON.parse(localStorage.getItem('companyData') || 'null');
       if (cd?.email) email = cd.email;
-    } catch {
-      // ignore
-    }
-    if (!email) {
-      email = localStorage.getItem('rememberedEmail') || '';
-    }
+  } catch { /* ignore */ }
+    if (!email) email = localStorage.getItem('rememberedEmail') || '';
 
     if (!email) {
       setError('No company email found');
@@ -50,10 +43,12 @@ export default function Applications({ isDarkMode }) {
       return;
     }
 
-    (async () => {
+     (async () => {
       try {
         const data = await getApplicationsForCompany(email);
-        setApps(Array.isArray(data.applications) ? data.applications : []);
+        const list = Array.isArray(data.applications) ? data.applications : [];
+        setApps(list);
+  // AI recommendations are fetched on the Job page
       } catch (e) {
         setError(
           e?.response?.data?.error || e.message || 'Failed to load applications'
@@ -63,6 +58,8 @@ export default function Applications({ isDarkMode }) {
       }
     })();
   }, []);
+
+  // (Loading/Error UI moved below to keep all hooks unconditionally called)
 
   // Sorting helpers
   const handleSort = (column) => {
@@ -211,7 +208,7 @@ export default function Applications({ isDarkMode }) {
           : 'bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black'
       }`}
     >
-      {/* Search + View toggle */}
+  {/* Search + View toggle */}
       <div className="w-full max-w-6xl sticky top-0 z-20 bg-inherit/80 backdrop-blur-md rounded-xl shadow-sm mb-4">
         <div className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           {/* Search */}
@@ -243,6 +240,7 @@ export default function Applications({ isDarkMode }) {
                 {mode[0].toUpperCase() + mode.slice(1)}
               </button>
             ))}
+            {/* AI toggle removed (moved to Job page) */}
           </div>
         </div>
 
@@ -307,8 +305,8 @@ export default function Applications({ isDarkMode }) {
 
       {/* Layout: List + Sidebar */}
       <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-12 gap-5">
-        {/* Main Section */}
-        <section className="md:col-span-8 xl:col-span-9 space-y-4">
+  {/* Main Section */}
+  <section className="md:col-span-8 xl:col-span-9 space-y-4">
           {/* Company summary removed as per request */}
 
           {/* Table / Cards */}
@@ -363,7 +361,12 @@ export default function Applications({ isDarkMode }) {
                           className={`align-middle transition-colors border-b last:border-0 ${isDarkMode ? 'border-gray-700 hover:bg-gray-700 odd:bg-gray-900 even:bg-gray-800' : 'border-gray-200 hover:bg-orange-50 odd:bg-white even:bg-gray-50'}`}
                         >
                           <td className="px-3 py-2 whitespace-nowrap font-medium">{app.applicantName || app.name}</td>
-                          <td className="px-3 py-2 whitespace-nowrap">{app.jobTitle || app.role}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="flex items-center justify-between gap-2">
+                              <span>{app.jobTitle || app.role}</span>
+                              {/* AI Top button removed (moved to Job page) */}
+                            </div>
+                          </td>
                           <td className="px-3 py-2 whitespace-nowrap">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${statusStyles}`}>
                               {status === 'shortlisted' ? 'Shortlisted' : status === 'rejected' ? 'Rejected' : 'New'}
@@ -454,6 +457,7 @@ export default function Applications({ isDarkMode }) {
               )}
             </div>
           )}
+          {/* AI recommendation panels removed (now on Job page) */}
         </section>
 
         {/* Sidebar */}
