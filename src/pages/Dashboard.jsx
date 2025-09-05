@@ -187,7 +187,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
               {userCompany?.companyName || "Company Dashboard"}
             </h1>
             <div className="text-white/90 font-medium text-lg sm:text-xl">
-              {userCompany?.industry && (
+              {userCompany?.industry && ( 
                 <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white font-semibold mr-2">
                   {userCompany.industry}
                 </span>
