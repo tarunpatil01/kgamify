@@ -171,6 +171,11 @@ const Login = ({ setLoggedInEmail }) => {
               background-size: 200% 200%;
               animation: gradient-move 10s ease-in-out infinite;
             }
+            /* Hide native Edge password reveal/clear to avoid double eye */
+            input.hide-native-reveal::-ms-reveal,
+            input.hide-native-reveal::-ms-clear {
+              display: none;
+            }
           `}
         </style>
       </div>
@@ -248,7 +253,7 @@ const Login = ({ setLoggedInEmail }) => {
                 onBlur={handleBlur}
                 placeholder="Enter your password"
                 autoComplete="current-password"
-                className={`w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition ${
+                className={`w-full px-4 py-3 rounded-xl border text-base font-medium bg-white border-gray-900 text-black focus:ring-2 focus:ring-[#ff8200] outline-none transition hide-native-reveal ${
                   validationErrors.password
                     ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
                     : touched.password && !validationErrors.password
