@@ -34,6 +34,12 @@ const HighlightedText = ({ text, query, isDarkMode }) => {
   );
 };
 
+HighlightedText.propTypes = {
+  text: PropTypes.string,
+  query: PropTypes.string,
+  isDarkMode: PropTypes.bool,
+};
+
 const AdminPortal = ({ isDarkMode }) => {
   const [pendingCompanies, setPendingCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
