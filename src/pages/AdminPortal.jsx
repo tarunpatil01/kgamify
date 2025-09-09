@@ -10,6 +10,30 @@ import {
 import { changeAdminPassword, denyCompanyWithReason, holdCompanyWithReason, revokeCompanyAccess } from "../api";
 import logoUrl from "../assets/KLOGO.png";
 
+// Inline helper to highlight search matches in text (case-insensitive)
+const HighlightedText = ({ text, query, isDarkMode }) => {
+  const safeText = typeof text === 'string' ? text : '';
+  const q = (query || '').trim();
+  if (!q) return <>{safeText}</>;
+  const lower = safeText.toLowerCase();
+  const qLower = q.toLowerCase();
+  const parts = [];
+  let i = 0;
+  let idx;
+  while ((idx = lower.indexOf(qLower, i)) !== -1) {
+    if (idx > i) parts.push({ text: safeText.slice(i, idx), match: false });
+    parts.push({ text: safeText.slice(idx, idx + q.length), match: true });
+    i = idx + q.length;
+  }
+  if (i < safeText.length) parts.push({ text: safeText.slice(i), match: false });
+  const cls = isDarkMode ? 'bg-yellow-600/40 rounded px-0.5' : 'bg-yellow-200 rounded px-0.5';
+  return (
+    <>
+      {parts.map((p, key) => p.match ? <span key={key} className={cls}>{p.text}</span> : <span key={key}>{p.text}</span>)}
+    </>
+  );
+};
+
 const AdminPortal = ({ isDarkMode }) => {
   const [pendingCompanies, setPendingCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
@@ -31,6 +55,7 @@ const AdminPortal = ({ isDarkMode }) => {
   const [reasonModal, setReasonModal] = useState({ open: false, mode: null, company: null, reason: "" });
   const [deniedCompanies, setDeniedCompanies] = useState([]);
   const [holdCompanies, setHoldCompanies] = useState([]);
+  const [filters, setFilters] = useState({ q: '', sort: 'updatedAt', order: 'desc' });
 
   // (Optional) Filters & sorting could be added here if needed
 
@@ -109,6 +134,18 @@ const AdminPortal = ({ isDarkMode }) => {
       .then((response) => setHoldCompanies(response.data))
       .catch(() => {});
   }, [navigate]);
+
+  // Re-fetch hold/denied on filter changes
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const token = localStorage.getItem('adminToken');
+    const headers = { 'x-auth-token': token };
+    const baseUrl = import.meta.env.VITE_API_URL.replace(/\/api$/, "");
+    const params = new URLSearchParams({ status: 'hold', q: filters.q || '', sort: filters.sort || 'updatedAt', order: filters.order || 'desc' }).toString();
+    axios.get(`${baseUrl}/api/admin/companies?${params}`, { headers }).then(r => setHoldCompanies(r.data)).catch(()=>{});
+    const paramsDenied = new URLSearchParams({ status: 'denied', q: filters.q || '', sort: filters.sort || 'updatedAt', order: filters.order || 'desc' }).toString();
+    axios.get(`${baseUrl}/api/admin/companies?${paramsDenied}`, { headers }).then(r => setDeniedCompanies(r.data)).catch(()=>{});
+  }, [filters, isAuthenticated]);
 
   // Embedded login handler removed; dedicated AdminLogin page handles this
 
@@ -425,7 +462,7 @@ const AdminPortal = ({ isDarkMode }) => {
             <FaClock className="mr-2" />
             <span>New Companies</span>
             <span className={`admin-tab__badge ${activeTab === 'pending' ? 'admin-tab__badge--active' : ''}`}>
-              {pendingCompanies?.length ?? 0}
+              {Array.isArray(pendingCompanies) ? pendingCompanies.filter(c => (c.status || 'pending') === 'pending').length : 0}
             </span>
           </button>
 
@@ -487,10 +524,40 @@ const AdminPortal = ({ isDarkMode }) => {
                 : "My Profile"}
       </h2>
 
+      {/* Search/Sort for Hold/Denied */}
+      {(activeTab === 'hold' || activeTab === 'denied') && (
+        <div className="mb-4 flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            placeholder="Search name/email/industry..."
+            value={filters.q}
+            onChange={(e) => setFilters(s => ({ ...s, q: e.target.value }))}
+            className={`px-3 py-2 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'}`}
+          />
+          <select
+            value={filters.sort}
+            onChange={(e) => setFilters(s => ({ ...s, sort: e.target.value }))}
+            className={`px-3 py-2 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'}`}
+          >
+            <option value="updatedAt">Updated</option>
+            <option value="name">Name</option>
+            <option value="status">Status</option>
+          </select>
+          <select
+            value={filters.order}
+            onChange={(e) => setFilters(s => ({ ...s, order: e.target.value }))}
+            className={`px-3 py-2 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'}`}
+          >
+            <option value="desc">Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </div>
+      )}
+
       {/* Pending Companies Tab Content */}
-      {activeTab === "pending" && (
+    {activeTab === "pending" && (
         <>
-          {pendingCompanies.length === 0 ? (
+      {(!Array.isArray(pendingCompanies) || pendingCompanies.filter(c => (c.status || 'pending') === 'pending').length === 0) ? (
             <div className="text-center p-16 bg-white rounded-lg shadow-sm dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
               <div className="mb-6 flex justify-center">
                 <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
@@ -502,7 +569,7 @@ const AdminPortal = ({ isDarkMode }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {Array.isArray(pendingCompanies) && pendingCompanies.map((company) => (
+        {pendingCompanies.filter(c => (c.status || 'pending') === 'pending').map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -860,10 +927,14 @@ const AdminPortal = ({ isDarkMode }) => {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-xl font-bold">{company.companyName}</h3>
+                            <h3 className="text-xl font-bold">
+                              <HighlightedText text={company.companyName} query={filters.q} isDarkMode={isDarkMode} />
+                            </h3>
                             <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Denied</span>
                           </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">{company.email}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            <HighlightedText text={company.email} query={filters.q} isDarkMode={isDarkMode} />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -915,10 +986,14 @@ const AdminPortal = ({ isDarkMode }) => {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-xl font-bold">{company.companyName}</h3>
+                            <h3 className="text-xl font-bold">
+                              <HighlightedText text={company.companyName} query={filters.q} isDarkMode={isDarkMode} />
+                            </h3>
                             <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">On Hold</span>
                           </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">{company.email}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            <HighlightedText text={company.email} query={filters.q} isDarkMode={isDarkMode} />
+                          </div>
                         </div>
                       </div>
                     </div>

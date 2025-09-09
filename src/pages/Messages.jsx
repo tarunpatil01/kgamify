@@ -34,13 +34,22 @@ export default function Messages({ isDarkMode }) {
   }
 
   const status = company?.status || 'pending';
+  const isApproved = status === 'approved' || company?.approved;
   const msgs = Array.isArray(company?.adminMessages) ? [...company.adminMessages].sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0)) : [];
 
   return (
     <div className={`min-h-[60vh] p-4 sm:p-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
       <div className="max-w-3xl mx-auto space-y-4">
-        <div className={`p-4 rounded border ${status === 'hold' ? 'bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-700' : status === 'denied' ? 'bg-red-50 border-red-200 text-red-900 dark:bg-red-900/20 dark:text-red-200 dark:border-red-700' : 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-700'}`}>
-          <div className="font-semibold mb-1">Account Status: {status.charAt(0).toUpperCase() + status.slice(1)}</div>
+        <div className={`p-4 rounded border ${
+          status === 'hold'
+            ? 'bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-700'
+            : status === 'denied'
+              ? 'bg-red-50 border-red-200 text-red-900 dark:bg-red-900/20 dark:text-red-200 dark:border-red-700'
+              : isApproved
+                ? 'bg-green-50 border-green-200 text-green-900 dark:bg-green-900/20 dark:text-green-200 dark:border-green-700'
+                : 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-700'
+        }`}>
+          <div className="font-semibold mb-1">Account Status: {(isApproved ? 'Approved' : status.charAt(0).toUpperCase() + status.slice(1))}</div>
           {status === 'hold' && (
             <div className="text-sm opacity-90">Your account is on hold. You can edit registration details but cannot post jobs or access analytics.</div>
           )}
@@ -49,6 +58,9 @@ export default function Messages({ isDarkMode }) {
           )}
           {status === 'denied' && (
             <div className="text-sm opacity-90">Your account was denied. You may re-register after addressing issues.</div>
+          )}
+          {isApproved && (
+            <div className="text-sm opacity-90">Your account is active. You can post jobs and view analytics.</div>
           )}
         </div>
 
