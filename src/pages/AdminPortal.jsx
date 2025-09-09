@@ -609,17 +609,19 @@ const AdminPortal = ({ isDarkMode }) => {
                       </div>
                     </div>
                     {/* Admin message (latest) */}
-                    {Array.isArray(company.adminMessages) && company.adminMessages.length > 0 && (
-                      <div className={`mt-6 p-4 rounded ${company.status === 'denied' ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700' : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700'}`}>
-                        <div className="text-sm font-medium mb-1">{company.status === 'denied' ? 'Denial Reason' : 'Hold Reason'}</div>
-                        <div className="text-sm">
-                          {(() => {
-                            const msgs = company.adminMessages.filter(m => m.type === (company.status === 'denied' ? 'deny' : 'hold'));
-                            const last = msgs[msgs.length - 1];
-                            return last?.message || '—';
-                          })()}
-                        </div>
-                      </div>
+                    {Array.isArray(company.adminMessages) && (
+                      (() => {
+                        const relevantType = company.status === 'denied' ? 'deny' : company.status === 'hold' ? 'hold' : null;
+                        const msgs = relevantType ? company.adminMessages.filter(m => m.type === relevantType) : [];
+                        const last = msgs[msgs.length - 1];
+                        if (!last) return null;
+                        return (
+                          <div className={`mt-6 p-4 rounded ${company.status === 'denied' ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700' : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700'}`}>
+                            <div className="text-sm font-medium mb-1">{company.status === 'denied' ? 'Denial Reason' : 'Hold Reason'}</div>
+                            <div className="text-sm">{last.message}</div>
+                          </div>
+                        );
+                      })()
                     )}
                     
                     {company.description && (

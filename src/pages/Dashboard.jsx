@@ -214,6 +214,16 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
         </div>
       </div>
 
+      {/* Account Status Banner (Approved) */}
+      {(userCompany?.status === 'approved' || userCompany?.approved) && (
+        <div className="w-full max-w-6xl mx-auto mb-8">
+          <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-green-900/20 border-green-700 text-green-200' : 'bg-green-50 border-green-200 text-green-900'}`}>
+            <div className="font-semibold">Account active</div>
+            <div className="text-sm">Your company account is approved and in good standing. Need anything from admin? See <a href="/messages" className="underline text-[#ff8200]">Messages</a>.</div>
+          </div>
+        </div>
+      )}
+
       {/* Job Statistics */}
       <div className="w-full max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
         <div className={`rounded-2xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
