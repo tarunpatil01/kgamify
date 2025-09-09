@@ -30,6 +30,7 @@ const AdminPortal = ({ isDarkMode }) => {
   // Reason modal for Hold / Deny
   const [reasonModal, setReasonModal] = useState({ open: false, mode: null, company: null, reason: "" });
   const [deniedCompanies, setDeniedCompanies] = useState([]);
+  const [holdCompanies, setHoldCompanies] = useState([]);
 
   // (Optional) Filters & sorting could be added here if needed
 
@@ -100,6 +101,12 @@ const AdminPortal = ({ isDarkMode }) => {
     axios
       .get(`${baseUrl}/api/admin/companies?status=denied`, { headers })
       .then((response) => setDeniedCompanies(response.data))
+      .catch(() => {});
+
+    // Fetch on-hold companies
+    axios
+      .get(`${baseUrl}/api/admin/companies?status=hold`, { headers })
+      .then((response) => setHoldCompanies(response.data))
       .catch(() => {});
   }, [navigate]);
 
@@ -416,7 +423,7 @@ const AdminPortal = ({ isDarkMode }) => {
             className={`admin-tab ${activeTab === 'pending' ? 'admin-tab--active' : ''}`}
           >
             <FaClock className="mr-2" />
-            <span>Pending Companies</span>
+            <span>New Companies</span>
             <span className={`admin-tab__badge ${activeTab === 'pending' ? 'admin-tab__badge--active' : ''}`}>
               {pendingCompanies?.length ?? 0}
             </span>
@@ -436,11 +443,14 @@ const AdminPortal = ({ isDarkMode }) => {
 
           <button
             type="button"
-            onClick={() => setActiveTab('profile')}
-            className={`admin-tab ${activeTab === 'profile' ? 'admin-tab--active' : ''}`}
+            onClick={() => setActiveTab('hold')}
+            className={`admin-tab ${activeTab === 'hold' ? 'admin-tab--active' : ''}`}
           >
-            <FaUser className="mr-2" />
-            <span>My Profile</span>
+            <FaClock className="mr-2" />
+            <span>On Hold</span>
+            <span className={`admin-tab__badge ${activeTab === 'hold' ? 'admin-tab__badge--active' : ''}`}>
+              {holdCompanies?.length ?? 0}
+            </span>
           </button>
           <button
             type="button"
@@ -453,17 +463,28 @@ const AdminPortal = ({ isDarkMode }) => {
               {deniedCompanies?.length ?? 0}
             </span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('profile')}
+            className={`admin-tab ${activeTab === 'profile' ? 'admin-tab--active' : ''}`}
+          >
+            <FaUser className="mr-2" />
+            <span>My Profile</span>
+          </button>
         </div>
       </nav>
       
       <h2 className="text-2xl font-semibold mb-6 text-[#ff8200]">
         {activeTab === "pending" 
-          ? "Pending Company Approvals" 
+          ? "New Companies" 
           : activeTab === "approved" 
             ? "Approved Companies" 
-            : activeTab === "denied" 
-              ? "Denied Companies" 
-              : "My Profile"}
+            : activeTab === "hold" 
+              ? "On Hold" 
+              : activeTab === "denied" 
+                ? "Denied Companies" 
+                : "My Profile"}
       </h2>
 
       {/* Pending Companies Tab Content */}
@@ -853,6 +874,61 @@ const AdminPortal = ({ isDarkMode }) => {
                         <div className="font-medium mb-1">Reason</div>
                         <div className="p-3 rounded border bg-red-50 dark:bg-red-900/20 dark:border-red-700">
                           {company.adminMessages.filter(m => m.type === 'deny').slice(-1)[0].message}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm opacity-70">No reason provided.</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      {/* On Hold Companies Tab Content */}
+      {activeTab === 'hold' && (
+        <>
+          {holdCompanies.length === 0 ? (
+            <div className="text-center p-16 bg-white rounded-lg shadow-sm dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <div className="mb-6 flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                  <FaClock className="text-yellow-600 text-3xl" />
+                </div>
+              </div>
+              <p className="text-xl font-medium">No companies on hold</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">On-hold companies will appear here</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {holdCompanies.map((company) => (
+                <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                          {company.logo ? (
+                            <img src={company.logo} alt={company.companyName} className="w-full h-full object-cover" />
+                          ) : (
+                            <FaBuilding className="text-[#ff8200] text-xl" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-bold">{company.companyName}</h3>
+                            <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">On Hold</span>
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{company.email}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    {Array.isArray(company.adminMessages) && company.adminMessages.filter(m => m.type === 'hold').length > 0 ? (
+                      <div className="text-sm">
+                        <div className="font-medium mb-1">Reason</div>
+                        <div className="p-3 rounded border bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700">
+                          {company.adminMessages.filter(m => m.type === 'hold').slice(-1)[0].message}
                         </div>
                       </div>
                     ) : (

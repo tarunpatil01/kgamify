@@ -34,7 +34,7 @@ export default function Messages({ isDarkMode }) {
   }
 
   const status = company?.status || 'pending';
-  const msgs = Array.isArray(company?.adminMessages) ? company.adminMessages : [];
+  const msgs = Array.isArray(company?.adminMessages) ? [...company.adminMessages].sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0)) : [];
 
   return (
     <div className={`min-h-[60vh] p-4 sm:p-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -52,18 +52,22 @@ export default function Messages({ isDarkMode }) {
           )}
         </div>
 
-        <div className="p-4 rounded border bg-white dark:bg-gray-800 dark:border-gray-700">
+        <div className={`p-4 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div className="font-semibold mb-2">Messages from Admin</div>
           {msgs.length === 0 ? (
-            <div className="text-sm opacity-70">No messages yet.</div>
+            <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No messages yet.</div>
           ) : (
             <ul className="space-y-3">
-              {msgs.map((m, i) => (
-                <li key={i} className="p-3 rounded border dark:border-gray-700">
-                  <div className="text-xs opacity-60 mb-1">{new Date(m.createdAt || Date.now()).toLocaleString()} • {m.type}</div>
-                  <div className="text-sm">{m.message}</div>
-                </li>
-              ))}
+              {msgs.map((m, i) => {
+                let when;
+                try { when = new Date(m.createdAt || Date.now()).toLocaleString(); } catch { when = '' }
+                return (
+                  <li key={i} className={`p-3 rounded border ${isDarkMode ? 'border-gray-700 bg-gray-900/30' : 'border-gray-200 bg-gray-50'}`}>
+                    <div className="text-xs opacity-70 mb-1">{when} • {m.type}</div>
+                    <div className="text-sm whitespace-pre-wrap break-words">{m.message}</div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
