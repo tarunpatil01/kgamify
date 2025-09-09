@@ -13,7 +13,7 @@ import logoUrl from "../assets/KLOGO.png";
 const AdminPortal = ({ isDarkMode }) => {
   const [pendingCompanies, setPendingCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
-  const [activeTab, setActiveTab] = useState("pending"); // "pending", "approved", or "profile"
+  const [activeTab, setActiveTab] = useState("pending"); // "pending", "approved", "denied", or "profile"
   const [notification, setNotification] = useState({ show: false, message: "", type: "" });
   const [isLoading, setIsLoading] = useState(false);
   // Removed embedded login state; AdminLogin page handles auth UI
@@ -29,6 +29,7 @@ const AdminPortal = ({ isDarkMode }) => {
 
   // Reason modal for Hold / Deny
   const [reasonModal, setReasonModal] = useState({ open: false, mode: null, company: null, reason: "" });
+  const [deniedCompanies, setDeniedCompanies] = useState([]);
 
   // (Optional) Filters & sorting could be added here if needed
 
@@ -94,6 +95,12 @@ const AdminPortal = ({ isDarkMode }) => {
           setPendingCompanies([]);
         }
       });
+
+    // Fetch denied companies via generic companies endpoint
+    axios
+      .get(`${baseUrl}/api/admin/companies?status=denied`, { headers })
+      .then((response) => setDeniedCompanies(response.data))
+      .catch(() => {});
   }, [navigate]);
 
   // Embedded login handler removed; dedicated AdminLogin page handles this
@@ -435,6 +442,17 @@ const AdminPortal = ({ isDarkMode }) => {
             <FaUser className="mr-2" />
             <span>My Profile</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('denied')}
+            className={`admin-tab ${activeTab === 'denied' ? 'admin-tab--active' : ''}`}
+          >
+            <FaTimes className="mr-2" />
+            <span>Denied Companies</span>
+            <span className={`admin-tab__badge ${activeTab === 'denied' ? 'admin-tab__badge--active' : ''}`}>
+              {deniedCompanies?.length ?? 0}
+            </span>
+          </button>
         </div>
       </nav>
       
@@ -443,7 +461,9 @@ const AdminPortal = ({ isDarkMode }) => {
           ? "Pending Company Approvals" 
           : activeTab === "approved" 
             ? "Approved Companies" 
-            : "My Profile"}
+            : activeTab === "denied" 
+              ? "Denied Companies" 
+              : "My Profile"}
       </h2>
 
       {/* Pending Companies Tab Content */}
@@ -788,6 +808,61 @@ const AdminPortal = ({ isDarkMode }) => {
         </>
       )}
       
+      {/* Denied Companies Tab Content */}
+      {activeTab === 'denied' && (
+        <>
+          {deniedCompanies.length === 0 ? (
+            <div className="text-center p-16 bg-white rounded-lg shadow-sm dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <div className="mb-6 flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                  <FaTimes className="text-red-600 text-3xl" />
+                </div>
+              </div>
+              <p className="text-xl font-medium">No denied companies</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Denied companies will appear here</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {deniedCompanies.map((company) => (
+                <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                          {company.logo ? (
+                            <img src={company.logo} alt={company.companyName} className="w-full h-full object-cover" />
+                          ) : (
+                            <FaBuilding className="text-[#ff8200] text-xl" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-bold">{company.companyName}</h3>
+                            <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Denied</span>
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{company.email}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    {Array.isArray(company.adminMessages) && company.adminMessages.filter(m => m.type === 'deny').length > 0 ? (
+                      <div className="text-sm">
+                        <div className="font-medium mb-1">Reason</div>
+                        <div className="p-3 rounded border bg-red-50 dark:bg-red-900/20 dark:border-red-700">
+                          {company.adminMessages.filter(m => m.type === 'deny').slice(-1)[0].message}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm opacity-70">No reason provided.</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
       {/* Profile Tab Content */}
       {activeTab === "profile" && (
         <div className="space-y-6">

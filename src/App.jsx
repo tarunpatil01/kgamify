@@ -225,17 +225,35 @@ function AppContent() {
                     <Route
                       path="/dashboard"
                       element={
-                        <Dashboard 
-                          isDarkMode={isDarkMode} 
-                          email={loggedInEmail}
-                          userCompany={loggedInCompany}
-                        />
+                        loggedInCompany?.status === 'hold' || loggedInCompany?.status === 'pending' ? (
+                          <div className={`min-h-[60vh] p-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            <div className={`max-w-3xl mx-auto p-4 rounded border ${loggedInCompany?.status === 'hold' ? 'bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-700' : 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-700'}`}>
+                              <div className="font-semibold mb-1">Access limited</div>
+                              <div className="text-sm">Your account is {loggedInCompany?.status}. Please check <a href="/messages" className="underline text-[#ff8200]">Messages</a> for details.</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <Dashboard 
+                            isDarkMode={isDarkMode} 
+                            email={loggedInEmail}
+                            userCompany={loggedInCompany}
+                          />
+                        )
                       }
                     />
                     <Route
                       path="/post-job"
                       element={
-                        <PostJob isDarkMode={isDarkMode} email={loggedInEmail} />
+                        loggedInCompany?.status === 'hold' || loggedInCompany?.status === 'pending' ? (
+                          <div className={`min-h-[60vh] p-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            <div className={`max-w-3xl mx-auto p-4 rounded border ${loggedInCompany?.status === 'hold' ? 'bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-700' : 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-700'}`}>
+                              <div className="font-semibold mb-1">Posting disabled</div>
+                              <div className="text-sm">Your account is {loggedInCompany?.status}. You cannot post jobs. See <a href="/messages" className="underline text-[#ff8200]">Messages</a> for details.</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <PostJob isDarkMode={isDarkMode} email={loggedInEmail} userCompany={loggedInCompany} />
+                        )
                       }
                     />
                     <Route

@@ -114,8 +114,8 @@ const Login = ({ setLoggedInEmail }) => {
         navigate("/dashboard");
       }
     } catch (error) {
-      if (error?.error === 'Your company is not approved by Admin yet') {
-        setErrorMessage("Your company is not approved by Admin yet. Please wait for approval.");
+      if (error?.error === 'Your company is not approved by Admin yet' || error?.error === 'Your account is on hold') {
+        setErrorMessage("Your account is on hold. Please check Messages for details.");
       } else if (error?.error === 'Invalid credentials') {
         setErrorMessage("Invalid username/email or password. Please try again.");
       } else {

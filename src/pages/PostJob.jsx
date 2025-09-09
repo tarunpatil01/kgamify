@@ -26,7 +26,7 @@ const salaryOptions = [
   "70,000+",
 ];
 
-export default function PostJob({ isDarkMode, email }) {
+export default function PostJob({ isDarkMode, email, userCompany }) {
   // Add email prop
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -139,6 +139,12 @@ export default function PostJob({ isDarkMode, email }) {
         isDarkMode ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white" : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
       }`}
     >
+      {(userCompany?.status === 'hold' || userCompany?.status === 'pending') && (
+        <div className={`w-full max-w-3xl mx-auto mb-6 p-4 rounded border ${userCompany.status === 'hold' ? 'bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-700' : 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-700'}`}>
+          <div className="font-semibold mb-1">Posting disabled</div>
+          <div className="text-sm">Your account is {userCompany.status}. You can edit registration, but posting is disabled. See <a href="/messages" className="underline text-[#ff8200]">Messages</a>.</div>
+        </div>
+      )}
       <div
         className={`w-full max-w-3xl mx-auto rounded-3xl shadow-2xl border ${
           isDarkMode
@@ -643,5 +649,6 @@ export default function PostJob({ isDarkMode, email }) {
 }
 PostJob.propTypes = {
   isDarkMode: PropTypes.bool,
-  email: PropTypes.string
+  email: PropTypes.string,
+  userCompany: PropTypes.object
 };

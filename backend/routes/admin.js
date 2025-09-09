@@ -204,6 +204,21 @@ router.post('/hold-company/:id', adminAuth, auditLogger({
     }
     await company.save();
 
+    // Email the company about hold status with link to messages
+    if (company.email) {
+      const frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const messagesUrl = `${frontend.replace(/\/$/, '')}/messages`;
+      sendEmail(company.email, 'custom', {
+        subject: 'KGamify Account On Hold',
+        html: `<div style="font-family: Arial, sans-serif;">
+          <h2 style="color:#d97706;">Account On Hold</h2>
+          <p>Hi ${company.companyName},</p>
+          <p>Your account has been placed on hold.${reason ? ` Reason: <strong>${String(reason).trim()}</strong>.` : ''}</p>
+          <p>Please <a href="${messagesUrl}">log in and check messages</a> from admin for details and next steps.</p>
+        </div>`
+      }).catch(() => {});
+    }
+
     res.json({ message: 'Company put on hold', company });
   } catch {
     res.status(500).json({ message: 'Server error' });
