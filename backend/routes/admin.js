@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const Company = require('../models/Company');
+const mongoose = require('mongoose');
 const Admin = require('../models/Admin');
 const { adminAuth } = require('../middleware/auth');
 const { sendEmail } = require('../utils/emailService');
@@ -22,17 +23,6 @@ router.get('/pending-companies', adminAuth, async (req, res) => {
   try {
     const pendingCompanies = await Company.find({ approved: false });
     res.json(pendingCompanies);
-  } catch {
-    // Silent error handling; don't expose details to client
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Get approved companies (protected)
-router.get('/approved-companies', adminAuth, async (req, res) => {
-  try {
-    const approvedCompanies = await Company.find({ approved: true });
-    res.json(approvedCompanies);
   } catch {
     // Silent error handling; don't expose details to client
     res.status(500).json({ message: 'Server error' });
@@ -159,13 +149,16 @@ router.post('/deny-company/:id', adminAuth, auditLogger({
     if (!company) return res.status(404).json({ message: 'Company not found' });
 
     // Store message & retain account with denied status (do NOT delete)
-    company.adminMessages = company.adminMessages || [];
+    if (!Array.isArray(company.adminMessages)) {
+      company.adminMessages = [];
+    }
     if (reason && String(reason).trim().length) {
       company.adminMessages.push({ type: 'deny', message: String(reason).trim() });
     }
     company.status = 'denied';
     company.approved = false;
-    await company.save();
+  // Validate only modified fields to avoid failing on legacy invalid values
+  await company.save({ validateModifiedOnly: true });
 
     // Send denial email (non-blocking)
     if (company.email) {
@@ -181,7 +174,10 @@ router.post('/deny-company/:id', adminAuth, auditLogger({
     }
 
     res.json({ message: 'Company denied', company });
-  } catch {
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('PUT ON HOLD error:', err);
+    }
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -198,11 +194,14 @@ router.post('/hold-company/:id', adminAuth, auditLogger({
 
     company.status = 'hold';
     company.approved = false;
-    company.adminMessages = company.adminMessages || [];
+    if (!Array.isArray(company.adminMessages)) {
+      company.adminMessages = [];
+    }
     if (reason) {
       company.adminMessages.push({ type: 'hold', message: reason });
     }
-    await company.save();
+  // Validate only modified fields to avoid failing on legacy invalid values
+  await company.save({ validateModifiedOnly: true });
 
     // Email the company about hold status with link to messages
     if (company.email) {
@@ -220,7 +219,10 @@ router.post('/hold-company/:id', adminAuth, auditLogger({
     }
 
     res.json({ message: 'Company put on hold', company });
-  } catch {
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('REVOKE ACCESS error:', err);
+    }
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -231,20 +233,40 @@ router.post('/revoke-access/:id', adminAuth, auditLogger({
   entityType: 'company'
 }), async (req, res) => {
   try {
+    // Validate ID upfront to avoid CastError -> 500
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid company id' });
+    }
     const { reason } = req.body || {};
-    const company = await Company.findById(req.params.id);
+    const id = req.params.id;
+    const company = await Company.findById(id);
     if (!company) return res.status(404).json({ message: 'Company not found' });
 
-    company.approved = false;
-    company.status = 'pending';
-    company.adminMessages = company.adminMessages || [];
-    if (reason) {
-      company.adminMessages.push({ type: 'system', message: `Access revoked: ${reason}` });
+    // If adminMessages is not an array (legacy/bad data), coerce it safely first
+    if (!Array.isArray(company.adminMessages)) {
+      await Company.updateOne({ _id: id }, { $set: { adminMessages: [] } });
     }
-    await company.save();
 
-    res.json({ message: 'Company access revoked and moved to pending', company });
-  } catch {
+    // Apply updates with minimal validation scope
+    const updateOps = {
+      $set: { approved: false, status: 'hold' },
+    };
+    if (reason && String(reason).trim()) {
+      updateOps.$push = { adminMessages: { type: 'hold', message: `Access revoked: ${String(reason).trim()}`, createdAt: new Date() } };
+    }
+
+    const updated = await Company.findByIdAndUpdate(id, updateOps, {
+      new: true,
+      runValidators: true,
+      context: 'query'
+    });
+
+    res.json({ message: 'Company access revoked and moved to hold', company: updated });
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.error('REVOKE ACCESS error:', err);
+    }
     res.status(500).json({ message: 'Server error' });
   }
 });

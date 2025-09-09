@@ -69,19 +69,16 @@ const AdminPortal = ({ isDarkMode }) => {
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     if (!token) {
-      // If no token, redirect to admin login page
       navigate('/admin-login');
       return;
     }
 
     setIsAuthenticated(true);
 
-    // Get admin data from storage
     try {
       const adminData = JSON.parse(localStorage.getItem("adminData"));
       setAdmin(adminData);
     } catch {
-      // If stored data is invalid, clear session-like state inline
       localStorage.removeItem("adminToken");
       localStorage.removeItem("adminData");
       setIsAuthenticated(false);
@@ -93,9 +90,8 @@ const AdminPortal = ({ isDarkMode }) => {
     const headers = { "x-auth-token": token };
     const baseUrl = import.meta.env.VITE_API_URL.replace(/\/api$/, "");
 
-    // Fetch pending companies
     setIsLoading(true);
-  axios
+    axios
       .get(`${baseUrl}/api/admin/pending-companies`, { headers })
       .then((response) => setPendingCompanies(response.data))
       .catch((error) => {
@@ -114,7 +110,6 @@ const AdminPortal = ({ isDarkMode }) => {
       })
       .finally(() => setIsLoading(false));
 
-    // Fetch approved companies
     axios
       .get(`${baseUrl}/api/admin/approved-companies`, { headers })
       .then((response) => setApprovedCompanies(response.data))
@@ -128,13 +123,11 @@ const AdminPortal = ({ isDarkMode }) => {
         }
       });
 
-    // Fetch denied companies via generic companies endpoint
     axios
       .get(`${baseUrl}/api/admin/companies?status=denied`, { headers })
       .then((response) => setDeniedCompanies(response.data))
       .catch(() => {});
 
-    // Fetch on-hold companies
     axios
       .get(`${baseUrl}/api/admin/companies?status=hold`, { headers })
       .then((response) => setHoldCompanies(response.data))
@@ -163,6 +156,29 @@ const AdminPortal = ({ isDarkMode }) => {
     setPendingCompanies([]);
   // Redirect to admin login immediately
   navigate('/admin-login', { replace: true });
+  };
+
+  // Approve action for companies in Hold tab
+  const handleApproveFromHold = async (companyId) => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      await axios.post(
+        `${import.meta.env.VITE_API_URL.replace(/\/api$/, "")}/api/admin/approve-company/${companyId}`,
+        {},
+        { headers: { "x-auth-token": token } }
+      );
+      // Remove from hold list and refresh approved
+      setHoldCompanies(prev => (Array.isArray(prev) ? prev.filter(c => c._id !== companyId) : []));
+      fetchApprovedCompanies(token);
+      setNotification({ show: true, message: 'Company approved from On Hold', type: 'success' });
+      setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+    } catch (error) {
+      setNotification({ show: true, message: 'Error approving company', type: 'error' });
+      setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+      if (error.response?.status === 401) {
+        handleLogout();
+      }
+    }
   };
 
   // fetchPendingCompanies removed; initial useEffect already loads pending list
@@ -207,7 +223,9 @@ const AdminPortal = ({ isDarkMode }) => {
         }
       );
       
-      setPendingCompanies(pendingCompanies.filter((company) => company._id !== companyId));
+  // Remove from pending (if present) and from hold (if approving from hold)
+  setPendingCompanies(prev => (Array.isArray(prev) ? prev.filter((company) => company._id !== companyId) : []));
+  setHoldCompanies(prev => (Array.isArray(prev) ? prev.filter((company) => company._id !== companyId) : []));
       setNotification({
         show: true,
         message: "Company approved successfully",
@@ -225,7 +243,6 @@ const AdminPortal = ({ isDarkMode }) => {
         type: "error"
       });
       setTimeout(() => setNotification({ show: false, message: "", type: "" }), 3000);
-      
       // If unauthorized, logout
       if (error.response?.status === 401) {
         handleLogout();
@@ -246,13 +263,20 @@ const AdminPortal = ({ isDarkMode }) => {
       if (mode === 'hold') {
         const resp = await holdCompanyWithReason(company._id, trimmed);
         const updated = resp?.company || { ...company, status: 'hold', approved: false, adminMessages: [ ...(company.adminMessages||[]), { type: 'hold', message: trimmed, createdAt: new Date().toISOString() } ] };
-        setPendingCompanies(prev => prev.map(c => c._id === company._id ? updated : c));
-        setNotification({ show: true, message: 'Company put on hold', type: 'success' });
+        // Move from pending to hold
+        setPendingCompanies(prev => (Array.isArray(prev) ? prev.filter(c => c._id !== company._id) : []));
+        setHoldCompanies(prev => [updated, ...(Array.isArray(prev) ? prev : [])]);
+        setNotification({ show: true, message: 'Company moved to On Hold', type: 'success' });
       } else if (mode === 'deny') {
         const resp = await denyCompanyWithReason(company._id, trimmed);
         const updated = resp?.company || { ...company, status: 'denied', approved: false, adminMessages: [ ...(company.adminMessages||[]), { type: 'deny', message: trimmed, createdAt: new Date().toISOString() } ] };
-        // Keep in the list; update status and messages
-        setPendingCompanies(prev => prev.map(c => c._id === company._id ? updated : c));
+        // Remove from source list (pending or hold), then add to denied list
+        if (company.status === 'hold') {
+          setHoldCompanies(prev => (Array.isArray(prev) ? prev.filter(c => c._id !== company._id) : []));
+        } else {
+          setPendingCompanies(prev => (Array.isArray(prev) ? prev.filter(c => c._id !== company._id) : []));
+        }
+        setDeniedCompanies(prev => [updated, ...(Array.isArray(prev) ? prev : [])]);
         setNotification({ show: true, message: 'Company denied (email sent)', type: 'success' });
       }
     } catch (error) {
@@ -268,14 +292,14 @@ const AdminPortal = ({ isDarkMode }) => {
       const reason = window.prompt('Enter a reason to revoke access (optional):') || '';
       const resp = await revokeCompanyAccess(companyId, reason.trim());
       const updated = resp?.company;
-      setApprovedCompanies(prev => prev.filter(c => c._id !== companyId));
-      setPendingCompanies(prev => {
+      setApprovedCompanies(prev => (Array.isArray(prev) ? prev.filter(c => c._id !== companyId) : []));
+      setHoldCompanies(prev => {
         const list = Array.isArray(prev) ? prev : [];
         return updated ? [updated, ...list] : list;
       });
       // Refresh approved list in background
       fetchApprovedCompanies();
-      setNotification({ show: true, message: 'Access revoked; company moved to pending', type: 'success' });
+  setNotification({ show: true, message: 'Access revoked; company moved to On Hold', type: 'success' });
       setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
     } catch (error) {
       setNotification({ show: true, message: 'Error revoking access', type: 'error' });
@@ -376,7 +400,7 @@ const AdminPortal = ({ isDarkMode }) => {
       <header className={`${isDarkMode ? "bg-gray-800" : "bg-white"} shadow-md sticky top-0 z-50`}>
         <div className="container mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
-            <div className="flex items-center">
+                      <div className="flex items-center gap-2">
               <div className="bg-gray-100 dark:bg-gray-700 rounded-full p-1.5 mr-3">
                 <img 
                   src={logoUrl} 
@@ -394,7 +418,6 @@ const AdminPortal = ({ isDarkMode }) => {
                 <p className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>Admin Control Panel</p>
               </div>
             </div>
-            
             <div className="flex items-center space-x-3">
               {admin && (
                 <div className="hidden md:flex items-center mr-2 bg-gray-100 dark:bg-gray-700 rounded-full pl-1 pr-3 py-1">
@@ -530,8 +553,8 @@ const AdminPortal = ({ isDarkMode }) => {
                 : "My Profile"}
       </h2>
 
-      {/* Search/Sort for Hold/Denied */}
-      {(activeTab === 'hold' || activeTab === 'denied') && (
+  {/* Search/Sort */}
+  {(activeTab === 'hold' || activeTab === 'denied' || activeTab === 'pending') && (
         <div className="mb-4 flex flex-col sm:flex-row gap-3">
           <input
             type="text"
@@ -618,6 +641,7 @@ const AdminPortal = ({ isDarkMode }) => {
                           <FaTimes className="mr-2" /> Deny
                         </button>
                       </div>
+                      
                     </div>
                   </div>
                   
@@ -922,7 +946,7 @@ const AdminPortal = ({ isDarkMode }) => {
               {deniedCompanies.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-3">
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
                           {company.logo ? (
@@ -941,6 +965,37 @@ const AdminPortal = ({ isDarkMode }) => {
                           <div className="text-sm text-gray-500 dark:text-gray-400">
                             <HighlightedText text={company.email} query={filters.q} isDarkMode={isDarkMode} />
                           </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 md:flex">
+                        <button
+                          onClick={() => handleApproveFromHold(company._id)}
+                          className="flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                        >
+                          <FaCheck className="mr-2" /> Approve
+                        </button>
+                        <button
+                          onClick={() => openReasonModal('deny', company)}
+                          className="flex items-center px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
+                        >
+                          <FaTimes className="mr-2" /> Deny
+                        </button>
+                      </div>
+                      {/* Mobile action bar */}
+                      <div className="w-full md:hidden">
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => handleApproveFromHold(company._id)}
+                            className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                          >
+                            <FaCheck className="mr-2" /> Approve
+                          </button>
+                          <button
+                            onClick={() => openReasonModal('deny', company)}
+                            className="flex-1 flex items-center justify-center px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
+                          >
+                            <FaTimes className="mr-2" /> Deny
+                          </button>
                         </div>
                       </div>
                     </div>
