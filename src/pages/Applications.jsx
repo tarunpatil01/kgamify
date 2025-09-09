@@ -202,35 +202,34 @@ export default function Applications({ isDarkMode }) {
 
   return (
     <div
-      className={`min-h-screen py-8 px-3 sm:px-6 lg:px-8 flex flex-col items-center ${
+      className={`min-h-screen py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center ${
         isDarkMode
-          ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white'
-          : 'bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black'
+          ? 'bg-gray-900 text-white'
+          : 'bg-gray-50 text-black'
       }`}
     >
-  {/* Search + View toggle */}
-      <div className="w-full max-w-6xl sticky top-0 z-20 bg-inherit/80 backdrop-blur-md rounded-xl shadow-sm mb-4">
-        <div className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      {/* Search + View toggle */}
+      <div className="w-full max-w-6xl mx-auto mb-8 rounded-2xl shadow border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col items-center p-6 sm:p-8">
+        <div className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           {/* Search */}
           <div className="relative w-full max-w-md">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-400" />
             <input
-              className="w-full rounded-lg border px-10 py-2 text-sm shadow-sm focus:ring-2 focus:ring-[#ff8200] focus:border-[#ff8200] transition"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-10 py-2 text-sm shadow-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
               placeholder="Search by applicant or job title"
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
           </div>
-
           {/* View toggle */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mt-3 sm:mt-0">
             <span className="text-xs opacity-70">View:</span>
             {['table', 'cards'].map(mode => (
               <button
                 key={mode}
-                className={`px-3 py-1.5 rounded-lg border text-sm transition ${
+                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition shadow-sm ${
                   view === mode
-                    ? 'bg-[#ff8200] text-white border-[#ff8200] shadow'
+                    ? 'bg-orange-500 text-white border-orange-500'
                     : isDarkMode
                       ? 'bg-gray-800 border-gray-700 text-white'
                       : 'bg-white border-gray-300 text-gray-900'
@@ -240,43 +239,58 @@ export default function Applications({ isDarkMode }) {
                 {mode[0].toUpperCase() + mode.slice(1)}
               </button>
             ))}
-            {/* AI toggle removed (moved to Job page) */}
           </div>
         </div>
-
-        {/* Active filter chips */}
-        {Boolean(
-          statusFilter !== 'all' ||
-          dateRange !== 'all' ||
-          minScore !== '' ||
-          (skillQuery.trim().length > 0) ||
-          (selectedSkills.length > 0)
-        ) && (
-          <div className="px-4 pb-3 flex flex-wrap items-center gap-2">
+        {/* Filters below search bar */}
+        <div className="w-full flex flex-wrap items-center gap-3 mb-2">
+          <div className="flex gap-2">
+            <select
+              className={`px-3 py-2 rounded-lg border text-sm font-medium shadow-sm ${isDarkMode ? 'bg-gray-900 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All Status</option>
+              <option value="new">New</option>
+              <option value="shortlisted">Shortlisted</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <select
+              className={`px-3 py-2 rounded-lg border text-sm font-medium shadow-sm ${isDarkMode ? 'bg-gray-900 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              value={dateRange}
+              onChange={e => setDateRange(e.target.value)}
+            >
+              <option value="all">All Dates</option>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+            </select>
+          </div>
+          {/* Active filter chips */}
+          <div className="flex flex-wrap items-center gap-2 ml-2">
             {statusFilter !== 'all' && (
-              <button className="chip" onClick={() => setStatusFilter('all')}>
+              <button className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition shadow-sm ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`} onClick={() => setStatusFilter('all')}>
                 Status: {statusFilter} ×
               </button>
             )}
             {dateRange !== 'all' && (
-              <button className="chip" onClick={() => setDateRange('all')}>
+              <button className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition shadow-sm ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`} onClick={() => setDateRange('all')}>
                 Date: {dateRange} ×
               </button>
             )}
             {minScore !== '' && (
-              <button className="chip" onClick={() => setMinScore('')}>
+              <button className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition shadow-sm ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`} onClick={() => setMinScore('')}>
                 Min score: {minScore} ×
               </button>
             )}
             {skillQuery.trim() && (
-              <button className="chip" onClick={() => setSkillQuery('')}>
+              <button className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition shadow-sm ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`} onClick={() => setSkillQuery('')}>
                 Skill: {skillQuery} ×
               </button>
             )}
             {selectedSkills.map(sk => (
               <button
                 key={sk}
-                className="chip"
+                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition shadow-sm ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                 onClick={() =>
                   setSelectedSkills(prev => prev.filter(s => s !== sk))
                 }
@@ -284,36 +298,33 @@ export default function Applications({ isDarkMode }) {
                 {sk} ×
               </button>
             ))}
-            <button
-              className="ml-auto text-xs px-3 py-1.5 rounded-lg border bg-white/60  "
-              onClick={() => {
-                setStatusFilter('all');
-                setDateRange('all');
-                setMinScore('');
-                setSkillQuery('');
-                setSelectedSkills([]);
-              }}
-            >
-              Reset
-            </button>
+            {(statusFilter !== 'all' || dateRange !== 'all' || minScore !== '' || skillQuery.trim() || selectedSkills.length > 0) && (
+              <button
+                className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition shadow-sm ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                onClick={() => {
+                  setStatusFilter('all');
+                  setDateRange('all');
+                  setMinScore('');
+                  setSkillQuery('');
+                  setSelectedSkills([]);
+                }}
+              >
+                Reset
+              </button>
+            )}
           </div>
-        )}
-
-        {/* Mobile actions: Sort | Filter */}
-  {/* Mobile actions reserved */}
+        </div>
       </div>
 
       {/* Layout: List + Sidebar */}
-      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-12 gap-5">
-  {/* Main Section */}
-  <section className="md:col-span-8 xl:col-span-9 space-y-4">
-          {/* Company summary removed as per request */}
-
+      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-12 gap-8">
+        {/* Main Section */}
+        <section className="md:col-span-8 xl:col-span-9 space-y-6">
           {/* Table / Cards */}
           {sorted.length === 0 ? (
-            <div className="card-kgamify p-10 text-center">
+            <div className="rounded-2xl shadow border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-10 text-center flex flex-col items-center">
               <FaFileAlt className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-              <div className="font-medium">No applications found</div>
+              <div className="font-semibold text-lg">No applications found</div>
               <p className="text-sm opacity-70 mt-1">
                 Try adjusting your search or filters.
               </p>
@@ -324,99 +335,100 @@ export default function Applications({ isDarkMode }) {
               className="md:max-h-[calc(100vh-260px)] overflow-auto pr-1"
             >
               {view === 'table' ? (
-                <table className="w-full border-collapse text-sm rounded-xl overflow-hidden">
-                  <thead className={`sticky top-0 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'} shadow-sm`}>
-                    <tr>
-                      <th
-                        className={`px-3 py-2 text-left select-none cursor-pointer ${sortBy.startsWith('name') ? 'text-[#ff8200]' : ''}`}
-                        onClick={() => handleSort('name')}
-                        title="Sort by name"
-                      >
-                        Name {sortBy === 'nameAsc' ? '▲' : sortBy === 'nameDesc' ? '▼' : ''}
-                      </th>
-                      <th className="px-3 py-2 text-left">Role</th>
-                      <th className="px-3 py-2 text-left">Status</th>
-                      <th
-                        className={`px-3 py-2 text-left select-none cursor-pointer ${sortBy.startsWith('date') ? 'text-[#ff8200]' : ''}`}
-                        onClick={() => handleSort('date')}
-                        title="Sort by date"
-                      >
-                        Date {sortBy === 'dateAsc' ? '▲' : sortBy === 'dateDesc' ? '▼' : ''}
-                      </th>
-                      <th className="px-3 py-2 text-left">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sorted.slice(0, itemsToShow).map(app => {
-                      const status = (app.status || 'new').toLowerCase();
-                      const statusStyles = status === 'shortlisted'
-                        ? 'bg-green-100 text-green-700 border-green-200'
-                        : status === 'rejected'
-                          ? 'bg-red-100 text-red-700 border-red-200'
-                          : 'bg-blue-100 text-blue-700 border-blue-200';
-                      const dateText = app.appliedAt || app.createdAt || app.date;
-                      return (
-                        <tr
-                          key={app.id || app._id}
-                          className={`align-middle transition-colors border-b last:border-0 ${isDarkMode ? 'border-gray-700 hover:bg-gray-700 odd:bg-gray-900 even:bg-gray-800' : 'border-gray-200 hover:bg-orange-50 odd:bg-white even:bg-gray-50'}`}
+                <div className="rounded-2xl shadow border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+                  <table className="w-full border-collapse text-sm">
+                    <thead className={`sticky top-0 z-10 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'} shadow-sm`}>
+                      <tr>
+                        <th
+                          className={`px-4 py-3 text-left select-none cursor-pointer text-base font-semibold ${sortBy.startsWith('name') ? 'text-orange-600' : ''}`}
+                          onClick={() => handleSort('name')}
+                          title="Sort by name"
                         >
-                          <td className="px-3 py-2 whitespace-nowrap font-medium">{app.applicantName || app.name}</td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="flex items-center justify-between gap-2">
-                              <span>{app.jobTitle || app.role}</span>
-                              {/* AI Top button removed (moved to Job page) */}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${statusStyles}`}>
-                              {status === 'shortlisted' ? 'Shortlisted' : status === 'rejected' ? 'Rejected' : 'New'}
-                            </span>
-                          </td>
-                          <td className={`px-3 py-2 whitespace-nowrap ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{new Date(dateText).toLocaleDateString()}</td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <button
-                                className="text-xs px-3 py-1 rounded border bg-white hover:bg-gray-50 text-gray-900"
-                                onClick={async () => {
-                                  try {
-                                    await shortlistApplication(app._id || app.id);
-                                    setApps(prev => prev.map(x => (x._id === (app._id || app.id) || x.id === (app._id || app.id)) ? { ...x, status: 'shortlisted' } : x));
-                                  } catch { /* ignore */ }
-                                }}
-                              >
-                                Shortlist
-                              </button>
-                              <button
-                                className="text-xs px-3 py-1 rounded border bg-white hover:bg-gray-50 text-red-600 border-red-300"
-                                onClick={async () => {
-                                  const ok = window.confirm('Reject this applicant?');
-                                  if (!ok) return;
-                                  try {
-                                    await rejectApplication(app._id || app.id);
-                                    setApps(prev => prev.map(x => (x._id === (app._id || app.id) || x.id === (app._id || app.id)) ? { ...x, status: 'rejected' } : x));
-                                  } catch { /* ignore */ }
-                                }}
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          Name {sortBy === 'nameAsc' ? '▲' : sortBy === 'nameDesc' ? '▼' : ''}
+                        </th>
+                        <th className="px-4 py-3 text-left text-base font-semibold">Role</th>
+                        <th className="px-4 py-3 text-left text-base font-semibold">Status</th>
+                        <th
+                          className={`px-4 py-3 text-left select-none cursor-pointer text-base font-semibold ${sortBy.startsWith('date') ? 'text-orange-600' : ''}`}
+                          onClick={() => handleSort('date')}
+                          title="Sort by date"
+                        >
+                          Date {sortBy === 'dateAsc' ? '▲' : sortBy === 'dateDesc' ? '▼' : ''}
+                        </th>
+                        <th className="px-4 py-3 text-left text-base font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sorted.slice(0, itemsToShow).map(app => {
+                        const status = (app.status || 'new').toLowerCase();
+                        const statusStyles = status === 'shortlisted'
+                          ? 'bg-green-100 text-green-700 border-green-200'
+                          : status === 'rejected'
+                            ? 'bg-red-100 text-red-700 border-red-200'
+                            : 'bg-blue-100 text-blue-700 border-blue-200';
+                        const dateText = app.appliedAt || app.createdAt || app.date;
+                        return (
+                          <tr
+                            key={app.id || app._id}
+                            className={`align-middle transition-colors border-b last:border-0 ${isDarkMode ? 'border-gray-700 hover:bg-gray-800 odd:bg-gray-900 even:bg-gray-800' : 'border-gray-100 hover:bg-gray-50 odd:bg-white even:bg-gray-50'}`}
+                          >
+                            <td className="px-4 py-3 whitespace-nowrap font-medium text-orange-700">{app.applicantName || app.name}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium">{app.jobTitle || app.role}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs border font-medium ${statusStyles}`}>
+                                {status === 'shortlisted' ? 'Shortlisted' : status === 'rejected' ? 'Rejected' : 'New'}
+                              </span>
+                            </td>
+                            <td className={`px-4 py-3 whitespace-nowrap ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{new Date(dateText).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  className="text-xs px-4 py-2 rounded-lg border border-orange-400 bg-orange-500 text-white font-medium shadow-sm hover:bg-orange-600 transition"
+                                  onClick={async () => {
+                                    try {
+                                      await shortlistApplication(app._id || app.id);
+                                      setApps(prev => prev.map(x => (x._id === (app._id || app.id) || x.id === (app._id || app.id)) ? { ...x, status: 'shortlisted' } : x));
+                                    } catch { /* ignore */ }
+                                  }}
+                                >
+                                  Shortlist
+                                </button>
+                                <button
+                                  className="text-xs px-4 py-2 rounded-lg border border-red-300 bg-white text-red-600 font-medium shadow-sm hover:bg-red-50 transition"
+                                  onClick={async () => {
+                                    const ok = window.confirm('Reject this applicant?');
+                                    if (!ok) return;
+                                    try {
+                                      await rejectApplication(app._id || app.id);
+                                      setApps(prev => prev.map(x => (x._id === (app._id || app.id) || x.id === (app._id || app.id)) ? { ...x, status: 'rejected' } : x));
+                                    } catch { /* ignore */ }
+                                  }}
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sorted.slice(0, itemsToShow).map(app => (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {sorted.slice(0, itemsToShow).map(app => (
                     <div
                       key={app.id || app._id}
-            className={`rounded-xl border p-4 shadow-sm ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}
+                      className={`rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow bg-white dark:bg-gray-900 flex flex-col gap-2 transition-all duration-200 hover:shadow-md hover:-translate-y-1`}
                     >
-                      <div className="font-medium">{app.applicantName || app.name}</div>
-                      <div className="text-sm opacity-70">{app.jobTitle || app.role}</div>
+                      <div className="font-semibold text-base text-orange-700">{app.applicantName || app.name}</div>
+                      <div className="text-sm font-medium opacity-80">{app.jobTitle || app.role}</div>
                       <div className="mt-2 flex justify-between items-center">
-                        <span className={`px-2 py-1 rounded text-xs border ${
+                        <span className={`px-3 py-1 rounded-full text-xs border font-medium ${
                           (app.status || 'new').toLowerCase() === 'shortlisted' ? 'bg-green-100 text-green-700 border-green-200' :
                           (app.status || 'new').toLowerCase() === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
                           'bg-blue-100 text-blue-700 border-blue-200'
@@ -425,9 +437,9 @@ export default function Applications({ isDarkMode }) {
                         </span>
                         <span className="text-xs opacity-70">{new Date(app.appliedAt || app.createdAt || app.date).toLocaleDateString()}</span>
                       </div>
-                      <div className="text-xs mt-2 flex gap-2">
+                      <div className="text-xs mt-3 flex gap-2">
                         <button
-                          className="text-xs px-3 py-1 rounded border bg-white hover:bg-gray-50 text-gray-900"
+                          className="text-xs px-4 py-2 rounded-lg border border-orange-400 bg-orange-500 text-white font-medium shadow-sm hover:bg-orange-600 transition"
                           onClick={async () => {
                             try {
                               await shortlistApplication(app._id || app.id);
@@ -438,7 +450,7 @@ export default function Applications({ isDarkMode }) {
                           Shortlist
                         </button>
                         <button
-                          className="text-xs px-3 py-1 rounded border bg-white hover:bg-gray-50 text-red-600 border-red-300"
+                          className="text-xs px-4 py-2 rounded-lg border border-red-300 bg-white text-red-600 font-medium shadow-sm hover:bg-red-50 transition"
                           onClick={async () => {
                             const ok = window.confirm('Reject this applicant?');
                             if (!ok) return;
@@ -457,41 +469,8 @@ export default function Applications({ isDarkMode }) {
               )}
             </div>
           )}
-          {/* AI recommendation panels removed (now on Job page) */}
         </section>
-
-        {/* Sidebar */}
-        <aside className="hidden md:block md:col-span-4 xl:col-span-3">
-          <div className="sticky top-20 space-y-4">
-            {/* Filters */}
-            <div className={`p-3 space-y-3 rounded-xl border ${isDarkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} shadow-sm`}>
-              <div className="text-sm font-semibold">Filters</div>
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  className={`px-2 py-1.5 rounded border text-sm ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="new">New</option>
-                  <option value="shortlisted">Shortlisted</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-                <select
-                  className={`px-2 py-1.5 rounded border text-sm ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                  value={dateRange}
-                  onChange={e => setDateRange(e.target.value)}
-                >
-                  <option value="all">All Dates</option>
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">Last 30 days</option>
-                  <option value="90d">Last 90 days</option>
-                </select>
-              </div>
-              {/* Company filter removed by request */}
-            </div>
-          </div>
-        </aside>
+        {/* Sidebar (optional, can be removed for full width) */}
       </div>
     </div>
   );

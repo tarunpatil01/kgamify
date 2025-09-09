@@ -7,7 +7,9 @@ import {
   FaBuilding, 
   FaChevronLeft,
   FaChevronRight,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaCreditCard,
+  FaRegCommentDots
 } from "react-icons/fa";
 import PropTypes from 'prop-types';
 import Klogo from '../assets/KLOGO.png';
@@ -61,8 +63,9 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false }) {
     { to: "/post-job", icon: FaBriefcase, text: "Post Job", id: "post-job" },
     { to: "/job-posted", icon: FaClipboardList, text: "Job Posted", id: "job-posted" },
     { to: "/Edit-Registration", icon: FaBuilding, text: "Edit Registration", id: "edit-registration" },
-  { to: "/applications", icon: FaClipboardList, text: "Applications", id: "applications" },
-  { to: "/messages", icon: FaClipboardList, text: "Messages", id: "messages" },
+    { to: "/applications", icon: FaClipboardList, text: "Applications", id: "applications" },
+    { to: "/messages", icon: FaRegCommentDots, text: "Messages", id: "messages" },
+    { to: "/payment", icon: FaCreditCard, text: "Payment", id: "payment" },
   ];
 
   return (

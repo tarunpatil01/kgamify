@@ -29,6 +29,7 @@ const JobApplication = lazy(() => import("./pages/JobApplication"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Applications = lazy(() => import("./pages/Applications"));
 const Messages = lazy(() => import("./pages/Messages"));
+const Payment = lazy(() => import("./pages/payment"));
 
 function AppContent() {
   const location = useLocation();
@@ -289,6 +290,10 @@ function AppContent() {
                     <Route
                       path="/apply/:jobId"
                       element={<JobApplication />}
+                    />
+                    <Route
+                      path="/payment"
+                      element={<Payment isDarkMode={isDarkMode} />}
                     />
                   </Routes>
                 </Suspense>
