@@ -625,9 +625,9 @@ const Job = ({ isDarkMode }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {(ai.items || []).map((r, idx) => (
+            {(ai.items || []).map((r, idx) => (
                         <tr key={idx} className={isDarkMode ? 'border-t border-gray-700' : 'border-t border-gray-200'}>
-                          <td className="py-2 px-3">{r.name || 'N/A'}</td>
+              <td className="py-2 px-3">{r.applicantName || r.name || 'N/A'}</td>
                           <td className="py-2 px-3">{r.test_score ?? '—'}</td>
                           <td className="py-2 px-3">{r.skill_score ?? '—'}</td>
                           <td className="py-2 px-3">{r.exp_score ?? '—'}</td>

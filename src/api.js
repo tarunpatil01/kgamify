@@ -362,7 +362,13 @@ export const rejectApplication = async (applicationId) => {
 // AI recommendations for a job
 export const getRecommendationsForJob = async (jobId, topN = 5) => {
   const response = await axios.get(`${AI_API_URL}/recommend`, {
-    params: { job_id: jobId, top_n: topN }
+    params: { job_id: jobId, top_n: topN },
+    withCredentials: false
   });
-  return response.data?.recommendations || [];
+  const recs = response.data?.recommendations || [];
+  // Normalize to always include .name for UI
+  return recs.map(r => ({
+    ...r,
+    name: r.applicantName || r.name || 'N/A'
+  }));
 };

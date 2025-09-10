@@ -13,9 +13,23 @@ export default function AdminMessages({ isDarkMode }) {
   const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);
   const navigate = useNavigate();
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+
+  // Simple admin auth guard
+  useEffect(() => {
+    if (!adminToken) {
+      setError('Admin authentication required');
+      setLoading(false);
+      // brief delay so user sees message then redirect
+      const t = setTimeout(()=> navigate('/admin-login'), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [adminToken, navigate]);
 
   useEffect(() => {
     if (!companyId) { setError('Missing company id'); setLoading(false); return; }
+    // Basic ObjectId format validation to avoid unnecessary 404 fetches
+    if (!/^[a-fA-F0-9]{24}$/.test(companyId)) { setError('Invalid company id'); setLoading(false); return; }
     let socket;
     let active = true;
     async function init() {
@@ -27,7 +41,16 @@ export default function AdminMessages({ isDarkMode }) {
           setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior: 'smooth'}), 50);
         }
       } catch (e) {
-        if (active) setError(e?.response?.data?.message || 'Failed to load');
+        if (active) {
+          if (e?.response?.status === 404) {
+            setError('Company not found');
+          } else if (e?.response?.status === 401) {
+            setError('Unauthorized – please login as admin');
+            setTimeout(()=> navigate('/admin-login'), 1200);
+          } else {
+            setError(e?.response?.data?.message || 'Failed to load');
+          }
+        }
       } finally { if (active) setLoading(false); }
       socket = io('/', { path: '/socket.io', withCredentials: true });
       socket.emit('join', `company:${companyId}`);
@@ -43,7 +66,7 @@ export default function AdminMessages({ isDarkMode }) {
       active = false;
       try { socket?.emit('leave', `company:${companyId}`); socket?.disconnect(); } catch {/* ignore */}
     };
-  }, [companyId]);
+  }, [companyId, navigate]);
 
   const handleSend = async (e) => {
     e.preventDefault();
