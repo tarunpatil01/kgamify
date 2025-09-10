@@ -39,7 +39,7 @@ export const loginCompany = async (loginData) => {
     const payload = loginData.identifier
       ? loginData
       : (loginData.email ? { identifier: loginData.email, password: loginData.password } : loginData);
-    const response = await apiClient.post('/companies/login', payload);
+  const response = await apiClient.post('/companies/login', payload);
     
     // Store the company type in localStorage
     if (response.data.success) {
@@ -47,6 +47,9 @@ export const loginCompany = async (loginData) => {
       
       // Also store the company data in localStorage for easier access
       localStorage.setItem('companyData', JSON.stringify(response.data.company));
+      if (response.data.token) {
+        localStorage.setItem('companyToken', response.data.token);
+      }
     }
     return response.data;
   } catch (error) {
@@ -134,14 +137,18 @@ export const getCompanyInfo = async (email) => {
 export const getCompanyMessages = async (email, page = 1, limit = 50) => {
   if (!email) throw new Error('Email required');
   const token = localStorage.getItem('companyToken');
-  const response = await axios.get(`${API_URL}/companies/messages`, { params: { email, page, limit }, headers: token ? { 'company-auth': token } : undefined });
+  const headers = {};
+  if (token) headers['company-auth'] = token;
+  const response = await axios.get(`${API_URL}/companies/messages`, { params: { email, page, limit }, headers });
   return response.data;
 };
 
 export const sendCompanyMessage = async (email, message) => {
   if (!email || !message) throw new Error('Email and message required');
   const token = localStorage.getItem('companyToken');
-  const response = await axios.post(`${API_URL}/companies/messages`, { email, message }, { headers: token ? { 'company-auth': token } : undefined });
+  const headers = {};
+  if (token) headers['company-auth'] = token;
+  const response = await axios.post(`${API_URL}/companies/messages`, { email, message }, { headers });
   return response.data;
 };
 
@@ -176,7 +183,8 @@ export const getPendingCompanies = async () => {
 };
 
 export const approveCompany = async (companyId) => {
-  const response = await axios.post(`${API_URL}/admin/approve-company/${companyId}`);
+  const token = localStorage.getItem('adminToken');
+  const response = await axios.post(`${API_URL}/admin/approve-company/${companyId}`, {}, { headers: token ? { 'x-auth-token': token } : undefined });
   return response.data;
 };
 

@@ -6,6 +6,9 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 
 const app = express();
+// Minimal internal logger respecting environment (avoid repeated eslint disables)
+function devLog(...args) { if (process.env.NODE_ENV !== 'production') { console.log(...args); } }
+function devError(...args) { if (process.env.NODE_ENV !== 'production') { console.error(...args); } }
 const http = require('http');
 const { Server } = require('socket.io');
 const port = process.env.PORT || 5000;
@@ -43,7 +46,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'x-auth-token', 'company-email', 'x-request-id', 'X-Request-ID', 'X-Client-Version', 'X-Client-Platform', 'x-api-key']
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'x-auth-token', 'company-email', 'company-auth', 'x-request-id', 'X-Request-ID', 'X-Client-Version', 'X-Client-Platform', 'x-api-key']
 }));
 
 // Handle preflight requests explicitly
@@ -107,10 +110,8 @@ app.get('/health', (req, res) => {
 // Connect to MongoDB
 // eslint-disable-next-line no-console
 mongoose.connect(process.env.MONGO_URI)
-  // eslint-disable-next-line no-console
-  .then(() => console.log('MongoDB connected'))
-  // eslint-disable-next-line no-console
-  .catch(err => console.error('MongoDB connection error:', err));
+  .then(() => { devLog('MongoDB connected'); })
+  .catch(err => { devError('MongoDB connection error:', err); });
 
 // Socket.io basic events
 io.on('connection', (socket) => {
@@ -122,10 +123,7 @@ io.on('connection', (socket) => {
 app.set('io', io);
 
 // Start server
-server.listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Server is running on http://localhost:${port}`);
-});
+server.listen(port, () => { devLog(`Server is running on http://localhost:${port}`); });
 
 // Add error handler middleware
 app.use((err, req, res, next) => {
