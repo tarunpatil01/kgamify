@@ -14,7 +14,7 @@ import {
 import PropTypes from 'prop-types';
 import Klogo from '../assets/KLOGO.png';
 
-function Sidebar({ onToggle, isOpen = false, isDarkMode = false }) {
+function Sidebar({ onToggle, isOpen = false, isDarkMode = false, unreadMessages = 0 }) {
   const navigate = useNavigate();
   const [localIsOpen, setLocalIsOpen] = useState(isOpen);
   const location = useLocation();
@@ -64,7 +64,7 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false }) {
     { to: "/job-posted", icon: FaClipboardList, text: "Job Posted", id: "job-posted" },
     { to: "/Edit-Registration", icon: FaBuilding, text: "Edit Registration", id: "edit-registration" },
     { to: "/applications", icon: FaClipboardList, text: "Applications", id: "applications" },
-    { to: "/messages", icon: FaRegCommentDots, text: "Messages", id: "messages" },
+  { to: "/messages", icon: FaRegCommentDots, text: "Messages", id: "messages", badge: unreadMessages },
     { to: "/payment", icon: FaCreditCard, text: "Payment", id: "payment" },
   ];
 
@@ -197,7 +197,7 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false }) {
 }
 
 // Modern SidebarLink component
-function SidebarLink({ to, icon: Icon, text, isOpen, isActive, isDarkMode = false }) {
+function SidebarLink({ to, icon: Icon, text, isOpen, isActive, isDarkMode = false, badge }) {
   return (
     <Link to={to} className="relative group">
       <div
@@ -211,8 +211,13 @@ function SidebarLink({ to, icon: Icon, text, isOpen, isActive, isDarkMode = fals
       >
         <Icon className={`w-5 h-5 ${isOpen ? "mr-3" : ""} ${isActive ? "text-white" : ""}`} />
         {isOpen && (
-          <span className={`font-medium transition-all duration-200 ${isActive ? "text-white" : ""}`}>
-            {text}
+          <span className={`font-medium transition-all duration-200 flex items-center gap-2 ${isActive ? "text-white" : ""}`}>
+            <span>{text}</span>
+            {badge > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[18px] h-5 text-[10px] px-1.5 rounded-full bg-red-600 text-white font-semibold">
+                {badge > 99 ? '99+' : badge}
+              </span>
+            )}
           </span>
         )}
         
@@ -221,7 +226,7 @@ function SidebarLink({ to, icon: Icon, text, isOpen, isActive, isDarkMode = fals
           <span className={`absolute left-16 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[10000] ${
             isDarkMode ? 'bg-gray-800' : 'bg-gray-900'
           }`}>
-            {text}
+            {text}{badge>0?` (${badge>99?'99+':badge})`:''}
           </span>
         )}
       </div>
@@ -234,6 +239,7 @@ Sidebar.propTypes = {
   onToggle: PropTypes.func.isRequired,
   isOpen: PropTypes.bool,
   isDarkMode: PropTypes.bool,
+  unreadMessages: PropTypes.number,
 };
 
 // PropTypes for SidebarLink
@@ -244,6 +250,7 @@ SidebarLink.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   isActive: PropTypes.bool.isRequired,
   isDarkMode: PropTypes.bool,
+  badge: PropTypes.number,
 };
 
 export default Sidebar;

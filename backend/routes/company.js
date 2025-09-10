@@ -5,6 +5,7 @@ const Company = require('../models/Company');
 const { upload, cloudinary } = require('../config/cloudinary');
 const bcrypt = require('bcryptjs');
 const { getDocumentUrl, getDocumentDownloadUrl } = require('../utils/documentHelper');
+const { sendEmail } = require('../utils/emailService');
 // Messaging additions
 
 // Middleware to authenticate company
@@ -448,7 +449,7 @@ router.get('/messages', companyAuth, async (req, res) => {
   try {
     const { email, limit = 50, page = 1 } = req.query;
     if (!email) return res.status(400).json({ error: 'Email is required' });
-    const company = await Company.findOne({ email }, { adminMessages: 1 });
+  const company = await Company.findOne({ email }, { adminMessages: 1, lastCompanyReadAt: 1 });
     if (!company) return res.status(404).json({ error: 'Company not found' });
     const msgs = Array.isArray(company.adminMessages) ? company.adminMessages : [];
     const sorted = msgs.sort((a,b) => new Date(a.createdAt||0) - new Date(b.createdAt||0)); // chronological
@@ -456,6 +457,8 @@ router.get('/messages', companyAuth, async (req, res) => {
     const p = Math.max(1, parseInt(page,10)||1);
     const start = (p-1)*l;
     const slice = sorted.slice(start, start + l);
+  // mark read timestamp
+  await Company.updateOne({ email }, { $set: { lastCompanyReadAt: new Date() } }).catch(()=>{});
     return res.json({ page: p, total: sorted.length, messages: slice });
   } catch {
     return res.status(500).json({ error: 'Failed to fetch messages' });
@@ -481,6 +484,20 @@ router.post('/messages', companyAuth, async (req, res) => {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Socket emit error (company -> admin):', e);
       }
+    }
+    // Email notification to admin(s) - simple single recipient for now
+    const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_EMAIL || 'natheprasad17@gmail.com';
+    if (adminEmail) {
+      sendEmail(adminEmail, 'custom', {
+        subject: `New Message from ${company.companyName || 'Company'}`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <h2 style="color:#3b82f6;">New Company Message</h2>
+          <p><strong>From:</strong> ${company.companyName || company.email}</p>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px 16px;border-radius:6px;margin:16px 0;white-space:pre-wrap;">${msgDoc.message.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+          <p style="font-size:14px;color:#555;">Reply via admin portal:</p>
+          <p><a href="${(process.env.FRONTEND_URL||'http://localhost:3000').replace(/\/$/,'')}/admin/messages/${company._id}" style="background:#ff8200;color:#fff;text-decoration:none;padding:10px 18px;border-radius:4px;display:inline-block;">Open Conversation</a></p>
+        </div>`
+      }).catch(()=>{});
     }
     return res.status(201).json({ message: 'Message sent', data: msgDoc });
   } catch {

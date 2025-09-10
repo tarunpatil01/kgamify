@@ -93,7 +93,7 @@ export default function Messages({ isDarkMode }) {
   }
 
   return (
-    <div className={`min-h-[60vh] flex flex-col p-4 sm:p-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+  <div className={`flex flex-col flex-1 p-4 sm:p-6 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`} style={{minHeight:'calc(100vh - 80px)'}}>
       <div className="w-full max-w-4xl mx-auto flex flex-col flex-1">
         <div className={`p-4 rounded border mb-4 ${
           status === 'hold'
@@ -139,7 +139,7 @@ export default function Messages({ isDarkMode }) {
           />
           <button disabled={sending || !input.trim()} className={`px-5 py-2 rounded font-medium text-white ${sending||!input.trim()? 'bg-gray-400 cursor-not-allowed':'bg-[#ff8200] hover:bg-[#e57400]'}`}>{sending? 'Sending...':'Send'}</button>
         </form>
-        <p className="mt-1 text-xs opacity-60">Messages are visible to KGamify admins. Avoid sharing sensitive credentials.</p>
+  <p className="mt-1 mb-2 text-xs opacity-60">Messages are visible to KGamify admins. Avoid sharing sensitive credentials.</p>
       </div>
     </div>
   );

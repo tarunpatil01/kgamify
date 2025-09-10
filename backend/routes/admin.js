@@ -303,9 +303,11 @@ router.post('/revoke-access/:id', adminAuth, auditLogger({
 // Get messages for a given company id
 router.get('/company/:id/messages', adminAuth, async (req, res) => {
   try {
-    const company = await Company.findById(req.params.id, { adminMessages: 1, companyName: 1, email: 1 });
+  const company = await Company.findById(req.params.id, { adminMessages: 1, companyName: 1, email: 1, lastAdminReadAt: 1 });
     if (!company) return res.status(404).json({ message: 'Company not found' });
     const msgs = Array.isArray(company.adminMessages) ? company.adminMessages.sort((a,b)=> new Date(a.createdAt||0) - new Date(b.createdAt||0)) : [];
+  // update read timestamp
+  await Company.updateOne({ _id: company._id }, { $set: { lastAdminReadAt: new Date() } }).catch(()=>{});
     res.json({ company: { id: company._id, companyName: company.companyName, email: company.email }, messages: msgs });
   } catch {
     res.status(500).json({ message: 'Server error' });
@@ -322,6 +324,7 @@ router.post('/company/:id/messages', adminAuth, async (req, res) => {
     const msgDoc = { type: 'info', message: String(message).slice(0, 2000), from: 'admin', createdAt: new Date() };
     company.adminMessages.push(msgDoc);
     await company.save({ validateModifiedOnly: true });
+  // We purposefully do not set lastCompanyReadAt here so UI can show unread for company
     // Emit real-time event via Socket.IO (room: company:<id>)
     try {
       const io = req.app.get('io');
@@ -330,8 +333,24 @@ router.post('/company/:id/messages', adminAuth, async (req, res) => {
       }
     } catch (e) {
       if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
         console.error('Socket emit error (admin -> company):', e);
+      }
+    }
+    // Fire-and-forget email notification to company about new message
+    if (company?.email) {
+      try {
+        const frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const messagesUrl = `${frontend.replace(/\/$/, '')}/messages`;
+        // don't block response
+        sendEmail(company.email, 'newAdminMessage', {
+          companyName: company.companyName,
+          message: msgDoc.message,
+          messagesUrl
+        }).catch(() => {});
+      } catch (e) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Email send error (admin message notification):', e);
+        }
       }
     }
     res.status(201).json({ message: 'Reply sent', data: msgDoc });

@@ -154,6 +154,27 @@ const emailTemplates = {
     `
   }),
 
+  // Notification for a new admin message to a company
+  newAdminMessage: (data) => ({
+    subject: 'New Message from KGamify Admin Team',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width:600px; margin:0 auto;">
+        <h2 style="color:#3b82f6; margin-bottom:16px;">You've Got a New Message</h2>
+        <p style="font-size:15px; line-height:1.5;">Hi ${data.companyName || 'there'},</p>
+        <p style="font-size:15px; line-height:1.5;">An administrator has sent you a new message on the KGamify portal.</p>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:16px 18px; border-radius:8px; margin:18px 0;">
+          <p style="margin:0 0 8px 0; font-weight:600; color:#1f2937;">Message Preview:</p>
+          <p style="margin:0; color:#374151; white-space:pre-wrap;">${(data.message || '').slice(0,300).replace(/</g,'&lt;').replace(/>/g,'&gt;')}${data.message && data.message.length > 300 ? '…' : ''}</p>
+        </div>
+        <p style="font-size:14px; color:#4b5563;">Please log in to reply or view the full conversation.</p>
+        <div style="margin:28px 0 12px 0;">
+          <a href="${data.messagesUrl}" style="background:#3b82f6; color:#ffffff; padding:12px 24px; text-decoration:none; border-radius:6px; font-weight:600; display:inline-block;">View Messages</a>
+        </div>
+        <p style="font-size:12px; color:#6b7280; margin-top:32px;">This notification was sent from prasadnathe via KGamify Admin Console. If you believe you received this in error, you can ignore it.</p>
+      </div>
+    `
+  }),
+
   // Generic/custom email passthrough
   custom: (data) => ({
     subject: data.subject,

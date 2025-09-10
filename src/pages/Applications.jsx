@@ -176,20 +176,16 @@ export default function Applications({ isDarkMode }) {
 
   return (
     <div
-      className={`min-h-screen py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center ${
-        isDarkMode
-          ? 'bg-gray-900 text-white'
-          : 'bg-gray-50 text-black'
-      }`}
+      className={`min-h-screen py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-black'}`}
     >
       {/* Search + View toggle */}
-      <div className="w-full max-w-6xl mx-auto mb-8 rounded-2xl shadow border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col items-center p-6 sm:p-8">
+      <div className={`w-full max-w-6xl mx-auto mb-8 rounded-2xl shadow flex flex-col items-center p-6 sm:p-8 border ${isDarkMode? 'border-gray-800 bg-gray-900':'border-gray-200 bg-white'}`}>
         <div className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           {/* Search */}
           <div className="relative w-full max-w-md">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-400" />
+            <FaSearch className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode? 'text-gray-400':'text-gray-400'}`} />
             <input
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-10 py-2 text-sm shadow-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+              className={`w-full rounded-lg px-10 py-2 text-sm shadow-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition border ${isDarkMode? 'bg-gray-900 border-gray-700 text-white placeholder-gray-500':'bg-white border-gray-300 text-gray-900 placeholder-gray-400'}`}
               placeholder="Search by applicant or job title"
               value={query}
               onChange={e => setQuery(e.target.value)}
@@ -201,13 +197,7 @@ export default function Applications({ isDarkMode }) {
             {['table', 'cards'].map(mode => (
               <button
                 key={mode}
-                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition shadow-sm ${
-                  view === mode
-                    ? 'bg-orange-500 text-white border-orange-500'
-                    : isDarkMode
-                      ? 'bg-gray-800 border-gray-700 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
-                }`}
+                className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition shadow-sm ${view === mode ? 'bg-orange-500 text-white border-orange-500' : (isDarkMode? 'bg-gray-800 border-gray-700 text-white':'bg-white border-gray-300 text-gray-900')}`}
                 onClick={() => setView(mode)}
               >
                 {mode[0].toUpperCase() + mode.slice(1)}
@@ -296,7 +286,7 @@ export default function Applications({ isDarkMode }) {
         <section className="md:col-span-8 xl:col-span-9 space-y-6">
           {/* Table / Cards */}
           {sorted.length === 0 ? (
-            <div className="rounded-2xl shadow border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-10 text-center flex flex-col items-center">
+      <div className={`rounded-2xl shadow p-10 text-center flex flex-col items-center border ${isDarkMode? 'border-gray-800 bg-gray-900':'border-gray-200 bg-white'}`}>
               <FaFileAlt className="mx-auto h-12 w-12 text-gray-400 mb-3" />
               <div className="font-semibold text-lg">No applications found</div>
               <p className="text-sm opacity-70 mt-1">
@@ -306,9 +296,9 @@ export default function Applications({ isDarkMode }) {
           ) : (
             <div className="overflow-auto pr-1">
               {view === 'table' ? (
-                <div className="rounded-2xl shadow border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+        <div className={`rounded-2xl shadow overflow-hidden border ${isDarkMode? 'border-gray-800 bg-gray-900':'border-gray-200 bg-white'}`}>
                   <table className="w-full border-collapse text-sm">
-                    <thead className={`sticky top-0 z-10 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'} shadow-sm`}>
+          <thead className={`sticky top-0 z-10 shadow-sm ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
                       <tr>
                         <th
                           className={`px-4 py-3 text-left select-none cursor-pointer text-base font-semibold ${sortBy.startsWith('name') ? 'text-orange-600' : ''}`}
@@ -332,11 +322,11 @@ export default function Applications({ isDarkMode }) {
                     <tbody>
                       {paginated.map(app => {
                         const status = (app.status || 'new').toLowerCase();
-                        const statusStyles = status === 'shortlisted'
-                          ? 'bg-green-100 text-green-700 border-green-200'
-                          : status === 'rejected'
-                            ? 'bg-red-100 text-red-700 border-red-200'
-                            : 'bg-blue-100 text-blue-700 border-blue-200';
+                        const statusStyles = (() => {
+                          if (status === 'shortlisted') return isDarkMode? 'bg-green-900/30 text-green-300 border-green-700':'bg-green-100 text-green-700 border-green-200';
+                          if (status === 'rejected') return isDarkMode? 'bg-red-900/30 text-red-300 border-red-700':'bg-red-100 text-red-700 border-red-200';
+                          return isDarkMode? 'bg-blue-900/30 text-blue-300 border-blue-700':'bg-blue-100 text-blue-700 border-blue-200';
+                        })();
                         const dateText = app.appliedAt || app.createdAt || app.date;
                         return (
                           <tr
@@ -394,16 +384,17 @@ export default function Applications({ isDarkMode }) {
                   {paginated.map(app => (
                     <div
                       key={app.id || app._id}
-                      className={`rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow bg-white dark:bg-gray-900 flex flex-col gap-2 transition-all duration-200 hover:shadow-md hover:-translate-y-1`}
+                      className={`rounded-2xl p-6 shadow flex flex-col gap-2 transition-all duration-200 hover:shadow-md hover:-translate-y-1 border ${isDarkMode? 'border-gray-800 bg-gray-900':'border-gray-200 bg-white'}`}
                     >
                       <div className="font-semibold text-base text-orange-700">{app.applicantName || app.name}</div>
                       <div className="text-sm font-medium opacity-80">{app.jobTitle || app.role}</div>
                       <div className="mt-2 flex justify-between items-center">
-                        <span className={`px-3 py-1 rounded-full text-xs border font-medium ${
-                          (app.status || 'new').toLowerCase() === 'shortlisted' ? 'bg-green-100 text-green-700 border-green-200' :
-                          (app.status || 'new').toLowerCase() === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
-                          'bg-blue-100 text-blue-700 border-blue-200'
-                        }`}>
+                        <span className={`px-3 py-1 rounded-full text-xs border font-medium ${(() => {
+                          const s = (app.status || 'new').toLowerCase();
+                          if (s === 'shortlisted') return isDarkMode? 'bg-green-900/30 text-green-300 border-green-700':'bg-green-100 text-green-700 border-green-200';
+                          if (s === 'rejected') return isDarkMode? 'bg-red-900/30 text-red-300 border-red-700':'bg-red-100 text-red-700 border-red-200';
+                          return isDarkMode? 'bg-blue-900/30 text-blue-300 border-blue-700':'bg-blue-100 text-blue-700 border-blue-200';
+                        })()}`}>
                           {(app.status || 'New')}
                         </span>
                         <span className="text-xs opacity-70">{new Date(app.appliedAt || app.createdAt || app.date).toLocaleDateString()}</span>

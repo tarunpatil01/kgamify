@@ -52,6 +52,9 @@ const companySchema = new mongoose.Schema({
   from: { type: String, enum: ['admin', 'company'], default: 'admin' }
     }
   ],
+  // Simple unread tracking timestamps
+  lastAdminReadAt: { type: Date }, // when admin last opened this company's thread
+  lastCompanyReadAt: { type: Date }, // when company last opened their messages page
   // Track whether the company has filled the full profile details
   profileCompleted: { type: Boolean, default: false },
   

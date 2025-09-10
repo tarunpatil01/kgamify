@@ -436,7 +436,6 @@ const Job = ({ isDarkMode }) => {
                   <tr>
                     <th className="text-left py-2 px-3">Name</th>
                     <th className="text-left py-2 px-3">Status</th>
-                    <th className="text-left py-2 px-3">Skills</th>
                     <th className="text-right py-2 px-3">Date</th>
                     <th className="text-right py-2 px-3">Resume</th>
                     <th className="text-right py-2 px-3">Actions</th>
@@ -448,20 +447,6 @@ const Job = ({ isDarkMode }) => {
                       <td className="py-2 px-3 whitespace-nowrap">{applicant.applicantName}</td>
                       <td className="py-2 px-3">
                         <span className={`px-2 py-0.5 rounded text-xs ${applicant.status === 'shortlisted' ? 'bg-green-100 text-green-700' : applicant.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{applicant.status || 'new'}</span>
-                      </td>
-                      <td className="py-2 px-3">
-                        {Array.isArray(applicant.skills) && applicant.skills.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {applicant.skills.slice(0, 4).map((s, i) => (
-                              <span key={i} className="text-xxs px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200 border border-blue-200/60">{s}</span>
-                            ))}
-                            {applicant.skills.length > 4 && (
-                              <span className="text-xxs px-2 py-0.5 rounded bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200 border border-gray-200/60">+{applicant.skills.length - 4}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="opacity-60">—</span>
-                        )}
                       </td>
                       <td className="py-2 px-3 text-right whitespace-nowrap">{new Date(applicant.createdAt).toLocaleDateString()}</td>
                       <td className="py-2 px-3 text-right">
