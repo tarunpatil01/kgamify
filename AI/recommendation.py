@@ -1,5 +1,6 @@
 import pymongo
 from sentence_transformers import SentenceTransformer
+from bson import ObjectId
 from utils import (
     extract_text_from_pdf,
     calculate_skill_match,
@@ -17,36 +18,66 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME")
 JOBS_COLLECTION = "jobs"
-APPLICANTS_COLLECTION = "applicants"
+APPLICATIONS_COLLECTION = "applications"
+
+_mongo_client = None
+_model = None
+
+
+def _get_client():
+    global _mongo_client
+    if _mongo_client is None:
+        _mongo_client = pymongo.MongoClient(MONGO_URI)
+    return _mongo_client
+
+
+def _get_model():
+    global _model
+    if _model is None:
+        _model = SentenceTransformer('all-MiniLM-L6-v2')
+    return _model
+
 
 def recommend_resumes(job_id, top_n=5):
-    client = pymongo.MongoClient(MONGO_URI)
+    client = _get_client()
     db = client[DB_NAME]
 
-    job = db[JOBS_COLLECTION].find_one({"_id": job_id})
+    # Ensure ObjectId lookup still works if job_id is a hex string
+    job_oid = None
+    if ObjectId.is_valid(job_id):
+        job_oid = ObjectId(job_id)
+
+    job = db[JOBS_COLLECTION].find_one({"_id": job_oid}) if job_oid else None
     if not job:
         return []
 
-    applicants = list(db[APPLICANTS_COLLECTION].find({"applied_jobs": job_id}))
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    # Pull application documents referencing this job
+    applications_query = {"jobId": job_oid} if job_oid else {"jobId": job_id}
+    applications = list(db[APPLICATIONS_COLLECTION].find(applications_query))
+    model = _get_model()
 
-    # Translate job details to English
+    # Translate job details to English (schema uses jobDescription & skills is a comma-separated string)
     eligibility_text = translate_to_english(job.get("eligibility", ""))
-    job_description = translate_to_english(job.get("description", ""))
-    job_skills = [translate_to_english(skill) for skill in job.get("skills", [])]
+    job_description = translate_to_english(job.get("jobDescription", ""))
+    raw_skills = job.get("skills") or ""
+    if isinstance(raw_skills, str):
+        skills_list = [s.strip() for s in raw_skills.split(',') if s.strip()]
+    else:
+        skills_list = raw_skills if isinstance(raw_skills, list) else []
+    job_skills = [translate_to_english(skill) for skill in skills_list]
 
     recommendations = []
 
-    for applicant in applicants:
-        resume_url = applicant.get("resume_url")
+    for app in applications:
+        resume_url = app.get("resume")  # stored Cloudinary URL
         if not resume_url:
             continue
 
         resume_text = extract_text_from_pdf(resume_url)
         resume_text = translate_to_english(resume_text)
-
-        applicant_exp_text = translate_to_english(str(applicant.get("experience", "")))
-        applicant_edu_text = translate_to_english(applicant.get("education", ""))
+        # Experience / education fields not in current schema; placeholders for scoring
+        applicant_exp_text = ""
+        applicant_edu_text = ""
 
         # Semantic match for experience
         exp_score, exp_match = match_experience(eligibility_text, applicant_exp_text, model)
@@ -61,8 +92,9 @@ def recommend_resumes(job_id, top_n=5):
         final_score = 0.5 * skill_score + 0.25 * exp_score + 0.25 * edu_score
 
         recommendations.append({
-            "applicant_id": str(applicant.get("_id")),
-            "name": applicant.get("name", "N/A"),
+            "application_id": str(app.get("_id")),
+            "applicantName": app.get("applicantName", "N/A"),
+            "applicantEmail": app.get("applicantEmail"),
             "experience": applicant_exp_text,
             "education": applicant_edu_text,
             "resume_url": resume_url,

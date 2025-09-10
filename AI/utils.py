@@ -4,6 +4,7 @@ import io
 from sentence_transformers import util
 from deep_translator import GoogleTranslator
 from langdetect import detect
+from langdetect.lang_detect_exception import LangDetectException
 
 def extract_text_from_pdf(url):
     response = requests.get(url)
@@ -16,15 +17,34 @@ def extract_text_from_pdf(url):
                 text += page_text
     return text
 
+_translator = None
+
+
 def translate_to_english(text):
+    """Translate arbitrary text to English, safely handling empty/short strings.
+
+    Avoids langdetect errors ("No features in text") by short‑circuiting when
+    the input is empty or mostly whitespace. Caches translator instance.
+    """
+    if not text or not str(text).strip():
+        return text
+
     try:
         lang = detect(text)
-        if lang != 'en':
-            translated = GoogleTranslator(source='auto', target='en').translate(text)
-            return translated
+    except (LangDetectException, Exception):  # fallback on detection failure
+        return text
+
+    if lang == 'en':
+        return text
+
+    global _translator
+    if _translator is None:
+        _translator = GoogleTranslator(source='auto', target='en')
+    try:
+        return _translator.translate(text)
     except Exception as e:
         print(f"Translation error: {e}")
-    return text
+        return text
 
 def calculate_skill_match(job_skills, job_description, resume_text, model):
     if not resume_text:

@@ -6,7 +6,16 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 
 const app = express();
+const http = require('http');
+const { Server } = require('socket.io');
 const port = process.env.PORT || 5000;
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: ['http://localhost:3000','http://localhost:5173', process.env.FRONTEND_URL].filter(Boolean),
+    credentials: true
+  }
+});
 
 // Configure CORS with specific origins
 const allowedOrigins = [
@@ -96,23 +105,38 @@ app.get('/health', (req, res) => {
 });
 
 // Connect to MongoDB
+// eslint-disable-next-line no-console
 mongoose.connect(process.env.MONGO_URI)
+  // eslint-disable-next-line no-console
   .then(() => console.log('MongoDB connected'))
+  // eslint-disable-next-line no-console
   .catch(err => console.error('MongoDB connection error:', err));
 
+// Socket.io basic events
+io.on('connection', (socket) => {
+  socket.on('join', (room) => socket.join(room));
+  socket.on('leave', (room) => socket.leave(room));
+});
+
+// Expose emitter for routes
+app.set('io', io);
+
 // Start server
-app.listen(port, () => {
+server.listen(port, () => {
+  // eslint-disable-next-line no-console
   console.log(`Server is running on http://localhost:${port}`);
-  // CORS configuration complete
 });
 
 // Add error handler middleware
 app.use((err, req, res, next) => {
+  (void next); // ensure four-arg signature recognized & avoid unused var lint
+  // eslint-disable-next-line no-console
   console.error('Global error handler:', err);
   res.status(500).json({ error: 'Internal Server Error', details: err.message });
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
+  // eslint-disable-next-line no-console
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });

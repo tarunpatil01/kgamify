@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { io } from 'socket.io-client';
 import PropTypes from 'prop-types';
 import { getAdminCompanyMessages, sendAdminCompanyMessage } from '../api';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -15,22 +16,33 @@ export default function AdminMessages({ isDarkMode }) {
 
   useEffect(() => {
     if (!companyId) { setError('Missing company id'); setLoading(false); return; }
-    let cancelled = false;
-    async function load() {
+    let socket;
+    let active = true;
+    async function init() {
       try {
         const resp = await getAdminCompanyMessages(companyId);
-        if (!cancelled) {
+        if (active) {
           setData(resp);
           setError('');
           setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior: 'smooth'}), 50);
         }
       } catch (e) {
-        if (!cancelled) setError(e?.response?.data?.message || 'Failed to load');
-      } finally { if (!cancelled) setLoading(false); }
+        if (active) setError(e?.response?.data?.message || 'Failed to load');
+      } finally { if (active) setLoading(false); }
+      socket = io('/', { path: '/socket.io', withCredentials: true });
+      socket.emit('join', `company:${companyId}`);
+      socket.on('message:new', payload => {
+        if (payload?.companyId === String(companyId)) {
+          setData(d => d ? { ...d, messages: [...d.messages, payload.message] } : d);
+          setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior: 'smooth'}), 30);
+        }
+      });
     }
-    load();
-    const id = setInterval(load, 12000);
-    return ()=>{ cancelled=true; clearInterval(id); };
+    init();
+    return () => {
+      active = false;
+      try { socket?.emit('leave', `company:${companyId}`); socket?.disconnect(); } catch {/* ignore */}
+    };
   }, [companyId]);
 
   const handleSend = async (e) => {
@@ -43,9 +55,7 @@ export default function AdminMessages({ isDarkMode }) {
       setData(d=> d ? { ...d, messages:[...d.messages, { message:text, from:'admin', createdAt:new Date().toISOString(), type:'info'}]} : d);
       setInput('');
       await sendAdminCompanyMessage(companyId, text);
-      const refreshed = await getAdminCompanyMessages(companyId);
-      setData(refreshed);
-      setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior:'smooth'}), 30);
+  // rely on socket broadcast for delivery
     } catch (e) {
       setError(e?.response?.data?.message || 'Send failed');
     } finally { setSending(false); }

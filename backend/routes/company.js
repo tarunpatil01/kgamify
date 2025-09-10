@@ -103,6 +103,8 @@ router.post('/', upload.fields([
   }
 });
 
+const jwt = require('jsonwebtoken');
+
 // Login a company (only regular companies now)
 router.post('/login', async (req, res) => {
   try {
@@ -147,10 +149,13 @@ router.post('/login', async (req, res) => {
     const companySafe = company.toObject();
     delete companySafe.password;
     
-  return res.status(200).json({ 
+    // Create a JWT for company session (lightweight auth for messaging)
+    const token = jwt.sign({ companyId: company._id, email: company.email }, process.env.JWT_SECRET || 'temporarysecret', { expiresIn: '8h' });
+    return res.status(200).json({ 
       success: true, 
       company: companySafe,
-      type: 'regular'
+      type: 'regular',
+      token
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -425,8 +430,21 @@ router.get('/document/link/:id', async (req, res) => {
 
 module.exports = router;
 // Chat-style messaging endpoints appended below for company/admin conversation
-// Get paginated messages for a company by email (public auth via email param already used elsewhere)
-router.get('/messages', async (req, res) => {
+// Simple company token auth middleware
+function companyAuth(req, res, next) {
+  const token = req.header('company-auth');
+  if (!token) return res.status(401).json({ error: 'Auth token required' });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'temporarysecret');
+    req.companyAuth = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+}
+
+// Get paginated messages for a company by email (now requires token)
+router.get('/messages', companyAuth, async (req, res) => {
   try {
     const { email, limit = 50, page = 1 } = req.query;
     if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -445,16 +463,26 @@ router.get('/messages', async (req, res) => {
 });
 
 // Company sends a message to admin (from company) - simple auth by email param; in future replace with proper token
-router.post('/messages', async (req, res) => {
+router.post('/messages', companyAuth, async (req, res) => {
   try {
     const { email, message } = req.body || {};
     if (!email || !message) return res.status(400).json({ error: 'Email and message are required' });
     const company = await Company.findOne({ email });
     if (!company) return res.status(404).json({ error: 'Company not found' });
     if (!Array.isArray(company.adminMessages)) company.adminMessages = [];
-    company.adminMessages.push({ type: 'info', message: String(message).slice(0, 2000), from: 'company', createdAt: new Date() });
+    const msgDoc = { type: 'info', message: String(message).slice(0, 2000), from: 'company', createdAt: new Date() };
+    company.adminMessages.push(msgDoc);
     await company.save({ validateModifiedOnly: true });
-    return res.status(201).json({ message: 'Message sent' });
+    // Socket emit
+    try {
+      const io = req.app.get('io');
+      if (io) io.to(`company:${company._id}`).emit('message:new', { companyId: String(company._id), message: msgDoc });
+    } catch (e) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Socket emit error (company -> admin):', e);
+      }
+    }
+    return res.status(201).json({ message: 'Message sent', data: msgDoc });
   } catch {
     return res.status(500).json({ error: 'Failed to send message' });
   }

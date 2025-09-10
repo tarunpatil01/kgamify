@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { io } from 'socket.io-client';
 import PropTypes from 'prop-types';
 import { getCompanyInfo, getCompanyMessages, sendCompanyMessage } from '../api';
 
@@ -30,23 +31,36 @@ export default function Messages({ isDarkMode }) {
   const isApproved = status === 'approved' || company?.approved;
 
   useEffect(() => {
-    let cancelled = false;
-    async function loadMsgs() {
-      if (!company?.email) return;
+    let socket;
+    let active = true;
+    async function init() {
+      if (!company?._id && company?.email) {
+        // refresh company info to get _id if missing
+        try { const refreshed = await getCompanyInfo(company.email); setCompany(refreshed); } catch {/* ignore */}
+      }
+      if (!company?._id) return;
       try {
         const data = await getCompanyMessages(company.email, 1, 200);
-        if (!cancelled) {
+        if (active) {
           setMessages(Array.isArray(data.messages) ? data.messages : []);
           setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior: 'smooth'}), 10);
         }
-      } catch {
-        // ignore
-      }
+      } catch {/* ignore */}
+      socket = io('/', { path: '/socket.io', withCredentials: true });
+      socket.emit('join', `company:${company._id}`);
+      socket.on('message:new', payload => {
+        if (payload?.companyId === String(company._id)) {
+          setMessages(m => [...m, payload.message]);
+          setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior: 'smooth'}), 10);
+        }
+      });
     }
-    loadMsgs();
-    const id = setInterval(loadMsgs, 15000); // poll every 15s
-    return ()=>{ cancelled=true; clearInterval(id); };
-  }, [company?.email]);
+    init();
+    return () => {
+      active = false;
+      try { socket?.emit('leave', `company:${company?._id}`); socket?.disconnect(); } catch {/* ignore */}
+    };
+  }, [company?._id, company?.email]);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -59,10 +73,7 @@ export default function Messages({ isDarkMode }) {
       setMessages(m=>[...m, optimistic]);
       setInput('');
       await sendCompanyMessage(company.email, text);
-      // refresh after send
-      const data = await getCompanyMessages(company.email,1,200);
-      setMessages(Array.isArray(data.messages)? data.messages: []);
-      setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior: 'smooth'}), 20);
+  // server will broadcast; fallback single fetch not strictly needed
     } catch (err) {
       setError(err?.response?.data?.error || 'Failed to send');
     } finally {

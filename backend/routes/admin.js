@@ -299,7 +299,6 @@ router.post('/revoke-access/:id', adminAuth, auditLogger({
   }
 });
 
-module.exports = router;
 // Messaging endpoints (admin perspective)
 // Get messages for a given company id
 router.get('/company/:id/messages', adminAuth, async (req, res) => {
@@ -312,7 +311,6 @@ router.get('/company/:id/messages', adminAuth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 // Post a reply message to a company
 router.post('/company/:id/messages', adminAuth, async (req, res) => {
   try {
@@ -321,10 +319,25 @@ router.post('/company/:id/messages', adminAuth, async (req, res) => {
     const company = await Company.findById(req.params.id);
     if (!company) return res.status(404).json({ message: 'Company not found' });
     if (!Array.isArray(company.adminMessages)) company.adminMessages = [];
-    company.adminMessages.push({ type: 'info', message: String(message).slice(0, 2000), from: 'admin', createdAt: new Date() });
+    const msgDoc = { type: 'info', message: String(message).slice(0, 2000), from: 'admin', createdAt: new Date() };
+    company.adminMessages.push(msgDoc);
     await company.save({ validateModifiedOnly: true });
-    res.status(201).json({ message: 'Reply sent' });
+    // Emit real-time event via Socket.IO (room: company:<id>)
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`company:${company._id}`).emit('message:new', { companyId: String(company._id), message: msgDoc });
+      }
+    } catch (e) {
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.error('Socket emit error (admin -> company):', e);
+      }
+    }
+    res.status(201).json({ message: 'Reply sent', data: msgDoc });
   } catch {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+module.exports = router;

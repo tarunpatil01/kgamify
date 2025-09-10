@@ -111,6 +111,9 @@ const Login = ({ setLoggedInEmail }) => {
         }
         setLoggedInEmail(response.company?.email || "");
         localStorage.setItem('companyType', response.type);
+        if (response.token) {
+          localStorage.setItem('companyToken', response.token);
+        }
         navigate("/dashboard");
       }
     } catch (error) {

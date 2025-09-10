@@ -133,13 +133,15 @@ export const getCompanyInfo = async (email) => {
 // Company messaging (chat-like)
 export const getCompanyMessages = async (email, page = 1, limit = 50) => {
   if (!email) throw new Error('Email required');
-  const response = await axios.get(`${API_URL}/companies/messages`, { params: { email, page, limit } });
+  const token = localStorage.getItem('companyToken');
+  const response = await axios.get(`${API_URL}/companies/messages`, { params: { email, page, limit }, headers: token ? { 'company-auth': token } : undefined });
   return response.data;
 };
 
 export const sendCompanyMessage = async (email, message) => {
   if (!email || !message) throw new Error('Email and message required');
-  const response = await axios.post(`${API_URL}/companies/messages`, { email, message });
+  const token = localStorage.getItem('companyToken');
+  const response = await axios.post(`${API_URL}/companies/messages`, { email, message }, { headers: token ? { 'company-auth': token } : undefined });
   return response.data;
 };
 
