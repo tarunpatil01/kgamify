@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
@@ -21,10 +22,38 @@ const loginLimiter = rateLimit({
 // Get pending companies (protected)
 router.get('/pending-companies', adminAuth, async (req, res) => {
   try {
-    const pendingCompanies = await Company.find({ approved: false });
+    // Explicitly use status = pending (legacy records without status but !approved also included)
+    const pendingCompanies = await Company.find({ $or: [ { status: 'pending' }, { status: { $exists: false }, approved: false } ] });
     res.json(pendingCompanies);
   } catch {
-    // Silent error handling; don't expose details to client
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get approved companies (protected) – matches frontend call /approved-companies
+router.get('/approved-companies', adminAuth, async (req, res) => {
+  try {
+    /*
+      Legacy records might have:
+        - approved: true, status missing
+        - approved: true, status still 'pending'
+      Current logic: treat any approved:true that is NOT hold/denied as approved.
+      (Hold/Denied always have approved:false in current flows, but we explicitly exclude for safety.)
+      After data normalization, all should be status:'approved'.
+    */
+  const approvedCompanies = await Company.find({
+      approved: true,
+      $or: [
+        { status: 'approved' },
+        { status: { $exists: false } },
+        { status: null },
+        { status: 'pending' } // fallback for legacy inconsistent entries
+      ]
+    });
+
+    // If we got mixed legacy statuses, optionally map them client-side; here we just return.
+    res.json(approvedCompanies);
+  } catch {
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -264,7 +293,6 @@ router.post('/revoke-access/:id', adminAuth, auditLogger({
     res.json({ message: 'Company access revoked and moved to hold', company: updated });
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
       console.error('REVOKE ACCESS error:', err);
     }
     res.status(500).json({ message: 'Server error' });
@@ -272,3 +300,31 @@ router.post('/revoke-access/:id', adminAuth, auditLogger({
 });
 
 module.exports = router;
+// Messaging endpoints (admin perspective)
+// Get messages for a given company id
+router.get('/company/:id/messages', adminAuth, async (req, res) => {
+  try {
+    const company = await Company.findById(req.params.id, { adminMessages: 1, companyName: 1, email: 1 });
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+    const msgs = Array.isArray(company.adminMessages) ? company.adminMessages.sort((a,b)=> new Date(a.createdAt||0) - new Date(b.createdAt||0)) : [];
+    res.json({ company: { id: company._id, companyName: company.companyName, email: company.email }, messages: msgs });
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Post a reply message to a company
+router.post('/company/:id/messages', adminAuth, async (req, res) => {
+  try {
+    const { message } = req.body || {};
+    if (!message) return res.status(400).json({ message: 'Message is required' });
+    const company = await Company.findById(req.params.id);
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+    if (!Array.isArray(company.adminMessages)) company.adminMessages = [];
+    company.adminMessages.push({ type: 'info', message: String(message).slice(0, 2000), from: 'admin', createdAt: new Date() });
+    await company.save({ validateModifiedOnly: true });
+    res.status(201).json({ message: 'Reply sent' });
+  } catch {
+    res.status(500).json({ message: 'Server error' });
+  }
+});

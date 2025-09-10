@@ -1,16 +1,16 @@
 import pymongo
-import os
-from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 from utils import (
     extract_text_from_pdf,
     calculate_skill_match,
-    calculate_experience_level,
-    calculate_education_level,
+    match_experience,
+    match_education,
     sort_key,
-    detect_language,
     translate_to_english
 )
+
+from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
@@ -19,112 +19,57 @@ DB_NAME = os.getenv("DB_NAME")
 JOBS_COLLECTION = "jobs"
 APPLICANTS_COLLECTION = "applicants"
 
-# Experience levels mapping
-exp_map = {
-    "junior": 1,
-    "mid": 2,
-    "senior": 3
-}
-
-# Education levels mapping
-edu_levels = {
-    "10th": 1,
-    "12th": 2,
-    "diploma": 2,
-    "bachelor": 3,
-    "b.tech": 3,
-    "bsc": 3,
-    "m.tech": 4,
-    "msc": 4,
-    "master": 4,
-    "phd": 5
-}
-
 def recommend_resumes(job_id, top_n=5):
-    """Return top N recommended resumes for a given job_id."""
+    client = pymongo.MongoClient(MONGO_URI)
+    db = client[DB_NAME]
 
-    # Connect to MongoDB
-    try:
-        client = pymongo.MongoClient(MONGO_URI)
-        db = client[DB_NAME]
-        job = db[JOBS_COLLECTION].find_one({"_id": job_id, "status": "active"})
-        applicants = list(db[APPLICANTS_COLLECTION].find({"applied_jobs": job_id}))
-    except Exception:
-        return []
-
+    job = db[JOBS_COLLECTION].find_one({"_id": job_id})
     if not job:
         return []
 
-    # Load multilingual model
-    model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+    applicants = list(db[APPLICANTS_COLLECTION].find({"applied_jobs": job_id}))
+    model = SentenceTransformer('all-MiniLM-L6-v2')
 
-    job_skills = job.get("skills", [])
-    job_description = job.get("description", "")
-    required_exp = exp_map.get(job.get("experience", "").lower(), 0)
-    required_edu = edu_levels.get(job.get("education", "").lower(), 0)
-
-    # Detect job language
-    job_lang = detect_language(" ".join(job_skills) + " " + job_description)
+    # Translate job details to English
+    eligibility_text = translate_to_english(job.get("eligibility", ""))
+    job_description = translate_to_english(job.get("description", ""))
+    job_skills = [translate_to_english(skill) for skill in job.get("skills", [])]
 
     recommendations = []
 
     for applicant in applicants:
-        # Extract resume text
-        resume_text = ""
-        if applicant.get("resume_url"):
-            resume_text = extract_text_from_pdf(applicant["resume_url"])
-        else:
-            resume_text = applicant.get("resume_text", "")
-
-        if not resume_text.strip():
+        resume_url = applicant.get("resume_url")
+        if not resume_url:
             continue
 
-        # Detect resume language
-        resume_lang = detect_language(resume_text)
+        resume_text = extract_text_from_pdf(resume_url)
+        resume_text = translate_to_english(resume_text)
 
-        # Translate to English if languages differ
-        if job_lang != resume_lang:
-            job_skills_translated = [translate_to_english(skill) for skill in job_skills]
-            job_description_translated = translate_to_english(job_description)
-            resume_text_translated = translate_to_english(resume_text)
-        else:
-            job_skills_translated = job_skills
-            job_description_translated = job_description
-            resume_text_translated = resume_text
+        applicant_exp_text = translate_to_english(str(applicant.get("experience", "")))
+        applicant_edu_text = translate_to_english(applicant.get("education", ""))
 
-        # Calculate scores
-        test_score = applicant.get("test_score", None)
-        skill_score = calculate_skill_match(job_skills_translated, resume_text_translated, model)
-        exp_level = calculate_experience_level(resume_text_translated)
-        edu_level = calculate_education_level(resume_text_translated)
+        # Semantic match for experience
+        exp_score, exp_match = match_experience(eligibility_text, applicant_exp_text, model)
 
-        exp_score = 1.0 if exp_level >= required_exp else 0.5
-        edu_score = 1.0 if edu_level >= required_edu else 0.5
+        # Semantic match for education
+        edu_score, edu_match = match_education(eligibility_text, applicant_edu_text, model)
 
-        if test_score is not None:
-            norm_test_score = test_score / 100
-            final_score = (
-                0.35 * norm_test_score +
-                0.35 * skill_score +
-                0.15 * exp_score +
-                0.15 * edu_score
-            )
-        else:
-            final_score = (
-                0.45 * skill_score +
-                0.275 * exp_score +
-                0.275 * edu_score
-            )
+        # Semantic match for skills and description
+        skill_score = calculate_skill_match(job_skills, job_description, resume_text, model)
+
+        # Combine into final score
+        final_score = 0.5 * skill_score + 0.25 * exp_score + 0.25 * edu_score
 
         recommendations.append({
             "applicant_id": str(applicant.get("_id")),
             "name": applicant.get("name", "N/A"),
-            "test_score": test_score,
+            "experience": applicant_exp_text,
+            "education": applicant_edu_text,
+            "resume_url": resume_url,
             "skill_score": round(skill_score, 2),
-            "exp_score": exp_score,
-            "edu_score": edu_score,
-            "final_score": round(final_score, 4),
-            "resume_url": applicant.get("resume_url")
+            "exp_score": round(exp_score, 2),
+            "edu_score": round(edu_score, 2),
+            "final_score": round(final_score, 4)
         })
 
     return sorted(recommendations, key=sort_key, reverse=True)[:top_n]

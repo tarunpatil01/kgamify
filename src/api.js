@@ -130,6 +130,32 @@ export const getCompanyInfo = async (email) => {
   return response.data;
 };
 
+// Company messaging (chat-like)
+export const getCompanyMessages = async (email, page = 1, limit = 50) => {
+  if (!email) throw new Error('Email required');
+  const response = await axios.get(`${API_URL}/companies/messages`, { params: { email, page, limit } });
+  return response.data;
+};
+
+export const sendCompanyMessage = async (email, message) => {
+  if (!email || !message) throw new Error('Email and message required');
+  const response = await axios.post(`${API_URL}/companies/messages`, { email, message });
+  return response.data;
+};
+
+// Admin messaging helpers
+export const getAdminCompanyMessages = async (companyId) => {
+  const token = localStorage.getItem('adminToken');
+  const response = await axios.get(`${API_URL}/admin/company/${companyId}/messages`, { headers: token ? { 'x-auth-token': token } : undefined });
+  return response.data;
+};
+
+export const sendAdminCompanyMessage = async (companyId, message) => {
+  const token = localStorage.getItem('adminToken');
+  const response = await axios.post(`${API_URL}/admin/company/${companyId}/messages`, { message }, { headers: token ? { 'x-auth-token': token } : undefined });
+  return response.data;
+};
+
 export const editJob = async (jobId, jobData) => {
   const isFormData = typeof FormData !== 'undefined' && jobData instanceof FormData;
   const headers = isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined;

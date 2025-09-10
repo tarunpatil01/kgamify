@@ -47,7 +47,9 @@ const companySchema = new mongoose.Schema({
     {
       type: { type: String, enum: ['info', 'hold', 'deny', 'system'], default: 'info' },
       message: { type: String, required: true },
-      createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  // Sender of the message (admin/company); legacy messages will default to 'admin'
+  from: { type: String, enum: ['admin', 'company'], default: 'admin' }
     }
   ],
   // Track whether the company has filled the full profile details

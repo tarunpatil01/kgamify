@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { FaFileAlt, FaSearch } from 'react-icons/fa';
 import {
@@ -19,11 +19,9 @@ export default function Applications({ isDarkMode }) {
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [minScore, setMinScore] = useState('');
 
-  // Infinite scroll
-  const [itemsToShow, setItemsToShow] = useState(20);
+  // Pagination
   const pageSize = 20;
-  const sentinelRef = useRef(null);
-  const scrollRootRef = useRef(null);
+  const [page, setPage] = useState(1);
 
   // Table / Card toggle
   const [view, setView] = useState('table');
@@ -63,7 +61,7 @@ export default function Applications({ isDarkMode }) {
 
   // Sorting helpers
   const handleSort = (column) => {
-    setItemsToShow(pageSize);
+    setPage(1);
     setSortBy(prev => {
       if (column === 'name') {
         return prev === 'nameAsc' ? 'nameDesc' : 'nameAsc';
@@ -143,34 +141,10 @@ export default function Applications({ isDarkMode }) {
   });
 
   // Reset infinite list when filters/sort change
-  useEffect(() => {
-    setItemsToShow(pageSize);
-  }, [
-    query,
-  sortBy,
-    statusFilter,
-    dateRange,
-    skillQuery,
-    selectedSkills,
-    minScore,
-  ]);
+  useEffect(() => { setPage(1); }, [query, sortBy, statusFilter, dateRange, skillQuery, selectedSkills, minScore]);
 
-  // IntersectionObserver for infinite scroll
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const el = sentinelRef.current;
-    const observer = new IntersectionObserver(
-      entries => {
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-          setItemsToShow(prev => Math.min(prev + pageSize, sorted.length));
-        }
-      },
-      { root: scrollRootRef.current || null, rootMargin: '200px' }
-    );
-    observer.observe(el);
-    return () => observer.unobserve(el);
-  }, [sorted.length]);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
 
   if (loading) {
     return (
@@ -330,10 +304,7 @@ export default function Applications({ isDarkMode }) {
               </p>
             </div>
           ) : (
-            <div
-              ref={scrollRootRef}
-              className="md:max-h-[calc(100vh-260px)] overflow-auto pr-1"
-            >
+            <div className="overflow-auto pr-1">
               {view === 'table' ? (
                 <div className="rounded-2xl shadow border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
                   <table className="w-full border-collapse text-sm">
@@ -359,7 +330,7 @@ export default function Applications({ isDarkMode }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {sorted.slice(0, itemsToShow).map(app => {
+                      {paginated.map(app => {
                         const status = (app.status || 'new').toLowerCase();
                         const statusStyles = status === 'shortlisted'
                           ? 'bg-green-100 text-green-700 border-green-200'
@@ -420,7 +391,7 @@ export default function Applications({ isDarkMode }) {
                 </div>
               ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sorted.slice(0, itemsToShow).map(app => (
+                  {paginated.map(app => (
                     <div
                       key={app.id || app._id}
                       className={`rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow bg-white dark:bg-gray-900 flex flex-col gap-2 transition-all duration-200 hover:shadow-md hover:-translate-y-1`}
@@ -467,6 +438,15 @@ export default function Applications({ isDarkMode }) {
                   ))}
                 </div>
               )}
+              {/* Pagination controls */}
+              <div className="mt-6 flex flex-wrap items-center gap-2 justify-center text-xs">
+                <button disabled={page===1} onClick={()=>setPage(p=>Math.max(1,p-1))} className={`px-3 py-1 rounded border ${page===1? 'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode?'border-gray-700':'border-gray-300'}`}>Prev</button>
+                {Array.from({ length: totalPages }).slice(0,10).map((_,i)=>(
+                  <button key={i} onClick={()=>setPage(i+1)} className={`px-3 py-1 rounded border ${page===i+1? 'bg-orange-500 text-white border-orange-500':'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode?'border-gray-700':'border-gray-300'}`}>{i+1}</button>
+                ))}
+                {totalPages>10 && <span className="px-2">…</span>}
+                <button disabled={page===totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className={`px-3 py-1 rounded border ${page===totalPages? 'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode?'border-gray-700':'border-gray-300'}`}>Next</button>
+              </div>
             </div>
           )}
         </section>

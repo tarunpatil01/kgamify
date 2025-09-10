@@ -5,6 +5,7 @@ const Company = require('../models/Company');
 const { upload, cloudinary } = require('../config/cloudinary');
 const bcrypt = require('bcryptjs');
 const { getDocumentUrl, getDocumentDownloadUrl } = require('../utils/documentHelper');
+// Messaging additions
 
 // Middleware to authenticate company
 const authenticateCompany = async (req, res, next) => {
@@ -423,3 +424,38 @@ router.get('/document/link/:id', async (req, res) => {
 });
 
 module.exports = router;
+// Chat-style messaging endpoints appended below for company/admin conversation
+// Get paginated messages for a company by email (public auth via email param already used elsewhere)
+router.get('/messages', async (req, res) => {
+  try {
+    const { email, limit = 50, page = 1 } = req.query;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+    const company = await Company.findOne({ email }, { adminMessages: 1 });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+    const msgs = Array.isArray(company.adminMessages) ? company.adminMessages : [];
+    const sorted = msgs.sort((a,b) => new Date(a.createdAt||0) - new Date(b.createdAt||0)); // chronological
+    const l = Math.min(100, Math.max(1, parseInt(limit,10)||50));
+    const p = Math.max(1, parseInt(page,10)||1);
+    const start = (p-1)*l;
+    const slice = sorted.slice(start, start + l);
+    return res.json({ page: p, total: sorted.length, messages: slice });
+  } catch {
+    return res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// Company sends a message to admin (from company) - simple auth by email param; in future replace with proper token
+router.post('/messages', async (req, res) => {
+  try {
+    const { email, message } = req.body || {};
+    if (!email || !message) return res.status(400).json({ error: 'Email and message are required' });
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+    if (!Array.isArray(company.adminMessages)) company.adminMessages = [];
+    company.adminMessages.push({ type: 'info', message: String(message).slice(0, 2000), from: 'company', createdAt: new Date() });
+    await company.save({ validateModifiedOnly: true });
+    return res.status(201).json({ message: 'Message sent' });
+  } catch {
+    return res.status(500).json({ error: 'Failed to send message' });
+  }
+});

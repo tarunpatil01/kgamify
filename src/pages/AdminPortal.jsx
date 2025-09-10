@@ -62,6 +62,9 @@ const AdminPortal = ({ isDarkMode }) => {
   const [deniedCompanies, setDeniedCompanies] = useState([]);
   const [holdCompanies, setHoldCompanies] = useState([]);
   const [filters, setFilters] = useState({ q: '', sort: 'updatedAt', order: 'desc' });
+  const [filterModal, setFilterModal] = useState(false);
+  const pageSize = 10;
+  const [pages, setPages] = useState({ pending: 1, approved: 1, hold: 1, denied: 1 });
 
   // (Optional) Filters & sorting could be added here if needed
 
@@ -114,13 +117,22 @@ const AdminPortal = ({ isDarkMode }) => {
       .get(`${baseUrl}/api/admin/approved-companies`, { headers })
       .then((response) => setApprovedCompanies(response.data))
       .catch((error) => {
-        if (error?.response?.status === 401) {
-          localStorage.removeItem("adminToken");
-          localStorage.removeItem("adminData");
-          setIsAuthenticated(false);
-          setAdmin(null);
-          setPendingCompanies([]);
-        }
+          if (error?.response?.status === 404) {
+            // Fallback to generic companies endpoint (older backend without dedicated route)
+            axios
+              .get(`${baseUrl}/api/admin/companies?status=approved`, { headers })
+              .then(r => {
+                const list = Array.isArray(r.data) ? r.data.filter(c => c.approved === true && !['hold','denied'].includes(c.status)) : [];
+                setApprovedCompanies(list);
+              })
+              .catch(() => {});
+          } else if (error?.response?.status === 401) {
+            localStorage.removeItem("adminToken");
+            localStorage.removeItem("adminData");
+            setIsAuthenticated(false);
+            setAdmin(null);
+            setPendingCompanies([]);
+          }
       });
 
     axios
@@ -201,11 +213,24 @@ const AdminPortal = ({ isDarkMode }) => {
       
       setApprovedCompanies(response.data);
     } catch (error) {
-      // Silent error handling
-      // If unauthorized, logout
-      if (error.response?.status === 401) {
-        handleLogout();
+      // If endpoint not found (older server without dedicated route), fallback to generic companies query
+      if (error.response?.status === 404) {
+        try {
+          const authToken = token || localStorage.getItem("adminToken");
+          if (!authToken) return;
+          const fallback = await axios.get(
+            `${import.meta.env.VITE_API_URL.replace(/\/api$/, "")}/api/admin/companies?status=approved`,
+            { headers: { "x-auth-token": authToken } }
+          );
+          // Filter defensively: approved true & not hold/denied
+          const list = Array.isArray(fallback.data) ? fallback.data.filter(c => c.approved === true && !['hold','denied'].includes(c.status)) : [];
+          setApprovedCompanies(list);
+        } catch (err2) {
+          if (err2.response?.status === 401) handleLogout();
+        }
+        return;
       }
+      if (error.response?.status === 401) handleLogout();
     }
   };
 
@@ -553,35 +578,14 @@ const AdminPortal = ({ isDarkMode }) => {
                 : "My Profile"}
       </h2>
 
-  {/* Search/Sort */}
-  {(activeTab === 'hold' || activeTab === 'denied' || activeTab === 'pending') && (
-        <div className="mb-4 flex flex-col sm:flex-row gap-3">
-          <input
-            type="text"
-            placeholder="Search name/email/industry..."
-            value={filters.q}
-            onChange={(e) => setFilters(s => ({ ...s, q: e.target.value }))}
-            className={`px-3 py-2 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'}`}
-          />
-          <select
-            value={filters.sort}
-            onChange={(e) => setFilters(s => ({ ...s, sort: e.target.value }))}
-            className={`px-3 py-2 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'}`}
-          >
-            <option value="updatedAt">Updated</option>
-            <option value="name">Name</option>
-            <option value="status">Status</option>
-          </select>
-          <select
-            value={filters.order}
-            onChange={(e) => setFilters(s => ({ ...s, order: e.target.value }))}
-            className={`px-3 py-2 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'}`}
-          >
-            <option value="desc">Desc</option>
-            <option value="asc">Asc</option>
-          </select>
-        </div>
+  {(activeTab === 'hold' || activeTab === 'denied' || activeTab === 'pending' || activeTab === 'approved') && (
+    <div className="mb-4 flex items-center gap-3">
+      <button onClick={()=>setFilterModal(true)} className="px-4 py-2 rounded bg-[#ff8200] text-white text-sm hover:bg-[#e57400]">Open Filters</button>
+      {(filters.q || filters.sort !== 'updatedAt' || filters.order !== 'desc') && (
+        <button onClick={()=>setFilters({ q:'', sort:'updatedAt', order:'desc' })} className="text-xs underline text-[#ff8200]">Clear</button>
       )}
+    </div>
+  )}
 
       {/* Pending Companies Tab Content */}
     {activeTab === "pending" && (
@@ -597,8 +601,8 @@ const AdminPortal = ({ isDarkMode }) => {
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">New registration requests will appear here</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6">
-        {pendingCompanies.filter(c => (c.status || 'pending') === 'pending').map((company) => (
+      <div className="grid grid-cols-1 gap-6">
+    {(() => { const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const page = pages.pending; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -639,6 +643,12 @@ const AdminPortal = ({ isDarkMode }) => {
                           className="flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors shadow-sm"
                         >
                           <FaTimes className="mr-2" /> Deny
+                        </button>
+                        <button
+                          onClick={()=> navigate(`/admin/messages/${company._id}`)}
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm"
+                        >
+                          Messages
                         </button>
                       </div>
                       
@@ -750,7 +760,15 @@ const AdminPortal = ({ isDarkMode }) => {
                     )}
                   </div>
                 </div>
-              ))}
+              )); })()}
+              {(() => { const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const total = Math.max(1, Math.ceil(all.length / pageSize)); if (total <=1) return null; return (
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+                  <button disabled={pages.pending===1} onClick={()=>setPages(p=>({...p,pending:p.pending-1}))} className={`px-3 py-1 rounded border ${pages.pending===1?'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDarkMode?'border-gray-600':'border-gray-300'}`}>Prev</button>
+                  {Array.from({ length: total }).map((_,i)=>(
+                    <button key={i} onClick={()=>setPages(p=>({...p,pending:i+1}))} className={`px-3 py-1 rounded border ${pages.pending===i+1? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode? 'border-gray-600':'border-gray-300'}`}>{i+1}</button>
+                  ))}
+                  <button disabled={pages.pending===total} onClick={()=>setPages(p=>({...p,pending:p.pending+1}))} className={`px-3 py-1 rounded border ${pages.pending===total?'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDarkMode?'border-gray-600':'border-gray-300'}`}>Next</button>
+                </div> ); })()}
             </div>
           )}
         </>
@@ -759,7 +777,8 @@ const AdminPortal = ({ isDarkMode }) => {
       {/* Approved Companies Tab Content */}
   {activeTab === "approved" && (
         <>
-          {approvedCompanies.length === 0 ? (
+          {/* Approved list */}
+          {approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null)).length === 0 ? (
             <div className="text-center p-16 bg-white rounded-lg shadow-sm dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
               <div className="mb-6 flex justify-center">
                 <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
@@ -768,10 +787,24 @@ const AdminPortal = ({ isDarkMode }) => {
               </div>
               <p className="text-xl font-medium">No approved companies yet</p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Approved companies will appear here</p>
+              <button
+                onClick={() => fetchApprovedCompanies()}
+                className="mt-6 inline-flex items-center px-4 py-2 rounded bg-[#ff8200] text-white text-sm font-medium hover:bg-[#e57400] transition"
+              >
+                Refresh
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {Array.isArray(approvedCompanies) && approvedCompanies.map((company) => (
+              <div className="flex justify-end mb-2">
+                <button
+                  onClick={() => fetchApprovedCompanies()}
+                  className="inline-flex items-center px-3 py-1.5 rounded bg-[#ff8200] text-white text-xs font-semibold hover:bg-[#e57400] transition"
+                >
+                  Refresh List
+                </button>
+              </div>
+              {Array.isArray(approvedCompanies) && approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null)).map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -804,6 +837,12 @@ const AdminPortal = ({ isDarkMode }) => {
                           className="flex items-center px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors shadow-sm"
                         >
                           <FaTimes className="mr-2" /> Deny Access
+                        </button>
+                        <button
+                          onClick={()=> navigate(`/admin/messages/${company._id}`)}
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm"
+                        >
+                          Messages
                         </button>
                       </div>
                     </div>
@@ -980,6 +1019,12 @@ const AdminPortal = ({ isDarkMode }) => {
                         >
                           <FaTimes className="mr-2" /> Deny
                         </button>
+                        <button
+                          onClick={()=> navigate(`/admin/messages/${company._id}`)}
+                          className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                        >
+                          Messages
+                        </button>
                       </div>
                       {/* Mobile action bar */}
                       <div className="w-full md:hidden">
@@ -1036,7 +1081,7 @@ const AdminPortal = ({ isDarkMode }) => {
               {holdCompanies.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
                           {company.logo ? (
@@ -1057,18 +1102,104 @@ const AdminPortal = ({ isDarkMode }) => {
                           </div>
                         </div>
                       </div>
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleApproveFromHold(company._id)}
+                          className="flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                        >
+                          <FaCheck className="mr-2" /> Approve
+                        </button>
+                        <button
+                          onClick={() => openReasonModal('deny', company)}
+                          className="flex items-center px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
+                        >
+                          <FaTimes className="mr-2" /> Deny
+                        </button>
+                        <button
+                          onClick={()=> navigate(`/admin/messages/${company._id}`)}
+                          className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                        >
+                          Messages
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-6">
-                    {Array.isArray(company.adminMessages) && company.adminMessages.filter(m => m.type === 'hold').length > 0 ? (
-                      <div className="text-sm">
-                        <div className="font-medium mb-1">Reason</div>
-                        <div className="p-3 rounded border bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700">
-                          {company.adminMessages.filter(m => m.type === 'hold').slice(-1)[0].message}
+                  <div className="p-6 space-y-6">
+                    {/* Reason block */}
+                    <div>
+                      {Array.isArray(company.adminMessages) && company.adminMessages.filter(m => m.type === 'hold').length > 0 ? (
+                        <div className="text-sm">
+                          <div className="font-medium mb-1">Reason</div>
+                          <div className="p-3 rounded border bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-700">
+                            {company.adminMessages.filter(m => m.type === 'hold').slice(-1)[0].message}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm opacity-70">No reason provided.</div>
+                      )}
+                    </div>
+                    {/* Contact & Details similar to pending */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <h4 className="font-medium mb-4 text-[#ff8200]">Contact Information</h4>
+                        <div className="space-y-4">
+                          <div className="flex items-center">
+                            <FaEnvelope className="text-[#ff8200] mr-3 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Email</p>
+                              <p className="font-medium break-all">{company.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <FaPhone className="text-[#ff8200] mr-3 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Phone</p>
+                              <p className="font-medium">{company.phone || '—'}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <FaGlobeAmericas className="text-[#ff8200] mr-3 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Website</p>
+                              <p className="font-medium break-all">{company.website ? <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{company.website}</a> : 'Not provided'}</p>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    ) : (
-                      <div className="text-sm opacity-70">No reason provided.</div>
+                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <h4 className="font-medium mb-4 text-[#ff8200]">Company Details</h4>
+                        <div className="space-y-4">
+                          <div className="flex items-center">
+                            <FaBuilding className="text-[#ff8200] mr-3 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Industry</p>
+                              <p className="font-medium">{company.industry || 'Not specified'}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Status:</span>
+                            <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">On Hold</span>
+                          </div>
+                          {company.documents && (
+                            <div className="flex items-start">
+                              <svg className="h-5 w-5 text-[#ff8200] mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Documents</p>
+                                <a href={company.documents} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline font-medium">View Verification Documents</a>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {company.description && (
+                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <h4 className="font-medium mb-2 text-[#ff8200]">Company Description</h4>
+                        <div className="prose dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: company.description }} />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1132,7 +1263,7 @@ const AdminPortal = ({ isDarkMode }) => {
             {passwordError && (
               <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 p-4 rounded mb-6 flex items-start">
                 <div className="flex-shrink-0 mr-2 mt-0.5">
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
                 </div>
@@ -1273,6 +1404,43 @@ const AdminPortal = ({ isDarkMode }) => {
                   >
                     Confirm
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {filterModal && (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+              <div className={`w-full max-w-md rounded-lg shadow-lg ${isDarkMode? 'bg-gray-800 text-white':'bg-white text-gray-900'}`}>
+                <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Filters</h3>
+                  <button onClick={()=>setFilterModal(false)} className="text-sm opacity-70 hover:opacity-100">✕</button>
+                </div>
+                <div className="px-5 py-5 space-y-5">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Search</label>
+                    <input value={filters.q} onChange={e=>setFilters(s=>({...s,q:e.target.value}))} placeholder="Name / Email / Industry" className={`w-full rounded border px-3 py-2 ${isDarkMode? 'bg-gray-700 border-gray-600':'bg-white border-gray-300'}`} />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Sort By</label>
+                      <select value={filters.sort} onChange={e=>setFilters(s=>({...s,sort:e.target.value}))} className={`w-full rounded border px-3 py-2 ${isDarkMode? 'bg-gray-700 border-gray-600':'bg-white border-gray-300'}`}>
+                        <option value="updatedAt">Updated</option>
+                        <option value="name">Name</option>
+                        <option value="status">Status</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Order</label>
+                      <select value={filters.order} onChange={e=>setFilters(s=>({...s,order:e.target.value}))} className={`w-full rounded border px-3 py-2 ${isDarkMode? 'bg-gray-700 border-gray-600':'bg-white border-gray-300'}`}>
+                        <option value="desc">Descending</option>
+                        <option value="asc">Ascending</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2">
+                  <button onClick={()=>setFilters({ q:'', sort:'updatedAt', order:'desc' })} className={`px-4 py-2 rounded ${isDarkMode? 'bg-gray-700 hover:bg-gray-600':'bg-gray-100 hover:bg-gray-200'}`}>Reset</button>
+                  <button onClick={()=>setFilterModal(false)} className="px-4 py-2 rounded bg-[#ff8200] text-white hover:bg-[#e57400]">Apply</button>
                 </div>
               </div>
             </div>

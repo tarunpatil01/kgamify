@@ -23,6 +23,7 @@ const ForgotPassword = lazy(() => import("./pages/ForgetPassword"));
 const EditRegistration = lazy(() => import("./pages/EditRegistration"));
 const AdminPortal = lazy(() => import("./pages/AdminPortal"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminMessages = lazy(() => import("./pages/AdminMessages"));
 const EditJob = lazy(() => import("./pages/EditJob"));
 const Job = lazy(() => import("./JobApplications/Job.jsx"));
 const JobApplication = lazy(() => import("./pages/JobApplication"));
@@ -39,7 +40,7 @@ function AppContent() {
                       location.pathname === "/reset-password" ||
                       location.pathname === "/admin-login";
   
-  const isAdminPage = location.pathname === "/admin";
+  const isAdminPage = location.pathname === "/admin" || location.pathname.startsWith('/admin/messages');
   
   const showNavbar = !isLoginPage && !isAdminPage;
   const showSidebar = !isLoginPage && !isAdminPage;
@@ -278,6 +279,10 @@ function AppContent() {
                     <Route
                       path="/admin"
                       element={<AdminPortal isDarkMode={isDarkMode} />}
+                    />
+                    <Route
+                      path="/admin/messages/:companyId"
+                      element={<AdminMessages isDarkMode={isDarkMode} />}
                     />
                     <Route
                       path="/edit-job/:jobId"
