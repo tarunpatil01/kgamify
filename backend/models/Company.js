@@ -65,6 +65,22 @@ const companySchema = new mongoose.Schema({
   // OTP for forgot password (email-based)
   otpCode: String,
   otpExpiry: Date,
+  // Email verification separate from password reset OTP
+  emailVerified: { type: Boolean, default: false },
+  emailVerificationCode: String, // 6-digit OTP for signup verification
+  emailVerificationExpiry: Date,
+
+  // Subscription & plan management
+  subscriptionPlan: { type: String, enum: ['free', 'silver', 'gold'], default: 'free' },
+  subscriptionStatus: { type: String, enum: ['inactive', 'active', 'expired', 'cancelled'], default: 'inactive' },
+  subscriptionActivatedAt: Date,
+  subscriptionExpiresAt: Date,
+  // Track how many active job postings (for plan limits)
+  activeJobCount: { type: Number, default: 0 },
+
+  // Profile completion tracking (percentage cached for quick UI display)
+  profileCompletion: { type: Number, default: 0 },
+  profileFieldsCompleted: { type: [String], default: [] },
 }, { toJSON: { getters: true } });
 
 // Ensure uniqueness of registrationNumber only when it exists (string values)

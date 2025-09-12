@@ -23,7 +23,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Create a new job
+const { enforceJobPostingRules } = require('./company');
+
+// Create a new job (plan & approval gated)
 // Accept either multiple files under 'jdFiles' or single file under 'jdPdf'
 router.post('/', (req, res, next) => {
   // Try to parse multiple first; fall back to single
@@ -34,7 +36,7 @@ router.post('/', (req, res, next) => {
     // No multiple files uploaded; try single under jdPdf
     return upload.single('jdPdf')(req, res, next);
   });
-}, async (req, res) => {
+}, enforceJobPostingRules, async (req, res) => {
   try {
     const { email, companyEmail } = req.body;
     // Use either explicitly provided companyEmail or fall back to email
@@ -64,7 +66,7 @@ router.post('/', (req, res, next) => {
     // Collect file URLs from either array or single upload
     const uploadedUrls = Array.isArray(req.files) && req.files.length ? req.files.map(f => f.path) : (req.file?.path ? [req.file.path] : []);
 
-    const newJob = new Job({
+  const newJob = new Job({
       ...req.body,
       // Backward compatibility single URL
       jdPdfUrl: req.file?.path || req.body.jdPdfUrl || undefined,
@@ -73,8 +75,9 @@ router.post('/', (req, res, next) => {
       companyName: company.companyName,
       companyEmail: finalEmail // Ensure consistent field usage
     });
-    
   await newJob.save();
+  // Increment active job count (simple version: consider all jobs as active)
+  await Company.updateOne({ _id: company._id }, { $inc: { activeJobCount: 1 } }).catch(()=>{});
   res.status(201).json(newJob);
   } catch (err) {
     res.status(400).json({ error: err.message });

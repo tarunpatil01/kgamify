@@ -6,6 +6,8 @@ const { upload, cloudinary } = require('../config/cloudinary');
 const bcrypt = require('bcryptjs');
 const { getDocumentUrl, getDocumentDownloadUrl } = require('../utils/documentHelper');
 const { sendEmail } = require('../utils/emailService');
+// Plan limits (can be adjusted later or moved to config)
+const PLAN_LIMITS = { free: 1, silver: 5, gold: 20 };
 // Messaging additions
 
 // Middleware to authenticate company
@@ -430,6 +432,96 @@ router.get('/document/link/:id', async (req, res) => {
 });
 
 module.exports = router;
+// Additional endpoints for subscription & profile completion
+
+// Update subscription plan (simple version - activates immediately, no payment integration yet)
+router.post('/subscription/choose', async (req, res) => {
+  try {
+    const { email, plan } = req.body;
+    if (!email || !plan) return res.status(400).json({ error: 'email and plan required' });
+    if (!['free', 'silver', 'gold'].includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+    company.subscriptionPlan = plan;
+    company.subscriptionStatus = 'active';
+    company.subscriptionActivatedAt = new Date();
+    // Set expiry 30 days from now for silver/gold; free = no expiry
+    if (plan === 'free') {
+      company.subscriptionExpiresAt = undefined;
+    } else {
+      company.subscriptionExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    }
+    await company.save({ validateModifiedOnly: true });
+    return res.json({ message: 'Subscription updated', planLimits: PLAN_LIMITS[plan] });
+  } catch (err) {
+    console.error('subscription choose error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update profile completion details (calculates completion %)
+router.post('/profile/complete', upload.fields([
+  { name: 'logo', maxCount: 1 },
+  { name: 'documents', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+
+    // Fields considered for completion
+    const completionFields = [
+      'companyName','contactName','website','industry','type','size','phone','address','registrationNumber','description','documents','logo'
+    ];
+    const updated = {};
+    // Apply simple scalar fields
+    ['contactName','website','industry','type','size','phone','address','registrationNumber','description'].forEach(f => {
+      if (req.body[f]) updated[f] = req.body[f];
+    });
+    if (req.files?.logo) updated.logo = req.files.logo[0].path;
+    if (req.files?.documents) updated.documents = req.files.documents[0].path;
+
+    await Company.updateOne({ email }, { $set: updated });
+    const fresh = await Company.findOne({ email });
+    // Compute completion
+    const completedList = completionFields.filter(f => !!fresh[f]);
+    const pct = Math.round((completedList.length / completionFields.length) * 100);
+    fresh.profileCompletion = pct;
+    fresh.profileFieldsCompleted = completedList;
+    if (pct === 100) fresh.profileCompleted = true;
+    await fresh.save({ validateModifiedOnly: true });
+    return res.json({ message: 'Profile updated', completion: pct, completedFields: completedList });
+  } catch (err) {
+    console.error('profile complete error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Middleware to enforce plan & approval before posting jobs (to be imported into job route if refactored)
+async function enforceJobPostingRules(req, res, next) {
+  try {
+    const email = (req.body.companyEmail || req.body.email || req.query.email);
+    if (!email) return res.status(400).json({ error: 'Company email required' });
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+    if (!company.emailVerified) return res.status(403).json({ error: 'Verify your email first' });
+    if (!company.profileCompleted) return res.status(403).json({ error: 'Complete profile before posting jobs' });
+    if (!company.approved) return res.status(403).json({ error: 'Company not approved by admin yet' });
+    const plan = company.subscriptionPlan || 'free';
+    const limit = PLAN_LIMITS[plan] || 0;
+    if (company.activeJobCount >= limit) {
+      return res.status(403).json({ error: 'Plan job post limit reached' });
+    }
+    // Pass company downstream
+    req.companyDoc = company;
+    return next();
+  } catch {
+    return res.status(500).json({ error: 'Rule enforcement failed' });
+  }
+}
+
+module.exports.enforceJobPostingRules = enforceJobPostingRules;
 // Chat-style messaging endpoints appended below for company/admin conversation
 // Simple company token auth middleware
 function companyAuth(req, res, next) {

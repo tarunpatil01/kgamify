@@ -6,6 +6,103 @@ const Company = require('../models/Company');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { sendEmail } = require('../utils/emailService');
+// Basic signup email verification OTP uses dedicated fields on Company model
+
+// Helper to generate 6-digit codes
+function generateOtp() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Public route: basic account creation (phase 1 signup)
+// Accepts: companyName, email, phone, password, confirmPassword (validated client-side), optional referral
+// Creates a minimal Company record with placeholder fields and sends email OTP
+router.post('/register-basic', async (req, res) => {
+  try {
+    const { companyName, email, phone, password } = req.body;
+    if (!companyName || !email || !phone || !password) {
+      return res.status(400).json({ error: 'companyName, email, phone, password required' });
+    }
+
+    // Prevent duplicate
+    const existing = await Company.findOne({ email });
+    if (existing) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    // Create minimal company (Username derive from email local-part if not set)
+    const username = email.split('@')[0] + '-' + Math.random().toString(36).slice(2,6);
+    const nowYear = new Date().getFullYear().toString();
+    const company = new Company({
+      companyName,
+      email,
+      phone,
+      password,
+      Username: username,
+      yearEstablished: nowYear,
+      type: 'Unknown',
+      description: 'No description provided',
+      approved: false,
+      status: 'pending',
+      profileCompleted: false,
+      subscriptionPlan: 'free',
+      subscriptionStatus: 'inactive'
+    });
+    // Generate verification OTP
+    company.emailVerificationCode = generateOtp();
+    company.emailVerificationExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+    await company.save();
+
+    // Send OTP email (reuse existing otp template)
+    sendEmail(email, 'otp', { code: company.emailVerificationCode, expiresInMinutes: 10, companyName });
+    return res.status(201).json({ message: 'Account created. Verify OTP sent to email.' });
+  } catch (err) {
+    console.error('register-basic error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Verify signup email OTP
+router.post('/verify-signup-otp', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) return res.status(400).json({ error: 'email and code required' });
+    const company = await Company.findOne({ email });
+    if (!company || !company.emailVerificationCode || !company.emailVerificationExpiry) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+    if (company.emailVerificationCode !== code || company.emailVerificationExpiry.getTime() < Date.now()) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+    company.emailVerified = true;
+    company.emailVerificationCode = undefined;
+    company.emailVerificationExpiry = undefined;
+    await company.save({ validateModifiedOnly: true });
+    return res.json({ message: 'Email verified. You can now login.' });
+  } catch (err) {
+    console.error('verify-signup-otp error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Resend signup OTP
+router.post('/resend-signup-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(404).json({ error: 'Account not found' });
+    if (company.emailVerified) return res.status(400).json({ error: 'Already verified' });
+    company.emailVerificationCode = generateOtp();
+    company.emailVerificationExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    await company.save({ validateModifiedOnly: true });
+    sendEmail(email, 'otp', { code: company.emailVerificationCode, expiresInMinutes: 10, companyName: company.companyName });
+    return res.json({ message: 'OTP resent' });
+  } catch (err) {
+    console.error('resend-signup-otp error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 // Basic authentication route - can be extended with actual authentication
 router.post('/login', async (req, res) => {
