@@ -380,3 +380,38 @@ export const getRecommendationsForJob = async (jobId, topN = 5) => {
     name: r.applicantName || r.name || 'N/A'
   }));
 };
+
+export async function registerBasic(data) {
+  const res = await fetch(`${API_URL}/auth/register-basic`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Register failed');
+  return j;
+}
+
+export async function verifySignupOtp(email, code) {
+  const res = await fetch(`${API_URL}/auth/verify-signup-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Verification failed');
+  return j;
+}
+
+export async function resendSignupOtp(email) {
+  const res = await fetch(`${API_URL}/auth/resend-signup-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Resend failed');
+  return j;
+}
+
+export async function chooseSubscription(email, plan) {
+  const res = await fetch(`${API_URL}/company/subscription/choose`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, plan }) });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Subscription failed');
+  return j;
+}
+
+export async function completeProfile(formData) {
+  const res = await fetch(`${API_URL}/company/profile/complete`, { method: 'POST', body: formData });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Profile update failed');
+  return j;
+}

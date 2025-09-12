@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaSpinner, FaCloudUploadAlt, FaCheckCircle, FaEye, FaEyeSlash } from "react-icons/fa";
-import { registerCompany } from "../api";
+import { registerCompany, registerBasic, verifySignupOtp, resendSignupOtp } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import QuillEditor from '../components/QuillEditor';
@@ -290,6 +290,19 @@ function Register({ isDarkMode }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
+  // Insert multi-step basic signup + OTP (new)
+  const [basicStep, setBasicStep] = useState(1); // 1=collect basic, 2=otp
+  const [basicForm, setBasicForm] = useState({ companyName:'', email:'', phone:'', password:'', confirmPassword:'' });
+  const [otpCode, setOtpCode] = useState('');
+  const [otpTimer, setOtpTimer] = useState(0);
+  const [isOtpSending, setIsOtpSending] = useState(false);
+
+  // Snackbar close handler (was referenced before being defined in early return wizard)
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setOpenSnackbar(false);
+  };
+
   const handleStateChange = (event) => {
     const selectedState = event.target.value;
     setFormData((prev) => ({ ...prev, state: selectedState, city: "" }));
@@ -303,6 +316,11 @@ function Register({ isDarkMode }) {
       [name]: files ? files[0] : value,
     }));
   };
+
+  function handleBasicChange(e){
+    const {name,value} = e.target;
+    setBasicForm(p=>({...p,[name]:value}));
+  }
 
   // Navigation handlers inline in buttons
 
@@ -389,27 +407,97 @@ function Register({ isDarkMode }) {
     }
   };
 
-  // Password visibility reserved; using plain password fields in this flow
-
-  const handleCloseSnackbar = () => {
-    setOpenSnackbar(false);
-  };
-
-  // Drag-and-drop handlers for document upload
-  const handleDrag = (e) => {
+  async function submitBasic(e){
     e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
-    else if (e.type === "dragleave") setDragActive(false);
-  };
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFormData((prev) => ({ ...prev, documents: e.dataTransfer.files[0] }));
+    if (basicForm.password !== basicForm.confirmPassword){
+      setSnackbarMessage("Passwords don't match");
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+      return;
     }
-  };
+    try {
+      setIsSubmitting(true);
+      await registerBasic({
+        companyName: basicForm.companyName.trim(),
+        email: basicForm.email.trim(),
+        phone: basicForm.phone.trim(),
+        password: basicForm.password
+      });
+      setSnackbarMessage('Account created. OTP sent to email.');
+      setSnackbarSeverity('success');
+      setOpenSnackbar(true);
+      setBasicStep(2);
+      setOtpTimer(60);
+    } catch(err){
+      setSnackbarMessage(err.message||'Signup failed');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+    } finally { setIsSubmitting(false); }
+  }
+
+  useEffect(()=>{
+    let t; if (basicStep===2 && otpTimer>0){ t=setTimeout(()=>setOtpTimer(otpTimer-1),1000);} return ()=>clearTimeout(t);
+  },[otpTimer,basicStep]);
+
+  async function handleVerifyOtp(e){
+    e.preventDefault();
+    try {
+      setIsOtpSending(true);
+      await verifySignupOtp(basicForm.email, otpCode.trim());
+      setSnackbarMessage('Email verified. Please login.');
+      setSnackbarSeverity('success');
+      setOpenSnackbar(true);
+      setTimeout(()=>navigate('/'),2000);
+    } catch(err){
+      setSnackbarMessage(err.message||'OTP verification failed');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+    } finally { setIsOtpSending(false); }
+  }
+
+  async function resendOtp(){
+    if (otpTimer>0) return;
+    try { setIsOtpSending(true); await resendSignupOtp(basicForm.email); setOtpTimer(60);} catch(err){ setSnackbarMessage(err.message||'Resend failed'); setSnackbarSeverity('error'); setOpenSnackbar(true);} finally { setIsOtpSending(false); }
+  }
+
+  // Early return simplified wizard if basic not completed
+  if (basicStep === 1){
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <form onSubmit={submitBasic} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+          <h1 className="text-xl font-bold text-center">Create Account</h1>
+          <input name="companyName" value={basicForm.companyName} onChange={handleBasicChange} placeholder="Company Name" className="input-kgamify" required />
+          <input type="email" name="email" value={basicForm.email} onChange={handleBasicChange} placeholder="Email" className="input-kgamify" required />
+          <input name="phone" value={basicForm.phone} onChange={handleBasicChange} placeholder="Phone" className="input-kgamify" required />
+          <div className="relative">
+            <input type={showPassword? 'text':'password'} name="password" value={basicForm.password} onChange={handleBasicChange} placeholder="Password" className="input-kgamify pr-10" required />
+            <button type="button" onClick={()=>setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">{showPassword? <FaEyeSlash/>:<FaEye/>}</button>
+          </div>
+          <div className="relative">
+            <input type={showConfirmPassword? 'text':'password'} name="confirmPassword" value={basicForm.confirmPassword} onChange={handleBasicChange} placeholder="Confirm Password" className="input-kgamify pr-10" required />
+            <button type="button" onClick={()=>setShowConfirmPassword(!showConfirmPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">{showConfirmPassword? <FaEyeSlash/>:<FaEye/>}</button>
+          </div>
+          <button disabled={isSubmitting} className="bg-kgamify-500 hover:bg-kgamify-600 disabled:opacity-50 text-white py-2 rounded w-full font-medium">{isSubmitting? 'Creating...':'Create Account'}</button>
+          <p className="text-xs text-center text-gray-500">Already have an account? <span onClick={()=>navigate('/')} className="text-kgamify-500 cursor-pointer">Login</span></p>
+          <Snackbar open={openSnackbar} autoHideDuration={4000} onClose={handleCloseSnackbar}><Alert severity={snackbarSeverity} onClose={handleCloseSnackbar}>{snackbarMessage}</Alert></Snackbar>
+        </form>
+      </div>
+    );
+  }
+  if (basicStep === 2){
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <form onSubmit={handleVerifyOtp} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-md space-y-4">
+          <h1 className="text-xl font-bold text-center">Verify Email</h1>
+          <p className="text-sm text-gray-600 text-center">Enter the 6-digit code sent to <strong>{basicForm.email}</strong></p>
+          <input value={otpCode} onChange={(e)=>setOtpCode(e.target.value)} maxLength={6} placeholder="OTP Code" className="input-kgamify tracking-widest text-center text-lg" required />
+          <button disabled={isOtpSending} className="bg-kgamify-500 hover:bg-kgamify-600 disabled:opacity-50 text-white py-2 rounded w-full font-medium">{isOtpSending? 'Verifying...':'Verify & Login'}</button>
+          <button type="button" disabled={otpTimer>0 || isOtpSending} onClick={resendOtp} className="w-full text-sm text-kgamify-500 disabled:opacity-40">Resend OTP {otpTimer>0 && `in ${otpTimer}s`}</button>
+          <Snackbar open={openSnackbar} autoHideDuration={4000} onClose={handleCloseSnackbar}><Alert severity={snackbarSeverity} onClose={handleCloseSnackbar}>{snackbarMessage}</Alert></Snackbar>
+        </form>
+      </div>
+    );
+  }
 
   // Stepper steps
   const steps = [

@@ -21,6 +21,7 @@ import {
 } from "../store/slices/jobsSlice";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { getJobs } from "../api"; // Add direct API import for testing
+import SubscriptionModal from '../components/SubscriptionModal';
 
 const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   const dispatch = useDispatch();
@@ -33,6 +34,10 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   const [companyJobs, setCompanyJobs] = useState([]);
   const [directAPIJobs, setDirectAPIJobs] = useState([]); // Test direct API like JobPosted
   const [initialWaitOver, setInitialWaitOver] = useState(false);
+  const [companyData, setCompanyData] = useState(() => {
+    try { return userCompany || JSON.parse(localStorage.getItem('companyData')||'null'); } catch { return userCompany; }
+  });
+  const [showSubModal, setShowSubModal] = useState(false);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -167,6 +172,15 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
     : '';
   const companyLogo = userCompany?.logoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userCompany?.companyName || "Company")}&background=ff8200&color=fff&size=128`;
 
+  // Decide if subscription modal should show (only after company data loaded & approved & email verified but no active plan)
+  useEffect(()=>{
+    if (!companyData) return;
+    const needsPlan = !companyData.subscriptionPlan || companyData.subscriptionStatus !== 'active';
+    if (needsPlan && (companyData.emailVerified || companyData.emailVerified===true) && (companyData.status==='approved' || companyData.approved)){
+      setShowSubModal(true);
+    }
+  },[companyData]);
+
   return (
     <div
       className={`min-h-screen py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center ${
@@ -175,6 +189,14 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
           : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
       }`}
     >
+      {showSubModal && companyData && (
+        <SubscriptionModal 
+          open={showSubModal} 
+          onClose={()=>setShowSubModal(false)} 
+          company={companyData} 
+          onChosen={(updated)=>{ setCompanyData(updated); setShowSubModal(false); }}
+        />
+      )}
       {/* Company Banner */}
       <div
         className={`w-full max-w-6xl mx-auto mb-8 rounded-3xl shadow-2xl border-0 ${companyBannerBg} flex flex-col md:flex-row items-center justify-between p-6 sm:p-8`}
