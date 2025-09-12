@@ -303,7 +303,7 @@ const MobileDashboard = ({ isDarkMode, email }) => {
           items={navItems}
           currentPath="/dashboard"
           onNavigate={(path) => navigate(path)}
-          brandName="KGamify"
+          brandName="kGamify"
           showSearchProp={false}
         />
       )}

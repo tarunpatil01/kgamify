@@ -106,7 +106,7 @@ const ResetPassword = ({ isDarkMode }) => {
         </button>
 
         <div className="text-center mb-6">
-          <img src={logo} alt="Kgamify" className="mx-auto h-14 w-14 rounded-full shadow-md" />
+          <img src={logo} alt="kGamify" className="mx-auto h-14 w-14 rounded-full shadow-md" />
           <h1 className="mt-3 text-2xl sm:text-3xl font-heading font-bold text-gray-800">
             Set New Password
           </h1>

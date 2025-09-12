@@ -139,7 +139,7 @@ export default function Messages({ isDarkMode }) {
           />
           <button disabled={sending || !input.trim()} className={`px-5 py-2 rounded font-medium text-white ${sending||!input.trim()? 'bg-gray-400 cursor-not-allowed':'bg-[#ff8200] hover:bg-[#e57400]'}`}>{sending? 'Sending...':'Send'}</button>
         </form>
-  <p className="mt-1 mb-2 text-xs opacity-60">Messages are visible to KGamify admins. Avoid sharing sensitive credentials.</p>
+  <p className="mt-1 mb-2 text-xs opacity-60">Messages are visible to kGamify admins. Avoid sharing sensitive credentials.</p>
       </div>
     </div>
   );

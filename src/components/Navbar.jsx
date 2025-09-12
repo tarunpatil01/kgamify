@@ -76,7 +76,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
       case "/edit-registration": return "Edit Registration";
   // Settings route removed
       case "/admin": return "Admin Portal";
-      default: return "Kgamify Job Portal";
+  default: return "kGamify Job Portal";
     }
   };
 

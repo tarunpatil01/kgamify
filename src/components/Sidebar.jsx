@@ -90,7 +90,7 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false, unreadMessages 
                 className="w-8 h-8 rounded-lg"
               />
               <div className="flex flex-col">
-                <span className="text-lg font-bold text-kgamify-500">Kgamify</span>
+                <span className="text-lg font-bold text-kgamify-500">kGamify</span>
                 <span className={`text-xs ${
                   isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>Job Portal</span>

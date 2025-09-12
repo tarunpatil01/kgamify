@@ -377,12 +377,12 @@ if (!IS_DEV) self.addEventListener('push', (event) => {
     try {
       data = event.data.json();
     } catch {
-      data = { title: 'KGamify', body: event.data.text() };
+  data = { title: 'kGamify', body: event.data.text() };
     }
   }
   
   const options = {
-    title: data.title || 'KGamify Job Portal',
+  title: data.title || 'kGamify Job Portal',
     body: data.body || 'New notification',
     icon: '/favicon.png',
     badge: '/favicon.png',

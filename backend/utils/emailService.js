@@ -98,12 +98,12 @@ const emailTemplates = {
   }),
 
   passwordReset: (data) => ({
-    subject: 'Password Reset Request - KGamify',
+    subject: 'Password Reset Request - kGamify',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #dc2626;">Password Reset Request</h2>
         <p>Hello,</p>
-        <p>We received a request to reset your password for your KGamify account.</p>
+  <p>We received a request to reset your password for your kGamify account.</p>
         <div style="margin: 30px 0;">
           <a href="${data.resetLink}" 
              style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
@@ -119,7 +119,7 @@ const emailTemplates = {
 
   // OTP email for password reset or verification
   otp: (data) => ({
-    subject: 'Your KGamify OTP Code',
+    subject: 'Your kGamify OTP Code',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #3b82f6;">One-Time Password (OTP)</h2>
@@ -136,12 +136,12 @@ const emailTemplates = {
 
   // Company approval notification
   companyApproved: (data) => ({
-    subject: 'Your Company Has Been Approved - KGamify',
+    subject: 'Your Company Has Been Approved - kGamify',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #10b981;">Congratulations!</h2>
         <p>Hi ${data.contactName || data.companyName || 'there'},</p>
-        <p>Your company <strong>${data.companyName}</strong> has been approved on KGamify.</p>
+  <p>Your company <strong>${data.companyName}</strong> has been approved on kGamify.</p>
         <p>You can now log in and start posting jobs and managing applications.</p>
         <div style="margin-top: 24px;">
           <a href="${data.loginUrl || (process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : 'http://localhost:5173/login')}" 
@@ -156,12 +156,12 @@ const emailTemplates = {
 
   // Notification for a new admin message to a company
   newAdminMessage: (data) => ({
-    subject: 'New Message from KGamify Admin Team',
+    subject: 'New Message from kGamify Admin Team',
     html: `
       <div style="font-family: Arial, sans-serif; max-width:600px; margin:0 auto;">
         <h2 style="color:#3b82f6; margin-bottom:16px;">You've Got a New Message</h2>
         <p style="font-size:15px; line-height:1.5;">Hi ${data.companyName || 'there'},</p>
-        <p style="font-size:15px; line-height:1.5;">An administrator has sent you a new message on the KGamify portal.</p>
+  <p style="font-size:15px; line-height:1.5;">An administrator has sent you a new message on the kGamify portal.</p>
         <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:16px 18px; border-radius:8px; margin:18px 0;">
           <p style="margin:0 0 8px 0; font-weight:600; color:#1f2937;">Message Preview:</p>
           <p style="margin:0; color:#374151; white-space:pre-wrap;">${(data.message || '').slice(0,300).replace(/</g,'&lt;').replace(/>/g,'&gt;')}${data.message && data.message.length > 300 ? '…' : ''}</p>
@@ -170,7 +170,7 @@ const emailTemplates = {
         <div style="margin:28px 0 12px 0;">
           <a href="${data.messagesUrl}" style="background:#3b82f6; color:#ffffff; padding:12px 24px; text-decoration:none; border-radius:6px; font-weight:600; display:inline-block;">View Messages</a>
         </div>
-        <p style="font-size:12px; color:#6b7280; margin-top:32px;">This notification was sent from prasadnathe via KGamify Admin Console. If you believe you received this in error, you can ignore it.</p>
+  <p style="font-size:12px; color:#6b7280; margin-top:32px;">This notification was sent from prasadnathe via kGamify Admin Console. If you believe you received this in error, you can ignore it.</p>
       </div>
     `
   }),
@@ -206,7 +206,7 @@ const sendEmail = async (to, template, data) => {
 
     const mailOptions = {
       from: {
-        name: 'KGamify Job Portal',
+        name: 'kGamify Job Portal',
         address: process.env.SMTP_EMAIL || 'natheprasad17@gmail.com'
       },
       to,
@@ -245,11 +245,11 @@ const sendVerificationEmail = async (email, verificationToken) => {
   const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
   
   const emailContent = {
-    subject: 'Verify Your Email - KGamify',
+    subject: 'Verify Your Email - kGamify',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #3b82f6;">Welcome to KGamify!</h2>
-        <p>Thank you for registering with KGamify. Please verify your email address to complete your registration.</p>
+  <h2 style="color: #3b82f6;">Welcome to kGamify!</h2>
+  <p>Thank you for registering with kGamify. Please verify your email address to complete your registration.</p>
         <div style="margin: 30px 0;">
           <a href="${verificationLink}" 
              style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">

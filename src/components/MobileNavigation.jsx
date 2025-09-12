@@ -13,7 +13,7 @@ const MobileNavigation = ({
   onNavigate,
   showSearchProp = true,
   brandLogo,
-  brandName = 'KGamify'
+  brandName = 'kGamify'
 }) => {
   const { isMobile, orientation } = useMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);

@@ -429,13 +429,13 @@ const AdminPortal = ({ isDarkMode }) => {
               <div className="bg-gray-100 dark:bg-gray-700 rounded-full p-1.5 mr-3">
                 <img 
                   src={logoUrl} 
-                  alt="KGamify Logo" 
+                  alt="kGamify Logo" 
                   className="h-8 w-8" 
                 />
               </div>
               <div>
                 <div className="flex items-center">
-                  <h1 className="text-xl font-bold text-[#ff8200]">KGamify</h1>
+                  <h1 className="text-xl font-bold text-[#ff8200]">kGamify</h1>
                   <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
                     Admin
                   </span>
@@ -1478,7 +1478,7 @@ const AdminPortal = ({ isDarkMode }) => {
       <footer className={`${isDarkMode ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600"} py-4 border-t ${isDarkMode ? "border-gray-700" : "border-gray-200"} mt-auto`}>
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <p className="text-sm">&copy; {new Date().getFullYear()} KGamify Admin Portal. All rights reserved.</p>
+            <p className="text-sm">Copyright © 2021 Yantrikisoft - All Rights Reserved.</p>
             <p className="text-sm mt-1">Version 1.0.0 | <span className="text-[#ff8200]">Admin System</span></p>
           </div>
         </div>

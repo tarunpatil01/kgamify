@@ -512,7 +512,7 @@ function Register({ isDarkMode }) {
       <div className="relative z-10 w-full max-w-3xl mx-auto rounded-3xl shadow-2xl border bg-white dark:bg-gray-800 border-orange-200 dark:border-gray-700 p-6 sm:p-10">
         {/* Logo at the top */}
         <div className="flex justify-center mb-4">
-          <img src={Klogo} alt="Kgamify Logo" className="h-16 sm:h-20 w-auto object-contain" />
+          <img src={Klogo} alt="kGamify Logo" className="h-16 sm:h-20 w-auto object-contain" />
         </div>
         {/* Stepper */}
         <div className="flex items-center justify-between mb-8">

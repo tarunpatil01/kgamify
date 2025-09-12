@@ -192,7 +192,7 @@ router.post('/deny-company/:id', adminAuth, auditLogger({
     // Send denial email (non-blocking)
     if (company.email) {
       sendEmail(company.email, 'custom', {
-        subject: 'KGamify Registration Denied',
+  subject: 'kGamify Registration Denied',
         html: `<div style="font-family: Arial, sans-serif;">
           <h2 style="color:#dc2626;">Registration Denied</h2>
           <p>Hi ${company.companyName},</p>
@@ -237,7 +237,7 @@ router.post('/hold-company/:id', adminAuth, auditLogger({
       const frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
       const messagesUrl = `${frontend.replace(/\/$/, '')}/messages`;
       sendEmail(company.email, 'custom', {
-        subject: 'KGamify Account On Hold',
+  subject: 'kGamify Account On Hold',
         html: `<div style="font-family: Arial, sans-serif;">
           <h2 style="color:#d97706;">Account On Hold</h2>
           <p>Hi ${company.companyName},</p>

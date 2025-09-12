@@ -187,14 +187,14 @@ const Login = ({ setLoggedInEmail }) => {
         <div className="text-center mb-6">
           <img
             src={Klogo}
-            alt="Kgamify Logo"
+            alt="kGamify Logo"
             className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 object-contain drop-shadow-lg"
           />
           <h1 className="text-2xl sm:text-3xl font-extrabold text-center tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg mb-1">
             Welcome Back
           </h1>
           <p className="text-black text-base sm:text-lg">
-            Sign in to your Kgamify account
+            Sign in to your kGamify account
           </p>
         </div>
 

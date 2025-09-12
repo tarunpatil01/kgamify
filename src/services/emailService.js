@@ -37,7 +37,7 @@ class EmailService {
             </div>
 
             <p>In the meantime, feel free to explore other opportunities on our platform.</p>
-            <p>Best regards,<br>The KGamify Team</p>
+            <p>Best regards,<br>The kGamify Team</p>
           </div>
           <div style="background-color: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666;">
             <p>This is an automated email. Please do not reply directly to this message.</p>

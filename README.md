@@ -1,4 +1,4 @@
-# KGamify - Job Portal Platform
+# kGamify - Job Portal Platform
 
 A modern job portal platform built with React, Node.js, and MongoDB. Companies can post jobs, manage applications, and candidates can apply for positions.
 

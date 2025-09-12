@@ -1,6 +1,6 @@
 {
-  "name": "KGamify Job Portal",
-  "short_name": "KGamify",
+  "name": "kGamify Job Portal",
+  "short_name": "kGamify",
   "description": "Mobile-first job portal with touch-friendly interface and offline capabilities",
   "start_url": "/",
   "scope": "/",
@@ -113,7 +113,7 @@
       "sizes": "512x512",
       "type": "image/png",
       "platform": "wide",
-      "label": "KGamify"
+  "label": "kGamify"
     }
   ],
   
