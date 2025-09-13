@@ -161,6 +161,20 @@ html, body {
   transform: none;
 }
 
+/* -------------------------------------------------- */
+/* Global Background Handling                         */
+/* Ensures no white background flashes in dark mode   */
+/* -------------------------------------------------- */
+body {
+  background-color: #f9fafb; /* light gray */
+  transition: background-color .35s ease;
+}
+html.dark body {
+  background-color: #0f141b; /* deep desaturated navy for dark theme */
+}
+#root { min-height: 100vh; background: transparent; }
+
+
 /* Secondary button styling */
 .btn-secondary {
   width: 100%;

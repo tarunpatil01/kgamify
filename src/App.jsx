@@ -9,6 +9,7 @@ import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import Footer from "./components/Footer";
 import ErrorBoundary from "./components/ErrorBoundary";
+import LimitedAccessBanner from './components/LimitedAccessBanner';
 import { useState, useEffect, Suspense, lazy } from "react";
 import { getCompanyInfo } from "./api";
 import { PageLoadingFallback } from "./utils/lazyLoading";
@@ -235,12 +236,7 @@ function AppContent() {
                               <button onClick={()=>{localStorage.setItem('companyNeedsEmailVerification','');}} className="ml-auto text-xs text-amber-600 hover:text-amber-800">Dismiss</button>
                             </div>
                           )}
-                          {(loggedInCompany?.status === 'hold' || loggedInCompany?.status === 'pending') && (
-                            <div className="mx-4 mt-2 mb-2 p-3 rounded-lg border bg-yellow-50 border-yellow-200 text-yellow-800 text-sm">
-                              <div className="font-semibold mb-0.5 flex flex-wrap items-center gap-2">Access limited <span className="text-xs px-2 py-0.5 rounded bg-yellow-200">{loggedInCompany?.status}</span></div>
-                              <div>Please review <a href="/messages" className="underline font-medium text-[#ff8200]">Messages</a> for details. Some actions like posting jobs are disabled.</div>
-                            </div>
-                          )}
+                          <LimitedAccessBanner company={loggedInCompany} isDarkMode={isDarkMode} className="mx-4 mt-2 mb-2" />
                           {!loggedInCompany?.subscriptionPlan && (
                             <div className="mx-4 mt-2 mb-4 p-3 rounded-lg border bg-white border-orange-200 text-orange-700 text-sm flex flex-wrap items-center gap-3 shadow-sm">
                               <span className="font-semibold">No active plan.</span>
@@ -248,7 +244,7 @@ function AppContent() {
                               <a href="/payment" className="inline-flex items-center px-3 py-1 rounded-md bg-[#ff8200] text-white text-xs font-semibold hover:bg-[#e57400] transition">Pick a Plan</a>
                             </div>
                           )}
-                          { (loggedInCompany?.status === 'hold' || loggedInCompany?.status === 'pending') ? (
+                          { (localStorage.getItem('companyLimitedAccess') === 'true') ? (
                             <div className={`min-h-[40vh] p-4 pt-0 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                               <div className="max-w-5xl mx-auto">
                                 <Dashboard 
@@ -272,11 +268,27 @@ function AppContent() {
                     <Route
                       path="/post-job"
                       element={
-                        loggedInCompany?.status === 'hold' || loggedInCompany?.status === 'pending' ? (
-                          <div className={`min-h-[60vh] p-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            <div className={`max-w-3xl mx-auto p-4 rounded border ${loggedInCompany?.status === 'hold' ? 'bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-700' : 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-700'}`}>
-                              <div className="font-semibold mb-1">Posting disabled</div>
-                              <div className="text-sm">Your account is {loggedInCompany?.status}. You cannot post jobs. See <a href="/messages" className="underline text-[#ff8200]">Messages</a> for details.</div>
+                        localStorage.getItem('companyLimitedAccess') === 'true' ? (
+                          <div className={`min-h-[60vh] p-6 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'} transition-colors`}>
+                            <div className={`max-w-3xl mx-auto p-5 rounded-lg border shadow-sm backdrop-blur-sm ${
+                              loggedInCompany?.status === 'hold'
+                                ? isDarkMode
+                                  ? 'bg-yellow-900/25 border-yellow-700 text-yellow-200'
+                                  : 'bg-yellow-50 border-yellow-200 text-yellow-900'
+                                : isDarkMode
+                                  ? 'bg-blue-900/25 border-blue-800 text-blue-100'
+                                  : 'bg-blue-50 border-blue-200 text-blue-900'
+                            }`}> 
+                              <div className="font-semibold mb-1 tracking-tight">Posting disabled</div>
+                              <div className="text-sm leading-snug">
+                                Your account is <span className="font-medium">{loggedInCompany?.status}</span>. You cannot post jobs. See{' '}
+                                <a
+                                  href="/messages"
+                                  className={`underline font-medium ${isDarkMode ? 'text-[#ffb347] hover:text-[#ff9d33]' : 'text-[#ff8200] hover:text-[#e57400]'}`}
+                                >
+                                  Messages
+                                </a>{' '}for details.
+                              </div>
                             </div>
                           </div>
                         ) : (

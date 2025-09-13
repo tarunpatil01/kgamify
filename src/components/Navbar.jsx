@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PropTypes from 'prop-types';
 import { 
@@ -10,8 +10,11 @@ import {
   FaSearch,
   FaBell,
   FaUser,
-  FaChevronDown
+  FaChevronDown,
+  FaCheck,
+  FaInbox
 } from "react-icons/fa";
+import { fetchNotifications, markNotificationsRead, markAllNotificationsRead } from '../api';
 import Klogo from '../assets/KLOGO.png';
 
 function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null, email = '' }) {
@@ -25,11 +28,68 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [logoUrl, setLogoUrl] = useState(null);
-  const [notifications] = useState([
-    { id: 1, message: "New job application received", time: "2 min ago", unread: true },
-    { id: 2, message: "Job posting approved", time: "1 hour ago", unread: true },
-    { id: 3, message: "Profile updated successfully", time: "3 hours ago", unread: false },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
+  const [lastFetchedAt, setLastFetchedAt] = useState(null);
+
+  // Relative time formatter (simple – avoids extra deps)
+  const formatAgo = useCallback((dateStr) => {
+    try {
+      const d = new Date(dateStr);
+      const diff = Date.now() - d.getTime();
+      if (isNaN(diff)) return '';
+      const sec = Math.floor(diff / 1000);
+      if (sec < 60) return `${sec}s ago`;
+      const min = Math.floor(sec / 60);
+      if (min < 60) return `${min}m ago`;
+      const hr = Math.floor(min / 60);
+      if (hr < 24) return `${hr}h ago`;
+      const day = Math.floor(hr / 24);
+      if (day < 7) return `${day}d ago`;
+      return d.toLocaleDateString();
+    } catch { return ''; }
+  }, []);
+
+  const hydrateNotifications = useCallback(async (opts = {}) => {
+    if (!email) return;
+    setLoadingNotifs(true);
+    const data = await fetchNotifications(email, opts);
+    setNotifications(data);
+    setLastFetchedAt(Date.now());
+    setLoadingNotifs(false);
+  }, [email]);
+
+  // Initial fetch (lazy: only when dropdown first opened)
+  useEffect(() => {
+    if (showNotifications && notifications.length === 0 && !loadingNotifs) {
+      hydrateNotifications();
+    }
+  }, [showNotifications, notifications.length, loadingNotifs, hydrateNotifications]);
+
+  // Polling every 90s while dropdown closed to keep badge fresh (lightweight)
+  useEffect(() => {
+    if (!email) return;
+    const interval = setInterval(() => {
+      if (!showNotifications) hydrateNotifications({ after: lastFetchedAt });
+    }, 90000);
+    return () => clearInterval(interval);
+  }, [email, showNotifications, hydrateNotifications, lastFetchedAt]);
+
+  const handleMarkAll = async () => {
+    if (!notifications.some(n => !n.read)) return;
+    setMarkingAll(true);
+    await markAllNotificationsRead(email);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setMarkingAll(false);
+  };
+
+  const handleItemVisible = async (id) => {
+    const target = notifications.find(n => n.id === id);
+    if (!target || target.read) return;
+    await markNotificationsRead(email, [id]);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
 
   // Refs for click outside detection
   const userDropdownRef = useRef(null);
@@ -95,7 +155,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
     }
   };
 
-  const unreadNotifications = notifications.filter(n => n.unread).length;
+  const unreadNotifications = notifications.filter(n => !n.read).length;
   const hasAdminMessages = Array.isArray(userCompany?.adminMessages) && userCompany.adminMessages.length > 0;
 
   return (
@@ -204,19 +264,49 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
                     isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                   }`}
                 >
-                  <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <div className={`p-4 border-b flex items-center justify-between gap-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                     <h3 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Notifications</h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={hydrateNotifications}
+                        className={`text-xs px-2 py-1 rounded border ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'} transition`}
+                        title="Refresh"
+                      >↻</button>
+                      <button
+                        onClick={handleMarkAll}
+                        disabled={markingAll || unreadNotifications === 0}
+                        className={`text-xs px-2 py-1 rounded border font-medium ${unreadNotifications === 0 ? 'opacity-40 cursor-not-allowed' : ''} ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'} transition`}
+                      >{markingAll ? '…' : 'Mark all'}</button>
+                    </div>
                   </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    {notifications.map((notification) => (
+                  <div className="max-h-64 overflow-y-auto relative">
+                    {loadingNotifs && notifications.length === 0 && (
+                      <div className="p-6 text-center text-sm opacity-70 flex flex-col items-center gap-2">
+                        <FaInbox className="text-xl" /> Loading…
+                      </div>
+                    )}
+                    {!loadingNotifs && notifications.length === 0 && (
+                      <div className="p-6 text-center text-sm opacity-70 flex flex-col items-center gap-2">
+                        <FaInbox className="text-xl" /> No notifications
+                      </div>
+                    )}
+                    {notifications.map((n) => (
                       <div
-                        key={notification.id}
-                        className={`p-4 border-b transition-colors ${
+                        key={n.id}
+                        onMouseEnter={() => handleItemVisible(n.id)}
+                        className={`p-4 border-b flex gap-3 items-start transition-colors ${
                           isDarkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-100 hover:bg-gray-50'
-                        } ${notification.unread ? (isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50') : ''}`}
+                        } ${!n.read ? (isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50') : ''}`}
                       >
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>{notification.message}</p>
-                        <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{notification.time}</p>
+                        {!n.read ? (
+                          <span className="mt-1 h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                        ) : (
+                          <FaCheck className={`mt-0.5 h-3 w-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm leading-snug ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>{n.message}</p>
+                          <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatAgo(n.createdAt)}</p>
+                        </div>
                       </div>
                     ))}
                   </div>

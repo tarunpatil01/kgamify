@@ -259,7 +259,9 @@ const JobPosted = ({ isDarkMode, email }) => {
 
   const needsVerification = typeof window !== 'undefined' && localStorage.getItem('companyNeedsEmailVerification') === 'true';
   const companyData = typeof window !== 'undefined' ? (()=>{try{return JSON.parse(localStorage.getItem('companyData')||'null');}catch{return null;}})() : null;
-  const limitedStatus = companyData?.status === 'hold' || companyData?.status === 'pending';
+  // Prefer persisted limitedAccess flag rather than recomputing purely from status
+  const limitedStatus = typeof window !== 'undefined' && localStorage.getItem('companyLimitedAccess') === 'true';
+  const statusLabel = companyData?.status;
 
   return (
     <div
@@ -322,14 +324,40 @@ const JobPosted = ({ isDarkMode, email }) => {
               ))}
             </div>
           </div>
-          <button
-            onClick={() => { if(needsVerification || limitedStatus) return; navigate('/post-job'); }}
-            disabled={needsVerification || limitedStatus}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl shadow-lg font-semibold text-lg transition-colors ${needsVerification || limitedStatus ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347]'}`}
-            title={needsVerification ? 'Verify email to post jobs' : limitedStatus ? 'Account limited; cannot post jobs' : 'Post a new job'}
-          >
-            <FaPlus /> {needsVerification || limitedStatus ? 'Posting Limited' : 'Post New Job'}
-          </button>
+          <div className="relative group inline-block">
+            <button
+              onClick={() => { if(needsVerification || limitedStatus) return; navigate('/post-job'); }}
+              disabled={needsVerification || limitedStatus}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl shadow-lg font-semibold text-lg transition-colors ${needsVerification || limitedStatus ? (isDarkMode ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-gray-300 text-gray-600 cursor-not-allowed') : 'bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347]'}`}
+              aria-disabled={needsVerification || limitedStatus}
+              aria-label={needsVerification ? 'Verify email to enable posting' : limitedStatus ? 'Account access limited' : 'Post a new job'}
+            >
+              <FaPlus /> {needsVerification || limitedStatus ? 'Posting Limited' : 'Post New Job'}
+            </button>
+            {(needsVerification || limitedStatus) && (
+              <div className={`opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200 absolute z-40 w-64 -left-16 md:left-1/2 md:-translate-x-1/2 mt-2 p-3 rounded-lg shadow-xl text-xs ${isDarkMode ? 'bg-gray-900 border border-gray-700 text-gray-200' : 'bg-white border border-gray-200 text-gray-800'}`}
+                   role="tooltip">
+                {needsVerification && (
+                  <div className="mb-2">
+                    <span className="font-semibold text-[#ff8200]">Email not verified.</span><br />
+                    Verify your email to unlock job posting.
+                  </div>
+                )}
+                {limitedStatus && (
+                  <div className="space-y-1">
+                    <div className="font-semibold text-[#ff8200] flex items-center gap-1">Account {statusLabel || 'limited'}</div>
+                    {statusLabel === 'pending' && <p>Your registration is under review. Approval usually takes <strong>24–48h</strong>.</p>}
+                    {statusLabel === 'hold' && <p>Your account is on hold. Check <Link to="/messages" className="underline text-[#ff8200] font-medium">Messages</Link> for admin notes.</p>}
+                    {!companyData?.profileCompleted && <p className="mt-1">Complete your profile to accelerate approval.</p>}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {needsVerification && <Link to={`/verify-email?email=${encodeURIComponent(companyData?.email||'')}`} className="px-2 py-1 rounded bg-[#ff8200] text-white font-semibold">Verify</Link>}
+                      {!companyData?.profileCompleted && <Link to="/Edit-Registration" className="px-2 py-1 rounded bg-[#ff8200] text-white font-semibold">Complete Profile</Link>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {notification && (

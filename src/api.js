@@ -415,3 +415,59 @@ export async function completeProfile(formData) {
   if (!res.ok) throw new Error(j.error || 'Profile update failed');
   return j;
 }
+
+// ---------------- Notifications (in-app) ----------------
+// Backend currently sends emails; this client layer will consume future API endpoints for in-app notifications.
+// We implement graceful fallbacks so UI can adopt dynamic data incrementally.
+
+export async function fetchNotifications(email, opts = {}) {
+  if (!email) return [];
+  try {
+    const res = await fetch(`${API_URL}/notifications/list?email=${encodeURIComponent(email)}${opts.after ? `&after=${encodeURIComponent(opts.after)}` : ''}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    // Normalize shape: [{ id, message, createdAt, read }]
+    if (Array.isArray(data)) {
+      return data.map(n => ({
+        id: n.id || n._id || n.createdAt,
+        message: n.message || n.text || 'Notification',
+        createdAt: n.createdAt || n.timestamp || new Date().toISOString(),
+        read: !!(n.read || n.seen),
+        type: n.type || 'info'
+      }));
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function markNotificationsRead(email, ids = []) {
+  if (!email || !ids.length) return { success: false };
+  try {
+    const res = await fetch(`${API_URL}/notifications/mark-read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, ids })
+    });
+    if (!res.ok) return { success: false };
+    return await res.json();
+  } catch {
+    return { success: false };
+  }
+}
+
+export async function markAllNotificationsRead(email) {
+  if (!email) return { success: false };
+  try {
+    const res = await fetch(`${API_URL}/notifications/mark-all-read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    if (!res.ok) return { success: false };
+    return await res.json();
+  } catch {
+    return { success: false };
+  }
+}

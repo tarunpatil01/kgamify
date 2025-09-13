@@ -97,6 +97,12 @@ const Login = ({ setLoggedInEmail }) => {
   const response = await loginCompany({ identifier: formData.identifier, password: formData.password });
       
       if (response.success) {
+        // Persist limited access flag (pending or hold) for UI banners
+        if (response.limitedAccess) {
+          localStorage.setItem('companyLimitedAccess', 'true');
+        } else {
+          localStorage.removeItem('companyLimitedAccess');
+        }
         // If email not verified, block normal login and trigger resend
         if (response.company && response.company.emailVerified === false) {
           setNeedsVerification(true);
@@ -135,8 +141,12 @@ const Login = ({ setLoggedInEmail }) => {
         setErrorMessage("Your email is not verified. Please check your inbox for the OTP.");
         setNeedsVerification(true);
         setPendingEmail(formData.identifier);
-      } else if (error?.error === 'Your company is not approved by Admin yet' || error?.error === 'Your account is on hold') {
-        setErrorMessage("Your account is on hold. Please check Messages for details.");
+      } else if (/on hold/i.test(error?.error||'') || /not approved/i.test(error?.error||'')) {
+        // Treat pending/hold as informational, not blocking
+        localStorage.setItem('companyLimitedAccess','true');
+        setErrorMessage("Your company is awaiting approval. You can explore the dashboard, but posting jobs is disabled until approval.");
+        // Auto navigate after a brief delay to show message context
+        setTimeout(()=>navigate('/dashboard'), 600);
       } else if (error?.error === 'Invalid credentials') {
         setErrorMessage("Invalid username/email or password. Please try again.");
       } else {
