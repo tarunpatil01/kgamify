@@ -140,13 +140,8 @@ router.post('/login', async (req, res) => {
     if (company.status === 'denied') {
       return res.status(403).json({ error: 'Your account has been denied. Please contact support or re-register.' });
     }
-    // Pending accounts cannot login; provide clear message
-    if (!company.approved && company.status === 'pending') {
-      // Per product requirement: surface as 'on hold' message on login failure
-      return res.status(403).json({ error: 'Your account is on hold' });
-    }
-    // Allow login when on hold, but restrict actions elsewhere
-    // When status is 'hold' we return success and the UI will gate features
+    // Allow pending / hold accounts to login but mark limited access; UI + protected routes handle gating
+    const limitedAccess = (!company.approved && company.status === 'pending') || company.status === 'hold';
     
     // Create a copy of the company object without the password
     const companySafe = company.toObject();
@@ -158,7 +153,8 @@ router.post('/login', async (req, res) => {
       success: true, 
       company: companySafe,
       type: 'regular',
-      token
+      token,
+      limitedAccess
     });
   } catch (err) {
     console.error("Login error:", err);
