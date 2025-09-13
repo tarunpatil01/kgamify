@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaSpinner, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import Klogo from '../assets/KLOGO.png';
-import { loginCompany } from '../api';
+import { loginCompany, resendSignupOtp } from '../api';
 import PropTypes from 'prop-types';
 import { quickEmail, quickPassword } from '../utils/validation';
 
@@ -18,6 +18,11 @@ const Login = ({ setLoggedInEmail }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [touched, setTouched] = useState({});
+  // Email verification flow state
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [otpResendTimer, setOtpResendTimer] = useState(0);
+  const [otpResendLoading, setOtpResendLoading] = useState(false);
 
   // Real-time validation via shared validators
   const runValidation = (field, value) => {
@@ -92,6 +97,24 @@ const Login = ({ setLoggedInEmail }) => {
   const response = await loginCompany({ identifier: formData.identifier, password: formData.password });
       
       if (response.success) {
+        // If email not verified, block normal login and trigger resend
+        if (response.company && response.company.emailVerified === false) {
+          setNeedsVerification(true);
+          setPendingEmail(response.company.email || formData.identifier);
+          setErrorMessage("Your email is not verified. Limited features until verification.");
+          // Fire OTP resend silently (best-effort)
+          try {
+            setOtpResendLoading(true);
+            await resendSignupOtp(response.company.email || formData.identifier);
+            setOtpResendTimer(60);
+          } catch { /* ignore */ } finally { setOtpResendLoading(false); }
+          // Persist flag so dashboard can show banner
+          localStorage.setItem('companyNeedsEmailVerification', 'true');
+          localStorage.setItem('pendingVerifyEmail', response.company.email || formData.identifier);
+        } else {
+          localStorage.removeItem('companyNeedsEmailVerification');
+          localStorage.removeItem('pendingVerifyEmail');
+        }
         if (rememberMe) {
           localStorage.setItem("rememberedIdentifier", formData.identifier);
           if (response.company?.email) {
@@ -108,7 +131,11 @@ const Login = ({ setLoggedInEmail }) => {
         navigate("/dashboard");
       }
     } catch (error) {
-      if (error?.error === 'Your company is not approved by Admin yet' || error?.error === 'Your account is on hold') {
+      if (error?.error === 'Verify your email first' || /not verified/i.test(error?.error||'')) {
+        setErrorMessage("Your email is not verified. Please check your inbox for the OTP.");
+        setNeedsVerification(true);
+        setPendingEmail(formData.identifier);
+      } else if (error?.error === 'Your company is not approved by Admin yet' || error?.error === 'Your account is on hold') {
         setErrorMessage("Your account is on hold. Please check Messages for details.");
       } else if (error?.error === 'Invalid credentials') {
         setErrorMessage("Invalid username/email or password. Please try again.");
@@ -121,8 +148,24 @@ const Login = ({ setLoggedInEmail }) => {
   };
 
   useEffect(() => {
-    // Removed preloading of background image
-  }, []);
+    if (otpResendTimer <= 0) return;
+    const t = setTimeout(() => setOtpResendTimer(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [otpResendTimer]);
+
+  const handleResend = async () => {
+    if (!pendingEmail || otpResendTimer > 0) return;
+    try {
+      setOtpResendLoading(true);
+      await resendSignupOtp(pendingEmail);
+      setOtpResendTimer(60);
+      setErrorMessage("OTP resent. Please verify your email.");
+    } catch (err) {
+      setErrorMessage(err.message || 'Failed to resend OTP. Try again shortly.');
+    } finally {
+      setOtpResendLoading(false);
+    }
+  };
 
   return (
     <div
@@ -296,27 +339,36 @@ const Login = ({ setLoggedInEmail }) => {
             </Link>
           </div>
 
-          {/* Error Message */}
+          {/* Error / Info Message */}
           {errorMessage && (
-            <div className="bg-red-50/90 border border-red-200 rounded-lg p-3" role="alert">
-              <p className="text-red-600 text-sm font-medium">{errorMessage}</p>
+            <div className={`border rounded-lg p-3 ${needsVerification ? 'bg-amber-50/90 border-amber-300' : 'bg-red-50/90 border-red-200'}`} role="alert">
+              <p className={`text-sm font-medium ${needsVerification ? 'text-amber-700' : 'text-red-600'}`}>{errorMessage}</p>
+              {needsVerification && pendingEmail && (
+                <div className="mt-2 text-xs text-amber-700 space-y-1">
+                  <p>Please open the verification email we sent to <span className="font-semibold">{pendingEmail}</span> and enter the OTP on the verification page.</p>
+                  <p>If you didn&apos;t receive it, you can resend below.</p>
+                  <button type="button" onClick={handleResend} disabled={otpResendTimer>0 || otpResendLoading} className="inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold bg-[#ff8200] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#e57400] transition">
+                    {otpResendLoading ? <><FaSpinner className="animate-spin mr-1"/>Sending...</> : otpResendTimer>0 ? `Resend in ${otpResendTimer}s` : 'Resend OTP'}
+                  </button>
+                  <a href={`/verify-email?email=${encodeURIComponent(pendingEmail)}`} className="inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold bg-amber-600 text-white hover:bg-amber-700 transition">Verify Email</a>
+                  <p className="text-[11px] text-amber-600">Still stuck? Check spam, or register again to receive a fresh code.</p>
+                </div>
+              )}
             </div>
           )}
 
           {/* Login Button */}
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full py-3 rounded-xl font-bold text-lg shadow-lg transition duration-300 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] flex items-center justify-center"
+            disabled={isLoading || otpResendLoading}
+            className="w-full py-3 rounded-xl font-bold text-lg shadow-lg transition duration-300 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] flex items-center justify-center disabled:opacity-70"
           >
             {isLoading ? (
               <span className="flex items-center justify-center">
                 <FaSpinner className="animate-spin mr-2" />
                 Signing in...
               </span>
-            ) : (
-              "Sign In"
-            )}
+            ) : needsVerification ? 'Awaiting Verification' : 'Sign In'}
           </button>
 
           {/* Register Link */}

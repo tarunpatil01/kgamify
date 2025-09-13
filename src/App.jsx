@@ -31,14 +31,11 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Applications = lazy(() => import("./pages/Applications"));
 const Messages = lazy(() => import("./pages/Messages"));
 const Payment = lazy(() => import("./pages/payment"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 
 function AppContent() {
   const location = useLocation();
-  const isLoginPage = location.pathname === "/" || 
-                      location.pathname === "/register" || 
-                      location.pathname === "/forgot-password" || 
-                      location.pathname === "/reset-password" ||
-                      location.pathname === "/admin-login";
+  const isLoginPage = ["/","/register","/forgot-password","/reset-password","/admin-login","/verify-email"].includes(location.pathname);
   
   const isAdminPage = location.pathname === "/admin" || location.pathname.startsWith('/admin/messages');
   
@@ -148,6 +145,7 @@ function AppContent() {
                   element={<ResetPassword isDarkMode={isDarkMode} />}
                 />
                 <Route path="/admin-login" element={<AdminLogin />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
               </Routes>
             </Suspense>
           </div>
@@ -227,20 +225,48 @@ function AppContent() {
                     <Route
                       path="/dashboard"
                       element={
-                        loggedInCompany?.status === 'hold' || loggedInCompany?.status === 'pending' ? (
-                          <div className={`min-h-[60vh] p-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            <div className={`max-w-3xl mx-auto p-4 rounded border ${loggedInCompany?.status === 'hold' ? 'bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-700' : 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-700'}`}>
-                              <div className="font-semibold mb-1">Access limited</div>
-                              <div className="text-sm">Your account is {loggedInCompany?.status}. Please check <a href="/messages" className="underline text-[#ff8200]">Messages</a> for details.</div>
+                        <>
+                          {/* Top banners: email verification & hold/pending status & plan upsell */}
+                          {localStorage.getItem('companyNeedsEmailVerification') === 'true' && (
+                            <div className="mx-4 mt-4 mb-2 p-3 rounded-lg border bg-amber-50 border-amber-200 text-amber-800 text-sm flex flex-wrap items-center gap-3">
+                              <span className="font-semibold">Email not verified.</span>
+                              <span className="hidden sm:inline">Please verify to unlock full features.</span>
+                              <a href={`/verify-email?email=${encodeURIComponent(loggedInEmail||'')}`} className="text-[#ff8200] font-semibold underline">Verify now</a>
+                              <button onClick={()=>{localStorage.setItem('companyNeedsEmailVerification','');}} className="ml-auto text-xs text-amber-600 hover:text-amber-800">Dismiss</button>
                             </div>
-                          </div>
-                        ) : (
-                          <Dashboard 
-                            isDarkMode={isDarkMode} 
-                            email={loggedInEmail}
-                            userCompany={loggedInCompany}
-                          />
-                        )
+                          )}
+                          {(loggedInCompany?.status === 'hold' || loggedInCompany?.status === 'pending') && (
+                            <div className="mx-4 mt-2 mb-2 p-3 rounded-lg border bg-yellow-50 border-yellow-200 text-yellow-800 text-sm">
+                              <div className="font-semibold mb-0.5 flex flex-wrap items-center gap-2">Access limited <span className="text-xs px-2 py-0.5 rounded bg-yellow-200">{loggedInCompany?.status}</span></div>
+                              <div>Please review <a href="/messages" className="underline font-medium text-[#ff8200]">Messages</a> for details. Some actions like posting jobs are disabled.</div>
+                            </div>
+                          )}
+                          {!loggedInCompany?.subscriptionPlan && (
+                            <div className="mx-4 mt-2 mb-4 p-3 rounded-lg border bg-white border-orange-200 text-orange-700 text-sm flex flex-wrap items-center gap-3 shadow-sm">
+                              <span className="font-semibold">No active plan.</span>
+                              <span className="hidden sm:inline">Choose a subscription to start posting jobs and viewing detailed analytics.</span>
+                              <a href="/payment" className="inline-flex items-center px-3 py-1 rounded-md bg-[#ff8200] text-white text-xs font-semibold hover:bg-[#e57400] transition">Pick a Plan</a>
+                            </div>
+                          )}
+                          { (loggedInCompany?.status === 'hold' || loggedInCompany?.status === 'pending') ? (
+                            <div className={`min-h-[40vh] p-4 pt-0 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              <div className="max-w-5xl mx-auto">
+                                <Dashboard 
+                                  isDarkMode={isDarkMode} 
+                                  email={loggedInEmail}
+                                  userCompany={loggedInCompany}
+                                  limited
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <Dashboard 
+                              isDarkMode={isDarkMode} 
+                              email={loggedInEmail}
+                              userCompany={loggedInCompany}
+                            />
+                          )}
+                        </>
                       }
                     />
                     <Route

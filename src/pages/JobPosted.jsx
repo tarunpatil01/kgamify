@@ -257,6 +257,10 @@ const JobPosted = ({ isDarkMode, email }) => {
     count: jobs.filter(j => j.category === cat).length,
   }));
 
+  const needsVerification = typeof window !== 'undefined' && localStorage.getItem('companyNeedsEmailVerification') === 'true';
+  const companyData = typeof window !== 'undefined' ? (()=>{try{return JSON.parse(localStorage.getItem('companyData')||'null');}catch{return null;}})() : null;
+  const limitedStatus = companyData?.status === 'hold' || companyData?.status === 'pending';
+
   return (
     <div
       className={`min-h-screen py-8 px-2 sm:px-6 lg:px-8 flex flex-col items-center ${
@@ -272,12 +276,19 @@ const JobPosted = ({ isDarkMode, email }) => {
             : "bg-white border-orange-200"
         } p-6 sm:p-10`}
       >
-        {/* Header with stats */}
+        {/* Header with stats and gating banners */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl sm:text-4xl font-extrabold flex items-center gap-2 tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg mb-2">
               <FaList className="text-[#ff8200]" /> Posted Jobs
             </h1>
+            {(needsVerification || limitedStatus) && (
+              <div className="mb-3 p-3 rounded-lg border text-xs sm:text-sm flex flex-wrap items-center gap-2 bg-amber-50 border-amber-200 text-amber-800">
+                {needsVerification && <span><strong>Email not verified.</strong> Verify to unlock full posting.</span>}
+                {limitedStatus && <span><strong>Account {companyData?.status}.</strong> Posting restricted. See <Link to="/messages" className="underline text-[#ff8200]">Messages</Link>.</span>}
+                {needsVerification && <Link to={`/verify-email?email=${encodeURIComponent(companyData?.email||'')}`} className="ml-auto px-3 py-1 rounded-md bg-[#ff8200] text-white text-xs font-semibold hover:bg-[#e57400]">Verify Email</Link>}
+              </div>
+            )}
             <div className="flex flex-wrap gap-4 mt-2 text-sm">
               <span
                 className={`flex items-center gap-1 rounded px-3 py-1 ${
@@ -312,10 +323,12 @@ const JobPosted = ({ isDarkMode, email }) => {
             </div>
           </div>
           <button
-            onClick={() => navigate('/post-job')}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white rounded-xl shadow-lg hover:from-[#e57400] hover:to-[#ffb347] transition-colors font-semibold text-lg"
+            onClick={() => { if(needsVerification || limitedStatus) return; navigate('/post-job'); }}
+            disabled={needsVerification || limitedStatus}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl shadow-lg font-semibold text-lg transition-colors ${needsVerification || limitedStatus ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347]'}`}
+            title={needsVerification ? 'Verify email to post jobs' : limitedStatus ? 'Account limited; cannot post jobs' : 'Post a new job'}
           >
-            <FaPlus /> Post New Job
+            <FaPlus /> {needsVerification || limitedStatus ? 'Posting Limited' : 'Post New Job'}
           </button>
         </div>
 
