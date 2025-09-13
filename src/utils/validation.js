@@ -227,3 +227,26 @@ export const validateForm = async (schema, data) => {
 export const getFieldError = (errors, fieldName) => {
   return errors[fieldName] || '';
 }; 
+
+// --- Lightweight ad-hoc validators (non-yup) for quick inline use ---
+export function quickEmail(value){
+  if(!value) return 'Email is required';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return 'Enter a valid email address';
+  return null;
+}
+export function quickPassword(value,min=6){
+  if(!value) return 'Password is required';
+  if(value.length < min) return `Password must be at least ${min} characters`;
+  return null;
+}
+export function quickRequired(value,label='Field'){
+  if(value==null || String(value).trim()==='') return `${label} is required`;
+  return null;
+}
+export function quickMatch(a,b,label='Values'){
+  if(a!==b) return `${label} do not match`;
+  return null;
+}
+export function summarizeErrors(obj){
+  return Object.fromEntries(Object.entries(obj).filter(([,v])=>v));
+}

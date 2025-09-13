@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaSpinner } from 'react-icons/fa';
 import Klogo from '../assets/KLOGO.png';
 import { registerBasic, verifySignupOtp, resendSignupOtp } from '../api';
+import { quickEmail, quickPassword, quickRequired, quickMatch } from '../utils/validation';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import PropTypes from 'prop-types';
@@ -27,8 +28,30 @@ const Register = () => {
 
   async function submitBasic(e){
     e.preventDefault();
-    if(form.password!==form.confirmPassword){ setSnackbarMessage("Passwords don't match"); setSnackbarSeverity('error'); setOpenSnackbar(true); return; }
-    try { setIsSubmitting(true); await registerBasic({ companyName: form.companyName.trim(), email: form.email.trim(), phone: form.phone.trim(), password: form.password }); setSnackbarMessage('Account created. OTP sent to email.'); setSnackbarSeverity('success'); setOpenSnackbar(true); setStep(2); setOtpTimer(60);} catch(err){ setSnackbarMessage(err.message||'Signup failed'); setSnackbarSeverity('error'); setOpenSnackbar(true);} finally { setIsSubmitting(false);} }
+    const companyName = (form.companyName || '').trim();
+    const email = (form.email || '').trim();
+    const phone = (form.phone || '').trim();
+    const errors = [
+      quickRequired(companyName,'Company name'),
+      quickEmail(email),
+      quickRequired(phone,'Phone'),
+      quickPassword(form.password,6),
+      quickMatch(form.password, form.confirmPassword, 'Passwords')
+    ].filter(Boolean);
+    if(errors.length){ setSnackbarMessage(errors[0]); setSnackbarSeverity('error'); setOpenSnackbar(true); return; }
+    try {
+      setIsSubmitting(true);
+      await registerBasic({ companyName, email, phone, password: form.password });
+      setSnackbarMessage('Account created. OTP sent to email.');
+      setSnackbarSeverity('success');
+      setOpenSnackbar(true);
+      setStep(2);
+      setOtpTimer(60);
+    } catch(err){
+      setSnackbarMessage(err?.message||'Signup failed');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+    } finally { setIsSubmitting(false);} }
 
   useEffect(()=>{ let t; if(step===2 && otpTimer>0){ t=setTimeout(()=>setOtpTimer(s=>s-1),1000);} return ()=>clearTimeout(t); },[otpTimer,step]);
 

@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
-import ReactQuill from 'react-quill';
+import { useEffect, useState, useRef, lazy, Suspense } from 'react';
+// Lazy import ReactQuill to reduce initial bundle size
+const ReactQuill = lazy(() => import('react-quill'));
 import 'react-quill/dist/quill.snow.css';
 import PropTypes from 'prop-types';
 
@@ -52,17 +53,23 @@ const QuillEditor = ({ value, onChange, isDarkMode, placeholder = "Enter descrip
 
   return (
     <div className={`quill-wrapper ${isDarkMode ? 'react-quill-dark' : ''}`}>
-      <ReactQuill
-        ref={quillRef}
-        theme="snow"
-        modules={modules}
-        formats={formats}
-        value={editorContent}
-        onChange={handleEditorChange}
-        placeholder={placeholder}
-        className={isDarkMode ? 'rounded' : 'bg-white rounded'}
-        style={editorStyle}
-      />
+      <Suspense fallback={
+        <div className="w-full border rounded p-4 animate-pulse bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400" style={editorStyle}>
+          Loading editor...
+        </div>
+      }>
+        <ReactQuill
+          ref={quillRef}
+          theme="snow"
+          modules={modules}
+          formats={formats}
+          value={editorContent}
+          onChange={handleEditorChange}
+          placeholder={placeholder}
+          className={isDarkMode ? 'rounded' : 'bg-white rounded'}
+          style={editorStyle}
+        />
+      </Suspense>
     </div>
   );
 };

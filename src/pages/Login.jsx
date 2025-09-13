@@ -4,6 +4,7 @@ import { FaEye, FaEyeSlash, FaSpinner, FaCheckCircle, FaTimesCircle } from 'reac
 import Klogo from '../assets/KLOGO.png';
 import { loginCompany } from '../api';
 import PropTypes from 'prop-types';
+import { quickEmail, quickPassword } from '../utils/validation';
 
 const Login = ({ setLoggedInEmail }) => {
   const navigate = useNavigate();
@@ -18,25 +19,21 @@ const Login = ({ setLoggedInEmail }) => {
   const [validationErrors, setValidationErrors] = useState({});
   const [touched, setTouched] = useState({});
 
-  // Real-time validation
-  const validateField = (name, value) => {
-    const errors = {};
-    
-    if (name === 'identifier') {
-      if (!value) {
-        errors.identifier = 'Username or Email is required';
+  // Real-time validation via shared validators
+  const runValidation = (field, value) => {
+    if (field === 'identifier') {
+      // Allow username OR email; treat presence as required, validate email format only if it contains '@'
+      if (!value) return 'Username or Email is required';
+      if (value.includes('@')) {
+        const err = quickEmail(value);
+        return err; // quickEmail returns message or null
       }
+      return null;
     }
-    
-    if (name === 'password') {
-      if (!value) {
-        errors.password = 'Password is required';
-      } else if (value.length < 6) {
-        errors.password = 'Password must be at least 6 characters';
-      }
+    if (field === 'password') {
+      return quickPassword(value, 6);
     }
-    
-    return errors;
+    return null;
   };
 
   const handleChange = (event) => {
@@ -51,11 +48,8 @@ const Login = ({ setLoggedInEmail }) => {
     
     // Real-time validation
     if (touched[name]) {
-      const fieldErrors = validateField(name, value);
-      setValidationErrors(prev => ({
-        ...prev,
-        [name]: fieldErrors[name]
-      }));
+      const err = runValidation(name, value);
+      setValidationErrors(prev => ({ ...prev, [name]: err }));
     }
   };
 
@@ -63,11 +57,8 @@ const Login = ({ setLoggedInEmail }) => {
     const { name, value } = event.target;
     setTouched(prev => ({ ...prev, [name]: true }));
     
-    const fieldErrors = validateField(name, value);
-    setValidationErrors(prev => ({
-      ...prev,
-      [name]: fieldErrors[name]
-    }));
+    const err = runValidation(name, value);
+    setValidationErrors(prev => ({ ...prev, [name]: err }));
   };
 
   const handleRememberMeChange = (event) => {
@@ -86,13 +77,13 @@ const Login = ({ setLoggedInEmail }) => {
     setErrorMessage(""); // Clear previous errors
     
     // Validate all fields
-  const emailErrors = validateField('identifier', formData.identifier);
-    const passwordErrors = validateField('password', formData.password);
-    const allErrors = { ...emailErrors, ...passwordErrors };
-    
-    if (Object.keys(allErrors).length > 0) {
-      setValidationErrors(allErrors);
-  setTouched({ identifier: true, password: true });
+    const identifierErr = runValidation('identifier', formData.identifier);
+    const passwordErr = runValidation('password', formData.password);
+    const merged = { identifier: identifierErr, password: passwordErr };
+    const hasErrors = Object.values(merged).some(Boolean);
+    if (hasErrors) {
+      setValidationErrors(merged);
+      setTouched({ identifier: true, password: true });
       return;
     }
     

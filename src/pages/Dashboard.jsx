@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import PropTypes from 'prop-types';
 import { useSelector, useDispatch } from 'react-redux';
@@ -20,8 +20,22 @@ import {
   selectJobsError
 } from "../store/slices/jobsSlice";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { getJobs } from "../api"; // Add direct API import for testing
+import { getJobs } from "../api"; // Legacy direct API (still used by cache)
+import { getJobsCached } from "../services/jobsCache";
 import SubscriptionModal from '../components/SubscriptionModal';
+import { useSubscriptionPrompt } from '../hooks/useSubscriptionPrompt';
+
+// Helper kept outside component to avoid creating functions within render that might differ across hot reloads
+function loadCompanyData(initialCompany){
+  if (initialCompany) return initialCompany;
+  try {
+    const raw = localStorage.getItem('companyData');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null; // Always return something so hook count never changes due to thrown error path
+  }
+}
 
 const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   const dispatch = useDispatch();
@@ -30,14 +44,10 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   const loading = useSelector(selectJobsLoading);
   const error = useSelector(selectJobsError);
   // Local state
-  const [filteredJobs, setFilteredJobs] = useState([]);
-  const [companyJobs, setCompanyJobs] = useState([]);
-  const [directAPIJobs, setDirectAPIJobs] = useState([]); // Test direct API like JobPosted
+  // Local copies of jobs; we keep a direct API fallback only until Redux fills
+  const [directAPIJobs, setDirectAPIJobs] = useState([]); // Fallback if Redux slice empty
   const [initialWaitOver, setInitialWaitOver] = useState(false);
-  const [companyData, setCompanyData] = useState(() => {
-    try { return userCompany || JSON.parse(localStorage.getItem('companyData')||'null'); } catch { return userCompany; }
-  });
-  const [showSubModal, setShowSubModal] = useState(false);
+  const { shouldShow: showSubModal, setShouldShow: setShowSubModal, companyData, setCompanyData } = useSubscriptionPrompt(loadCompanyData(userCompany));
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -59,73 +69,55 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
     return () => clearTimeout(t);
   }, []);
 
-  // Test direct API call like JobPosted does
+  // Debounced cached direct API fallback
   useEffect(() => {
-    const testDirectAPI = async () => {
+    let cancelled = false;
+    const h = setTimeout(async () => {
       try {
-        // Try the same approach as JobPosted
-        const response = await getJobs(email ? { email } : {});
-        // Normalize to array regardless of API shape
+        const response = await getJobsCached(email ? { email } : {});
+        if (cancelled) return;
         const normalized = Array.isArray(response?.jobs)
           ? response.jobs
           : Array.isArray(response)
             ? response
             : [];
         setDirectAPIJobs(normalized);
-      } catch {
-        // ignore
-      }
-    };
-    testDirectAPI();
+      } catch { /* ignore */ }
+    }, 150); // small debounce
+    return () => { cancelled = true; clearTimeout(h); };
   }, [email]);
 
-  useEffect(() => {
-    // Filter company-specific jobs if email is provided
-    if (email && jobs && jobs.length > 0) {
-      const companySpecificJobs = jobs.filter(job => 
-        job.company?.email === email || job.createdBy === email
-      );
-      setCompanyJobs(companySpecificJobs);
-    }
-  }, [jobs, email]);
+  // Normalize & unify job source with memoization
+  const displayJobs = useMemo(() => {
+    // Prefer Redux slice when populated
+    const source = (jobs && jobs.length > 0) ? jobs : directAPIJobs;
+    if (!source || source.length === 0) return [];
 
-  // Prepare list for display (no search/filters here)
-  useEffect(() => {
-    // Choose data source: use direct API if Redux is empty
-    let baseJobs;
-    
-    if (email) {
-      // For company dashboard, filter jobs by company email
-      if (companyJobs && companyJobs.length > 0) {
-        baseJobs = companyJobs;
-      } else if (directAPIJobs && directAPIJobs.length > 0) {
-        // Filter direct API jobs by company email - use correct field
-        baseJobs = directAPIJobs.filter(job => {
-          return job.companyEmail === email;
-        });
-      } else {
-        baseJobs = [];
-      }
-    } else {
-      // For general dashboard, show all jobs
-      baseJobs = (jobs && jobs.length > 0) ? jobs : (directAPIJobs || []);
+    // Normalize a consistent company email accessor
+    const norm = source.map(j => ({
+      ...j,
+      __companyEmail: j.companyEmail || j.company?.email || j.createdBy || ''
+    }));
+
+    // Optional filter by company email if viewing company dashboard
+    const filtered = email ? norm.filter(j => j.__companyEmail === email) : norm;
+
+    // Deduplicate by _id (direct API + Redux might overlap)
+    const dedupMap = new Map();
+    for (const job of filtered) {
+      const key = job._id || job.id;
+      if (!dedupMap.has(key)) dedupMap.set(key, job);
     }
-    
-    // Default sort: newest first by createdAt/datePosted
-    const sorted = [...baseJobs].sort((a, b) => {
+    const deduped = Array.from(dedupMap.values());
+
+    // Sort newest first
+    deduped.sort((a, b) => {
       const aDate = new Date(a.createdAt || a.datePosted || a.postedAt || 0);
       const bDate = new Date(b.createdAt || b.datePosted || b.postedAt || 0);
       return bDate - aDate;
     });
-
-    setFilteredJobs(sorted);
-  }, [jobs, companyJobs, directAPIJobs, email]);
-
-  // Safety checks for arrays
-  const safeFilteredJobs = filteredJobs || [];
-
-  // Use filteredJobs as the primary source (now includes direct API fallback)
-  const displayJobs = safeFilteredJobs;
+    return deduped;
+  }, [jobs, directAPIJobs, email]);
   
   const totalJobs = displayJobs.length;
 
@@ -151,17 +143,8 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   }).length;
 
   // Only block the screen if we're still loading AND have no data yet AND grace period not over
-  const hasAnyData = (jobs && jobs.length > 0) || (directAPIJobs && directAPIJobs.length > 0);
+  const hasAnyData = displayJobs.length > 0;
   const showSkeletons = loading && !hasAnyData && initialWaitOver;
-  if (loading && !hasAnyData && !initialWaitOver) {
-    return (
-      <LoadingSpinner 
-        fullScreen 
-        text="Loading dashboard data..." 
-        className={isDarkMode ? "bg-gray-900" : "bg-gray-100"} 
-      />
-    );
-  }
 
   // Company banner colors and logo fallback
   const companyBannerBg = isDarkMode
@@ -172,14 +155,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
     : '';
   const companyLogo = userCompany?.logoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userCompany?.companyName || "Company")}&background=ff8200&color=fff&size=128`;
 
-  // Decide if subscription modal should show (only after company data loaded & approved & email verified but no active plan)
-  useEffect(()=>{
-    if (!companyData) return;
-    const needsPlan = !companyData.subscriptionPlan || companyData.subscriptionStatus !== 'active';
-    if (needsPlan && (companyData.emailVerified || companyData.emailVerified===true) && (companyData.status==='approved' || companyData.approved)){
-      setShowSubModal(true);
-    }
-  },[companyData]);
+  // (Modal visibility handled by useSubscriptionPrompt)
 
   return (
     <div
@@ -189,6 +165,13 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
           : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
       }`}
     >
+      {loading && !hasAnyData && !initialWaitOver && (
+        <LoadingSpinner 
+          fullScreen 
+          text="Loading dashboard data..." 
+          className={isDarkMode ? "bg-gray-900" : "bg-gray-100"} 
+        />
+      )}
       {showSubModal && companyData && (
         <SubscriptionModal 
           open={showSubModal} 
