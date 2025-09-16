@@ -2,8 +2,10 @@ import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import PropTypes from 'prop-types';
 import { getCompanyInfo, getCompanyMessages, sendCompanyMessage } from '../api';
+import { config } from '../config/env';
 
 export default function Messages({ isDarkMode }) {
+  // derive email once
   const [email] = useState(() => {
     const remembered = localStorage.getItem('rememberedEmail');
     if (remembered) return remembered;
@@ -12,14 +14,19 @@ export default function Messages({ isDarkMode }) {
       return cd?.email || '';
     } catch { return ''; }
   });
+
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [page] = useState(1);
   const bottomRef = useRef(null);
+  const scrollRef = useRef(null);
 
+  // load company profile
   useEffect(() => {
     (async () => {
       try {
@@ -41,26 +48,36 @@ export default function Messages({ isDarkMode }) {
   const status = company?.status || 'pending';
   const isApproved = status === 'approved' || company?.approved;
 
+  // messages + socket
   useEffect(() => {
     let socket;
     let active = true;
     async function init() {
       if (!company?._id && company?.email) {
-        // refresh company info to get _id if missing
-        try { const refreshed = await getCompanyInfo(company.email); setCompany(refreshed); } catch {/* ignore */}
+        try { const refreshed = await getCompanyInfo(company.email); setCompany(refreshed); } catch { /* ignore refresh errors */ }
       }
       if (!company?._id) return;
       try {
-        const data = await getCompanyMessages(company.email, 1, 200);
+        const data = await getCompanyMessages(company.email, page, 200);
         if (active) {
-          setMessages(Array.isArray(data.messages) ? data.messages : []);
-          setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior: 'smooth'}), 10);
+          const list = Array.isArray(data.messages) ? data.messages : [];
+          setMessages(list);
+          setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior: 'auto'}), 10);
         }
       } catch (err) {
-        const msg = err?.response?.data?.error || err?.message || '';
-        if (active) setError(msg || 'Failed to fetch messages');
+        if (active) setError(err?.response?.data?.error || err?.message || 'Failed to fetch messages');
       }
-      socket = io('/', { path: '/socket.io', withCredentials: true });
+
+      // Connect socket to backend host derived from API_URL (strip trailing /api)
+      const backendBase = (config.API_URL || '').replace(/\/?api\/?$/, '');
+      socket = io(backendBase || '/', {
+        path: '/socket.io',
+        withCredentials: true,
+        transports: ['websocket'],
+        reconnection: true,
+      });
+      socket.on('connect', () => setConnected(true));
+      socket.on('disconnect', () => setConnected(false));
       socket.emit('join', `company:${company._id}`);
       socket.on('message:new', payload => {
         if (payload?.companyId === String(company._id)) {
@@ -72,9 +89,9 @@ export default function Messages({ isDarkMode }) {
     init();
     return () => {
       active = false;
-      try { socket?.emit('leave', `company:${company?._id}`); socket?.disconnect(); } catch {/* ignore */}
+      try { socket?.emit('leave', `company:${company?._id}`); socket?.disconnect(); } catch { /* ignore disconnect */ }
     };
-  }, [company?._id, company?.email]);
+  }, [company?._id, company?.email, page]);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -82,12 +99,10 @@ export default function Messages({ isDarkMode }) {
     if (!text || !company?.email) return;
     setSending(true);
     try {
-      // optimistic append
       const optimistic = { message: text, type: 'info', from: 'company', createdAt: new Date().toISOString() };
       setMessages(m=>[...m, optimistic]);
       setInput('');
       await sendCompanyMessage(company.email, text);
-  // server will broadcast; fallback single fetch not strictly needed
     } catch (err) {
       setError(err?.response?.data?.error || 'Failed to send');
     } finally {
@@ -101,26 +116,28 @@ export default function Messages({ isDarkMode }) {
     );
   }
   if (error) {
+    const lower = error.toLowerCase?.() || '';
     return (
       <div className={`min-h-[60vh] flex items-center justify-center px-4 text-center ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>
         <div>
           <div className="font-semibold mb-2">{error}</div>
-          {error.toLowerCase().includes('auth') || error.toLowerCase().includes('token') || error.toLowerCase().includes('login') ? (
+          {(lower.includes('auth') || lower.includes('token') || lower.includes('login')) && (
             <div className="text-sm opacity-80">Please sign in again and try opening Messages.
               <div className="mt-3">
                 <a href="/" className="inline-block px-4 py-2 rounded bg-[#ff8200] text-white text-sm hover:bg-[#e57400]">Go to Login</a>
               </div>
             </div>
-          ) : null}
+          )}
         </div>
       </div>
     );
   }
 
   return (
-  <div className={`flex flex-col flex-1 p-4 sm:p-6 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`} style={{minHeight:'calc(100vh - 80px)'}}>
+    <div className={`flex flex-col flex-1 p-4 sm:p-6 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`} style={{minHeight:'calc(100vh - 80px)'}}>
       <div className="w-full max-w-4xl mx-auto flex flex-col flex-1">
-        <div className={`p-4 rounded border mb-4 ${
+        {/* Header with status and connection indicator */}
+        <div className={`p-4 rounded border mb-4 flex items-center justify-between ${
           status === 'hold'
             ? (isDarkMode? 'bg-yellow-900/20 border-yellow-700 text-yellow-200':'bg-yellow-50 border-yellow-200 text-yellow-900')
             : status === 'denied'
@@ -129,23 +146,30 @@ export default function Messages({ isDarkMode }) {
                 ? (isDarkMode? 'bg-green-900/20 border-green-700 text-green-200':'bg-green-50 border-green-200 text-green-900')
                 : (isDarkMode? 'bg-blue-900/20 border-blue-700 text-blue-200':'bg-blue-50 border-blue-200 text-blue-900')
         }`}>
-          <div className="font-semibold mb-1">Account Status: {(isApproved ? 'Approved' : status.charAt(0).toUpperCase() + status.slice(1))}</div>
-          {status === 'hold' && <div className="text-sm opacity-90">Your account is on hold. You can edit details but cannot post jobs.</div>}
-          {status === 'pending' && <div className="text-sm opacity-90">Your account is pending admin review.</div>}
-          {status === 'denied' && <div className="text-sm opacity-90">Your account was denied. You may re-register after addressing issues.</div>}
-          {isApproved && <div className="text-sm opacity-90">Your account is active. You can post jobs and view analytics.</div>}
+          <div>
+            <div className="font-semibold">Account Status: {(isApproved ? 'Approved' : status.charAt(0).toUpperCase() + status.slice(1))}</div>
+            <div className="text-xs opacity-80">Messages are visible to kGamify admins. Avoid sharing sensitive credentials.</div>
+          </div>
+          <div className={`text-xs font-medium px-2 py-1 rounded ${connected ? (isDarkMode? 'bg-green-900/40 text-green-200':'bg-green-100 text-green-700') : (isDarkMode? 'bg-gray-800 text-gray-300':'bg-gray-100 text-gray-600')}`}>
+            {connected ? 'Connected' : 'Offline'}
+          </div>
         </div>
-        <div className={`flex-1 overflow-y-auto rounded border ${isDarkMode? 'bg-gray-800 border-gray-700':'bg-white border-gray-200'} p-4 space-y-3`}> 
+
+        {/* Messages list */}
+        <div ref={scrollRef} className={`flex-1 overflow-y-auto rounded border ${isDarkMode? 'bg-gray-800 border-gray-700':'bg-white border-gray-200'} p-4 space-y-3`}> 
           {messages.length === 0 && (
             <div className={`text-sm ${isDarkMode? 'text-gray-400':'text-gray-500'}`}>No messages yet. Start the conversation below.</div>
           )}
           {messages.map((m,i)=>{
             const when = (()=>{ try { return new Date(m.createdAt||Date.now()).toLocaleString(); } catch { return ''; } })();
             const mine = m.from === 'company';
+            const bubbleCommon = 'max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow border';
+            const mineStyle = isDarkMode? 'bg-[#ff8200] text-white border-[#ff9200]' : 'bg-[#ff8200] text-white border-[#ff8200]';
+            const otherStyle = isDarkMode? 'bg-gray-700 border-gray-600' : 'bg-gray-100 border-gray-200';
             return (
               <div key={i} className={`flex ${mine? 'justify-end':'justify-start'}`}>
-                <div className={`max-w-[70%] rounded-lg px-3 py-2 text-sm shadow border ${mine? (isDarkMode? 'bg-[#ff8200] text-white border-[#ff9200]':'bg-[#ff8200] text-white border-[#ff8200]') : (isDarkMode? 'bg-gray-700 border-gray-600':'bg-gray-100 border-gray-200')}`}>
-                  <div className={`text-[10px] mb-1 opacity-70 ${mine? 'text-white':(isDarkMode? 'text-gray-400':'text-gray-500')}`}>{mine? 'You':'Admin'} • {when}</div>
+                <div className={`${bubbleCommon} ${mine? mineStyle : otherStyle}`}>
+                  <div className={`text-[10px] mb-1 opacity-70 ${mine? 'text-white':(isDarkMode? 'text-gray-300':'text-gray-500')}`}>{mine? 'You':'Admin'} • {when}</div>
                   <div className="whitespace-pre-wrap break-words leading-snug">{m.message}</div>
                 </div>
               </div>
@@ -153,18 +177,19 @@ export default function Messages({ isDarkMode }) {
           })}
           <div ref={bottomRef} />
         </div>
+
+        {/* Composer */}
         <form onSubmit={handleSend} className="mt-4 flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e)=>setInput(e.target.value)}
             placeholder="Type a message..."
-            className={`flex-1 rounded border px-3 py-2 ${isDarkMode? 'bg-gray-800 border-gray-600 placeholder-gray-500':'bg-white border-gray-300 placeholder-gray-400'}`}
+            className={`flex-1 rounded-full border px-4 py-2 ${isDarkMode? 'bg-gray-800 border-gray-600 placeholder-gray-500':'bg-white border-gray-300 placeholder-gray-400'}`}
             maxLength={2000}
           />
-          <button disabled={sending || !input.trim()} className={`px-5 py-2 rounded font-medium text-white ${sending||!input.trim()? 'bg-gray-400 cursor-not-allowed':'bg-[#ff8200] hover:bg-[#e57400]'}`}>{sending? 'Sending...':'Send'}</button>
+          <button disabled={sending || !input.trim()} className={`px-5 py-2 rounded-full font-medium text-white ${sending||!input.trim()? 'bg-gray-400 cursor-not-allowed':'bg-[#ff8200] hover:bg-[#e57400]'}`}>{sending? 'Sending...':'Send'}</button>
         </form>
-  <p className="mt-1 mb-2 text-xs opacity-60">Messages are visible to kGamify admins. Avoid sharing sensitive credentials.</p>
       </div>
     </div>
   );
