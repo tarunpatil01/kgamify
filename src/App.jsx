@@ -31,7 +31,7 @@ const JobApplication = lazy(() => import("./pages/JobApplication"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Applications = lazy(() => import("./pages/Applications"));
 const Messages = lazy(() => import("./pages/Messages"));
-const Payment = lazy(() => import("./pages/payment"));
+const Plans = lazy(() => import("./pages/Plans"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 
 function AppContent() {
@@ -237,13 +237,7 @@ function AppContent() {
                             </div>
                           )}
                           <LimitedAccessBanner company={loggedInCompany} isDarkMode={isDarkMode} className="mx-4 mt-2 mb-2" />
-                          {!loggedInCompany?.subscriptionPlan && (
-                            <div className="mx-4 mt-2 mb-4 p-3 rounded-lg border bg-white border-orange-200 text-orange-700 text-sm flex flex-wrap items-center gap-3 shadow-sm">
-                              <span className="font-semibold">No active plan.</span>
-                              <span className="hidden sm:inline">Choose a subscription to start posting jobs and viewing detailed analytics.</span>
-                              <a href="/payment" className="inline-flex items-center px-3 py-1 rounded-md bg-[#ff8200] text-white text-xs font-semibold hover:bg-[#e57400] transition">Pick a Plan</a>
-                            </div>
-                          )}
+                          {/* Subscription upsell banner removed from dashboard. Use /plans page instead. */}
                           { (localStorage.getItem('companyLimitedAccess') === 'true') ? (
                             <div className={`min-h-[40vh] p-4 pt-0 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                               <div className="max-w-5xl mx-auto">
@@ -334,10 +328,7 @@ function AppContent() {
                       path="/apply/:jobId"
                       element={<JobApplication />}
                     />
-                    <Route
-                      path="/payment"
-                      element={<Payment isDarkMode={isDarkMode} />}
-                    />
+                    <Route path="/plans" element={<Plans isDarkMode={isDarkMode} />} />
                   </Routes>
                 </Suspense>
               </div>

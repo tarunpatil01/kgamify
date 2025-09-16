@@ -22,6 +22,8 @@ const Job = ({ isDarkMode }) => {
   // AI state
   const [showAI, setShowAI] = useState(true);
   const [ai, setAi] = useState({ loading: false, error: '', items: [] });
+  const [topN, setTopN] = useState(5);
+  const [recommendedOnly, setRecommendedOnly] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,15 +41,6 @@ const Job = ({ isDarkMode }) => {
   } catch {
           setApplications([]);
         }
-        // Fetch AI recommendations for this job (best-effort)
-        try {
-          setAi({ loading: true, error: '', items: [] });
-          const recs = await getRecommendationsForJob(jobId, 5);
-          setAi({ loading: false, error: '', items: recs });
-        } catch (e) {
-          setAi({ loading: false, error: e?.message || 'Failed to fetch recommendations', items: [] });
-        }
-        
         setLoading(false);
       } catch (e) {
         setError(e?.message || "Failed to fetch job details");
@@ -57,6 +50,23 @@ const Job = ({ isDarkMode }) => {
 
     fetchData();
   }, [jobId, navigate]);
+
+  // Fetch AI recommendations when job or topN changes
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setAi(prev => ({ ...prev, loading: true, error: '', items: [] }));
+        const recs = await getRecommendationsForJob(jobId, topN);
+        if (cancelled) return;
+        setAi({ loading: false, error: '', items: Array.isArray(recs) ? recs : [] });
+      } catch (e) {
+        if (cancelled) return;
+        setAi({ loading: false, error: e?.message || 'Failed to fetch recommendations', items: [] });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [jobId, topN]);
 
   if (loading) {
     return (
@@ -410,8 +420,40 @@ const Job = ({ isDarkMode }) => {
 
         {/* Applicants section */}
         <div className="mt-10 pb-10">
-          <div className={`flex items-center justify-between mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            <div className="text-xl font-semibold">Applicants</div>
+          <div className={`flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div>
+              <div className="text-xl font-semibold">Applicants</div>
+              <div className="mt-2 flex items-center gap-3 text-sm">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={recommendedOnly}
+                    onChange={(e)=>setRecommendedOnly(e.target.checked)}
+                  />
+                  <span>Show only AI-recommended</span>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <span>Top N:</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={topN}
+                    onChange={(e)=> setTopN(() => {
+                      const v = parseInt(e.target.value||'5',10);
+                      if (Number.isNaN(v)) return 5;
+                      return Math.min(50, Math.max(1, v));
+                    })}
+                    className={`w-20 px-2 py-1 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                  />
+                </label>
+                {ai.loading && <span className="text-xs opacity-70">Updating…</span>}
+                {!ai.loading && ai.error && (
+                  <span className="text-xs text-red-500">AI error: {ai.error}</span>
+                )}
+              </div>
+            </div>
             <div className="flex items-center gap-2 text-sm">
               <span className="opacity-70">View:</span>
               <button
@@ -425,149 +467,184 @@ const Job = ({ isDarkMode }) => {
             </div>
           </div>
 
-          {applications.length === 0 ? (
-            <div className={`p-4 rounded-lg text-center ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-50 text-gray-600'} shadow-sm`}>
-              No applicants for this job yet
-            </div>
-          ) : view === 'table' ? (
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-x-auto`}>
-              <table className="w-full table-auto text-sm">
-                <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
-                  <tr>
-                    <th className="text-left py-2 px-3">Name</th>
-                    <th className="text-left py-2 px-3">Status</th>
-                    <th className="text-right py-2 px-3">Date</th>
-                    <th className="text-right py-2 px-3">Resume</th>
-                    <th className="text-right py-2 px-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {applications.map(applicant => (
-                    <tr key={applicant._id} className={isDarkMode ? 'border-t border-gray-700' : 'border-top border-gray-200'}>
-                      <td className="py-2 px-3 whitespace-nowrap">{applicant.applicantName}</td>
-                      <td className="py-2 px-3">
-                        <span className={`px-2 py-0.5 rounded text-xs ${applicant.status === 'shortlisted' ? 'bg-green-100 text-green-700' : applicant.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{applicant.status || 'new'}</span>
-                      </td>
-                      <td className="py-2 px-3 text-right whitespace-nowrap">{new Date(applicant.createdAt).toLocaleDateString()}</td>
-                      <td className="py-2 px-3 text-right">
-                        {applicant.resume ? (
-                          <a href={applicant.resume} target="_blank" rel="noreferrer" className="px-2 py-1 rounded border hover:bg-gray-50 dark:hover:bg-gray-700">View</a>
-                        ) : (
-                          <span className="opacity-60">No resume</span>
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={updatingIds.has(applicant._id) || applicant.status === 'shortlisted'}
-                            onClick={() => handleStatusChange(applicant._id, 'shortlisted')}
-                            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                              updatingIds.has(applicant._id) || applicant.status === 'shortlisted'
-                                ? 'opacity-60 cursor-not-allowed '
-                                : ''
-                            } ${isDarkMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
-                          >
-                            Shortlist
-                          </button>
-                          <button
-                            type="button"
-                            disabled={updatingIds.has(applicant._id) || applicant.status === 'rejected'}
-                            onClick={() => handleStatusChange(applicant._id, 'rejected')}
-                            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                              updatingIds.has(applicant._id) || applicant.status === 'rejected'
-                                ? 'opacity-60 cursor-not-allowed '
-                                : ''
-                            } ${isDarkMode ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}
-                          >
-                            Reject
-                          </button>
+          {/* Compute visible applicants based on AI results */}
+          {(() => null)()}
+          {
+            (() => {
+              const recNames = new Set((ai.items||[]).map(r => String(r.applicantName || r.name || '').trim().toLowerCase()).filter(Boolean));
+              const recEmails = new Set((ai.items||[]).map(r => String(r.email || '').trim().toLowerCase()).filter(Boolean));
+              const recResumes = new Set((ai.items||[]).map(r => String(r.resume_url || '').trim()).filter(u => !!u));
+              const isRec = (a) => {
+                const nameKey = String(a.applicantName||'').trim().toLowerCase();
+                const emailKey = String(a.applicantEmail||'').trim().toLowerCase();
+                const resumeKey = String(a.resume||'').trim();
+                return (nameKey && recNames.has(nameKey)) || (emailKey && recEmails.has(emailKey)) || (resumeKey && recResumes.has(resumeKey));
+              };
+              const visibleApps = recommendedOnly ? applications.filter(isRec) : applications;
+
+              if (recommendedOnly && !ai.loading && (ai.items||[]).length === 0) {
+                return (
+                  <div className={`p-4 mb-3 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-700'}`}>
+                    No AI recommendations found for this job. Try adjusting Top N.
+                  </div>
+                );
+              }
+
+              if (visibleApps.length === 0) {
+                return (
+                  <div className={`p-4 rounded-lg text-center ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-50 text-gray-600'} shadow-sm`}>
+                    {recommendedOnly ? 'No recommended applicants match current recommendations.' : 'No applicants for this job yet'}
+                  </div>
+                );
+              }
+
+              return (
+                <>
+                  {/* Existing render paths but using visibleApps */}
+                  {view === 'table' ? (
+                    <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-x-auto`}>
+                      <table className="w-full table-auto text-sm">
+                        <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
+                          <tr>
+                            <th className="text-left py-2 px-3">Name</th>
+                            <th className="text-left py-2 px-3">Status</th>
+                            <th className="text-right py-2 px-3">Date</th>
+                            <th className="text-right py-2 px-3">Resume</th>
+                            <th className="text-right py-2 px-3">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {visibleApps.map(applicant => (
+                            <tr key={applicant._id} className={isDarkMode ? 'border-t border-gray-700' : 'border-top border-gray-200'}>
+                              <td className="py-2 px-3 whitespace-nowrap">{applicant.applicantName}</td>
+                              <td className="py-2 px-3">
+                                <span className={`px-2 py-0.5 rounded text-xs ${applicant.status === 'shortlisted' ? 'bg-green-100 text-green-700' : applicant.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{applicant.status || 'new'}</span>
+                              </td>
+                              <td className="py-2 px-3 text-right whitespace-nowrap">{new Date(applicant.createdAt).toLocaleDateString()}</td>
+                              <td className="py-2 px-3 text-right">
+                                {applicant.resume ? (
+                                  <a href={applicant.resume} target="_blank" rel="noreferrer" className="px-2 py-1 rounded border hover:bg-gray-50 dark:hover:bg-gray-700">View</a>
+                                ) : (
+                                  <span className="opacity-60">No resume</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 text-right whitespace-nowrap">
+                                <div className="inline-flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={updatingIds.has(applicant._id) || applicant.status === 'shortlisted'}
+                                    onClick={() => handleStatusChange(applicant._id, 'shortlisted')}
+                                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                      updatingIds.has(applicant._id) || applicant.status === 'shortlisted'
+                                        ? 'opacity-60 cursor-not-allowed '
+                                        : ''
+                                    } ${isDarkMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
+                                  >
+                                    Shortlist
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={updatingIds.has(applicant._id) || applicant.status === 'rejected'}
+                                    onClick={() => handleStatusChange(applicant._id, 'rejected')}
+                                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                      updatingIds.has(applicant._id) || applicant.status === 'rejected'
+                                        ? 'opacity-60 cursor-not-allowed '
+                                        : ''
+                                    } ${isDarkMode ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {visibleApps.map((applicant) => (
+                        <div
+                          key={applicant._id}
+                          className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-sm flex flex-col gap-2`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className={`text-base font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{applicant.applicantName}</div>
+                              <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Applied on: {new Date(applicant.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            <div className="shrink-0">
+                              {applicant.status ? (
+                                <span className={`px-2 py-0.5 rounded text-xxs capitalize ${
+                                  applicant.status === 'shortlisted' ? 'bg-green-100 text-green-700' :
+                                  applicant.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+                                }`}>{applicant.status}</span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {applicant.testScore && (
+                            <div className="text-xs">
+                              <span className="font-medium">Test Score: </span>
+                              <span className={`${parseInt(applicant.testScore) >= 70 ? 'text-green-500' : 'text-red-500'}`}>{applicant.testScore}</span>
+                            </div>
+                          )}
+
+                          {Array.isArray(applicant.skills) && applicant.skills.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {applicant.skills.slice(0, 6).map((skill, index) => (
+                                <span key={index} className={`text-xxs px-2 py-0.5 rounded ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>{skill}</span>
+                              ))}
+                              {applicant.skills.length > 6 && (
+                                <span className={`text-xxs px-2 py-0.5 rounded ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>+{applicant.skills.length - 6}</span>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="mt-1">
+                            {applicant.resume ? (
+                              <ResumeViewer resumeUrl={applicant.resume} applicantName={applicant.applicantName} variant="inline" />
+                            ) : (
+                              <div className="text-xs text-gray-500">No resume provided</div>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="mt-2 flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={updatingIds.has(applicant._id) || applicant.status === 'shortlisted'}
+                              onClick={() => handleStatusChange(applicant._id, 'shortlisted')}
+                              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                updatingIds.has(applicant._id) || applicant.status === 'shortlisted'
+                                  ? 'opacity-60 cursor-not-allowed '
+                                  : ''
+                              } ${isDarkMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
+                            >
+                              Shortlist
+                            </button>
+                            <button
+                              type="button"
+                              disabled={updatingIds.has(applicant._id) || applicant.status === 'rejected'}
+                              onClick={() => handleStatusChange(applicant._id, 'rejected')}
+                              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                updatingIds.has(applicant._id) || applicant.status === 'rejected'
+                                  ? 'opacity-60 cursor-not-allowed '
+                                  : ''
+                              } ${isDarkMode ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}
+                            >
+                              Reject
+                            </button>
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {applications.map((applicant) => (
-                <div
-                  key={applicant._id}
-                  className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-4 rounded-lg shadow-sm flex flex-col gap-2`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className={`text-base font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{applicant.applicantName}</div>
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Applied on: {new Date(applicant.createdAt).toLocaleDateString()}</div>
-                    </div>
-                    <div className="shrink-0">
-                      {applicant.status ? (
-                        <span className={`px-2 py-0.5 rounded text-xxs capitalize ${
-                          applicant.status === 'shortlisted' ? 'bg-green-100 text-green-700' :
-                          applicant.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
-                        }`}>{applicant.status}</span>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {applicant.testScore && (
-                    <div className="text-xs">
-                      <span className="font-medium">Test Score: </span>
-                      <span className={`${parseInt(applicant.testScore) >= 70 ? 'text-green-500' : 'text-red-500'}`}>{applicant.testScore}</span>
-                    </div>
-                  )}
-
-                  {Array.isArray(applicant.skills) && applicant.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {applicant.skills.slice(0, 6).map((skill, index) => (
-                        <span key={index} className={`text-xxs px-2 py-0.5 rounded ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>{skill}</span>
                       ))}
-                      {applicant.skills.length > 6 && (
-                        <span className={`text-xxs px-2 py-0.5 rounded ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'}`}>+{applicant.skills.length - 6}</span>
-                      )}
                     </div>
                   )}
+                </>
+              );
+            })()
+          }
 
-                  <div className="mt-1">
-                    {applicant.resume ? (
-                      <ResumeViewer resumeUrl={applicant.resume} applicantName={applicant.applicantName} variant="inline" />
-                    ) : (
-                      <div className="text-xs text-gray-500">No resume provided</div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="mt-2 flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={updatingIds.has(applicant._id) || applicant.status === 'shortlisted'}
-                      onClick={() => handleStatusChange(applicant._id, 'shortlisted')}
-                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                        updatingIds.has(applicant._id) || applicant.status === 'shortlisted'
-                          ? 'opacity-60 cursor-not-allowed '
-                          : ''
-                      } ${isDarkMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
-                    >
-                      Shortlist
-                    </button>
-                    <button
-                      type="button"
-                      disabled={updatingIds.has(applicant._id) || applicant.status === 'rejected'}
-                      onClick={() => handleStatusChange(applicant._id, 'rejected')}
-                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                        updatingIds.has(applicant._id) || applicant.status === 'rejected'
-                          ? 'opacity-60 cursor-not-allowed '
-                          : ''
-                      } ${isDarkMode ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
           <Snackbar
             open={snack.open}
             autoHideDuration={3000}

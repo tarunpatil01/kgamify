@@ -22,8 +22,6 @@ import {
 import LoadingSpinner from "../components/LoadingSpinner";
 import { getJobs } from "../api"; // Legacy direct API (still used by cache)
 import { getJobsCached } from "../services/jobsCache";
-import SubscriptionModal from '../components/SubscriptionModal';
-import { useSubscriptionPrompt } from '../hooks/useSubscriptionPrompt';
 
 // Helper kept outside component to avoid creating functions within render that might differ across hot reloads
 function loadCompanyData(initialCompany){
@@ -47,7 +45,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   // Local copies of jobs; we keep a direct API fallback only until Redux fills
   const [directAPIJobs, setDirectAPIJobs] = useState([]); // Fallback if Redux slice empty
   const [initialWaitOver, setInitialWaitOver] = useState(false);
-  const { shouldShow: showSubModal, setShouldShow: setShowSubModal, companyData, setCompanyData } = useSubscriptionPrompt(loadCompanyData(userCompany));
+  // Subscription modal removed from dashboard; plans moved to a dedicated page
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -172,14 +170,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
           className={isDarkMode ? "bg-gray-900" : "bg-gray-100"} 
         />
       )}
-      {showSubModal && companyData && (
-        <SubscriptionModal 
-          open={showSubModal} 
-          onClose={()=>setShowSubModal(false)} 
-          company={companyData} 
-          onChosen={(updated)=>{ setCompanyData(updated); setShowSubModal(false); }}
-        />
-      )}
+      {/* Subscription modal removed; see /plans page */}
       {/* Company Banner */}
       <div
         className={`w-full max-w-6xl mx-auto mb-8 rounded-3xl shadow-2xl border-0 ${companyBannerBg} flex flex-col md:flex-row items-center justify-between p-6 sm:p-8`}

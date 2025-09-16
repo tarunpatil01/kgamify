@@ -4,7 +4,14 @@ import PropTypes from 'prop-types';
 import { getCompanyInfo, getCompanyMessages, sendCompanyMessage } from '../api';
 
 export default function Messages({ isDarkMode }) {
-  const [email] = useState(() => localStorage.getItem('rememberedEmail') || '');
+  const [email] = useState(() => {
+    const remembered = localStorage.getItem('rememberedEmail');
+    if (remembered) return remembered;
+    try {
+      const cd = JSON.parse(localStorage.getItem('companyData') || 'null');
+      return cd?.email || '';
+    } catch { return ''; }
+  });
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -16,7 +23,11 @@ export default function Messages({ isDarkMode }) {
   useEffect(() => {
     (async () => {
       try {
-        if (!email) { setError('Not logged in'); setLoading(false); return; }
+        if (!email) {
+          setError('Not logged in');
+          setLoading(false);
+          return;
+        }
         const data = await getCompanyInfo(email);
         setCompany(data);
       } catch (e) {
@@ -45,7 +56,10 @@ export default function Messages({ isDarkMode }) {
           setMessages(Array.isArray(data.messages) ? data.messages : []);
           setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior: 'smooth'}), 10);
         }
-      } catch {/* ignore */}
+      } catch (err) {
+        const msg = err?.response?.data?.error || err?.message || '';
+        if (active) setError(msg || 'Failed to fetch messages');
+      }
       socket = io('/', { path: '/socket.io', withCredentials: true });
       socket.emit('join', `company:${company._id}`);
       socket.on('message:new', payload => {
@@ -88,7 +102,18 @@ export default function Messages({ isDarkMode }) {
   }
   if (error) {
     return (
-      <div className={`min-h-[60vh] flex items-center justify-center ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>{error}</div>
+      <div className={`min-h-[60vh] flex items-center justify-center px-4 text-center ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>
+        <div>
+          <div className="font-semibold mb-2">{error}</div>
+          {error.toLowerCase().includes('auth') || error.toLowerCase().includes('token') || error.toLowerCase().includes('login') ? (
+            <div className="text-sm opacity-80">Please sign in again and try opening Messages.
+              <div className="mt-3">
+                <a href="/" className="inline-block px-4 py-2 rounded bg-[#ff8200] text-white text-sm hover:bg-[#e57400]">Go to Login</a>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
     );
   }
 
