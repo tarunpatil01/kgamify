@@ -155,59 +155,35 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
 
   // (Modal visibility handled by useSubscriptionPrompt)
 
+  // Header gradient and logo
+  const headerGradient = isDarkMode
+    ? "bg-gradient-to-r from-gray-900 to-[#ff8200]"
+    : "bg-gradient-to-r from-[#ff8200] to-[#ffb347]";
+
   return (
     <div
-      className={`min-h-screen py-10 px-2 sm:px-6 lg:px-8 flex flex-col items-center ${
+      className={`min-h-screen py-0 px-0 flex flex-col items-center ${
         isDarkMode
-          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white"
-          : "bg-gradient-to-br from-orange-50 via-white to-orange-100 text-black"
+          ? "bg-gray-900 text-white"
+          : "bg-gray-50 text-gray-900"
       }`}
     >
-      {loading && !hasAnyData && !initialWaitOver && (
-        <LoadingSpinner 
-          fullScreen 
-          text="Loading dashboard data..." 
-          className={isDarkMode ? "bg-gray-900" : "bg-gray-100"} 
-        />
-      )}
-      {/* Subscription modal removed; see /plans page */}
-      {/* Company Banner */}
-      <div
-        className={`w-full max-w-6xl mx-auto mb-8 rounded-3xl shadow-2xl border-0 ${companyBannerBg} flex flex-col md:flex-row items-center justify-between p-6 sm:p-8`}
-      >
-        <div className="flex items-center gap-6">
-          <img
-            src={companyLogo}
-            alt="Company Logo"
-            className="w-24 h-24 rounded-2xl shadow-lg border-4 border-white bg-white object-cover"
-          />
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-lg mb-1">
-              {userCompany?.companyName || "Company Dashboard"}
-            </h1>
-            <div className="text-white/90 font-medium text-sm sm:text-base">
-              {userCompany?.industry && ( 
-                <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white font-semibold mr-2">
-                  {userCompany.industry}
-                </span>
-              )}
-              {userCompany?.location && (
-                <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white font-semibold">
-                  {userCompany.location}
-                </span>
-              )}
-            </div>
-            {cleanDescription && (
-              <p className="mt-2 text-white/85 text-sm sm:text-base max-w-xl line-clamp-2">{cleanDescription}</p>
-            )}
-          </div>
-        
+      {/* Gradient header to match Plans page */}
+      <div className={`w-full ${headerGradient} py-12 mb-10 flex flex-col items-center`}>
         <img
-          className="hidden md:block w-28 h-28 lg:w-44 lg:h-44 rounded-xl object-contain opacity-90"
-          src={DashboardImage}
-          alt="Dashboard"
+          src={companyLogo}
+          alt="Company Logo"
+          className="w-20 h-20 rounded-xl shadow-lg border-4 border-white bg-white object-cover mb-4"
         />
-        </div>
+        <h1 className="text-4xl font-extrabold mb-2 text-white drop-shadow-lg">
+          {userCompany?.companyName || "Company Dashboard"}
+        </h1>
+        <p className="text-lg opacity-90 mb-2 text-white font-medium">
+          Welcome to your dashboard. Track jobs, applications, and company stats.
+        </p>
+        {cleanDescription && (
+          <p className="mt-2 text-white/85 text-base max-w-xl text-center">{cleanDescription}</p>
+        )}
       </div>
 
       {/* Account Status Banner (Approved) */}
@@ -222,22 +198,22 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
 
       {/* Job Statistics */}
       <div className="w-full max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-        <div className={`rounded-2xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
+        <div className={`rounded-xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
           <FaBriefcase className="text-4xl text-[#ff8200] mb-3" />
           <div className="text-base font-semibold mb-1">Total Jobs</div>
           <div className="text-3xl font-extrabold text-[#ff8200]">{totalJobs}</div>
         </div>
-        <div className={`rounded-2xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
+        <div className={`rounded-xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
           <FaUsers className="text-4xl text-blue-500 mb-3" />
           <div className="text-base font-semibold mb-1">Total Applications</div>
           <div className="text-3xl font-extrabold text-blue-500">{totalApplications}</div>
         </div>
-        <div className={`rounded-2xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
+        <div className={`rounded-xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
           <FaCheckCircle className="text-4xl text-[#ff8200] mb-3" />
           <div className="text-base font-semibold mb-1">Active Jobs</div>
           <div className="text-3xl font-extrabold text-[#ff8200]">{activeJobs}</div>
         </div>
-        <div className={`rounded-2xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
+        <div className={`rounded-xl shadow-xl border p-8 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} flex flex-col items-center`}>
           <FaCalendarAlt className="text-4xl text-blue-500 mb-3" />
           <div className="text-base font-semibold mb-1">This Week</div>
           <div className="text-3xl font-extrabold text-blue-500">{recentJobs}</div>
@@ -245,7 +221,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
       </div>
 
       {/* Recent Job Posts */}
-  <div className={`w-full max-w-6xl mx-auto rounded-3xl shadow-2xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} p-8 sm:p-12`}>
+      <div className={`w-full max-w-6xl mx-auto rounded-xl shadow-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-orange-200'} p-8 sm:p-12`}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg">
             Recent Job Posts

@@ -65,7 +65,7 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false, unreadMessages 
     { to: "/Edit-Registration", icon: FaBuilding, text: "Edit Registration", id: "edit-registration" },
     { to: "/applications", icon: FaClipboardList, text: "Applications", id: "applications" },
   { to: "/messages", icon: FaRegCommentDots, text: "Messages", id: "messages", badge: unreadMessages },
-    { to: "/plans", icon: FaCreditCard, text: "Plans", id: "plans" },
+    { to: "/plans", icon: FaCreditCard, text: "Subscription", id: "plans" },
   ];
 
   return (

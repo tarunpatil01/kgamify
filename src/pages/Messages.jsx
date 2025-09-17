@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import PropTypes from 'prop-types';
 import { getCompanyInfo, getCompanyMessages, sendCompanyMessage } from '../api';
 import { config } from '../config/env';
+import { FaComments } from "react-icons/fa";
 
 export default function Messages({ isDarkMode }) {
   // derive email once
@@ -134,10 +135,16 @@ export default function Messages({ isDarkMode }) {
   }
 
   return (
-    <div className={`flex flex-col flex-1 p-4 sm:p-6 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`} style={{minHeight:'calc(100vh - 80px)'}}>
-      <div className="w-full max-w-4xl mx-auto flex flex-col flex-1">
-        {/* Header with status and connection indicator */}
-        <div className={`p-4 rounded border mb-4 flex items-center justify-between ${
+    <div className={`min-h-screen flex flex-col items-center ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+      {/* Gradient header */}
+      <div className="w-full bg-gradient-to-r from-[#ff8200] to-[#ffb347] py-10 mb-8 flex flex-col items-center shadow-lg">
+        <FaComments className="text-5xl text-white mb-3" />
+        <h1 className="text-3xl font-extrabold text-white drop-shadow-lg mb-1">Messages</h1>
+        <p className="text-base text-white/90 font-medium">Chat with kGamify admins. Get help, updates, and support.</p>
+      </div>
+      <div className="w-full max-w-3xl px-4 flex flex-col flex-1">
+        {/* Status card */}
+        <div className={`p-5 rounded-2xl shadow-xl border mb-6 flex items-center justify-between ${
           status === 'hold'
             ? (isDarkMode? 'bg-yellow-900/20 border-yellow-700 text-yellow-200':'bg-yellow-50 border-yellow-200 text-yellow-900')
             : status === 'denied'
@@ -147,29 +154,30 @@ export default function Messages({ isDarkMode }) {
                 : (isDarkMode? 'bg-blue-900/20 border-blue-700 text-blue-200':'bg-blue-50 border-blue-200 text-blue-900')
         }`}>
           <div>
-            <div className="font-semibold">Account Status: {(isApproved ? 'Approved' : status.charAt(0).toUpperCase() + status.slice(1))}</div>
+            <div className="font-semibold text-lg">Account Status: {(isApproved ? 'Approved' : status.charAt(0).toUpperCase() + status.slice(1))}</div>
             <div className="text-xs opacity-80">Messages are visible to kGamify admins. Avoid sharing sensitive credentials.</div>
           </div>
-          <div className={`text-xs font-medium px-2 py-1 rounded ${connected ? (isDarkMode? 'bg-green-900/40 text-green-200':'bg-green-100 text-green-700') : (isDarkMode? 'bg-gray-800 text-gray-300':'bg-gray-100 text-gray-600')}`}>
+          <div className={`text-xs font-medium px-3 py-1 rounded-full shadow ${
+            connected ? (isDarkMode? 'bg-green-900/40 text-green-200':'bg-green-100 text-green-700') : (isDarkMode? 'bg-gray-800 text-gray-300':'bg-gray-100 text-gray-600')
+          }`}>
             {connected ? 'Connected' : 'Offline'}
           </div>
         </div>
-
         {/* Messages list */}
-        <div ref={scrollRef} className={`flex-1 overflow-y-auto rounded border ${isDarkMode? 'bg-gray-800 border-gray-700':'bg-white border-gray-200'} p-4 space-y-3`}> 
+        <div ref={scrollRef} className={`flex-1 overflow-y-auto rounded-3xl shadow-xl border ${isDarkMode? 'bg-gray-800 border-gray-700':'bg-white border-gray-200'} p-6 space-y-4 mb-6`} style={{minHeight: 350}}>
           {messages.length === 0 && (
             <div className={`text-sm ${isDarkMode? 'text-gray-400':'text-gray-500'}`}>No messages yet. Start the conversation below.</div>
           )}
           {messages.map((m,i)=>{
             const when = (()=>{ try { return new Date(m.createdAt||Date.now()).toLocaleString(); } catch { return ''; } })();
             const mine = m.from === 'company';
-            const bubbleCommon = 'max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow border';
+            const bubbleCommon = 'max-w-[80%] rounded-2xl px-5 py-3 text-base shadow border';
             const mineStyle = isDarkMode? 'bg-[#ff8200] text-white border-[#ff9200]' : 'bg-[#ff8200] text-white border-[#ff8200]';
             const otherStyle = isDarkMode? 'bg-gray-700 border-gray-600' : 'bg-gray-100 border-gray-200';
             return (
               <div key={i} className={`flex ${mine? 'justify-end':'justify-start'}`}>
                 <div className={`${bubbleCommon} ${mine? mineStyle : otherStyle}`}>
-                  <div className={`text-[10px] mb-1 opacity-70 ${mine? 'text-white':(isDarkMode? 'text-gray-300':'text-gray-500')}`}>{mine? 'You':'Admin'} • {when}</div>
+                  <div className={`text-xs mb-1 opacity-70 ${mine? 'text-white':(isDarkMode? 'text-gray-300':'text-gray-500')}`}>{mine? 'You':'Admin'} • {when}</div>
                   <div className="whitespace-pre-wrap break-words leading-snug">{m.message}</div>
                 </div>
               </div>
@@ -177,18 +185,21 @@ export default function Messages({ isDarkMode }) {
           })}
           <div ref={bottomRef} />
         </div>
-
         {/* Composer */}
-        <form onSubmit={handleSend} className="mt-4 flex gap-2">
+        <form onSubmit={handleSend} className="mt-2 flex gap-3">
           <input
             type="text"
             value={input}
             onChange={(e)=>setInput(e.target.value)}
-            placeholder="Type a message..."
-            className={`flex-1 rounded-full border px-4 py-2 ${isDarkMode? 'bg-gray-800 border-gray-600 placeholder-gray-500':'bg-white border-gray-300 placeholder-gray-400'}`}
+            placeholder="Type a message…"
+            className={`flex-1 rounded-full border px-5 py-3 text-base shadow ${isDarkMode? 'bg-gray-800 border-gray-600 placeholder-gray-500':'bg-white border-gray-300 placeholder-gray-400'}`}
             maxLength={2000}
           />
-          <button disabled={sending || !input.trim()} className={`px-5 py-2 rounded-full font-medium text-white ${sending||!input.trim()? 'bg-gray-400 cursor-not-allowed':'bg-[#ff8200] hover:bg-[#e57400]'}`}>{sending? 'Sending...':'Send'}</button>
+          <button disabled={sending || !input.trim()} className={`px-7 py-3 rounded-full font-bold text-lg text-white shadow-lg ${
+            sending||!input.trim()? 'bg-gray-400 cursor-not-allowed':'bg-gradient-to-r from-[#ff8200] to-[#ffb347] hover:from-[#e57400] hover:to-[#ffb347]'
+          } transition-all duration-200`}>
+            {sending? 'Sending…':'Send'}
+          </button>
         </form>
       </div>
     </div>
