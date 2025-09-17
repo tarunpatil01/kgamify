@@ -35,8 +35,8 @@ const PLAN_DESCRIPTIONS = {
       'Post up to 50 active jobs',
       'All Standard Sponsored features',
       '“Urgently Hiring” tag & company branding',
-      'Featured job slots & maximum reach',
-      'Advanced analytics & insights'
+      'Featured job slots & maximum reach'
+      
     ]
   },
   resume: {
@@ -96,24 +96,22 @@ export default function Plans({ isDarkMode = false }) {
         <h1 className="text-4xl font-extrabold mb-2 text-white drop-shadow-lg">Choose Your Plan</h1>
         <p className="text-lg opacity-90 mb-2 text-white font-medium">Select a subscription to post jobs, boost visibility, and access premium hiring features.</p>
       </div>
-      <div className="w-full max-w-7xl px-4">
+      <div className="w-full max-w-7xl px-4 flex flex-col">
         {error && <div className={`mb-4 p-3 rounded ${isDarkMode ? 'bg-red-900 text-red-200 border-red-700' : 'bg-red-50 text-red-600 border-red-200'} text-sm border`}>{error}</div>}
         {success && <div className={`mb-4 p-3 rounded ${isDarkMode ? 'bg-green-900 text-green-200 border-green-700' : 'bg-green-50 text-green-700 border-green-200'} text-sm border`}>{success}</div>}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch mb-8">
           {cards.map((p, idx) => {
             const desc = PLAN_DESCRIPTIONS[p.key];
             const active = company?.subscriptionPlan === p.key && company?.subscriptionStatus === 'active';
-            // Add-on card style
             const isAddon = p.key === 'resume';
-            // Add margin-bottom for all except last card
-            const cardMargin = idx < cards.length - 1 ? 'mb-6' : '';
+            // Remove mb-6 margin for all cards
             return (
               <div
                 key={p.key}
                 className={`relative rounded-3xl border ${p.color} ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} p-8 flex flex-col shadow-xl hover:shadow-2xl transition-all duration-200 hover:-translate-y-1
-                  ${isAddon ? 'border-2 border-green-400 ring-2 ring-green-100 dark:ring-green-900' : ''} ${cardMargin}
+                  ${isAddon ? 'border-2 border-green-400 ring-2 ring-green-100 dark:ring-green-900' : ''}
                 `}
-                style={isAddon ? { minHeight: 420 } : {}}
+                style={{ minHeight: 420, height: 420, display: 'flex', flexDirection: 'column' }}
               >
                 <div className="flex items-center gap-3 mb-2">
                   {p.icon}
@@ -163,9 +161,13 @@ export default function Plans({ isDarkMode = false }) {
             );
           })}
         </div>
+        {/* ...footer or any content below cards... */}
+        {/* Add your footer or next section here */}
       </div>
     </div>
   );
 }
 
+Plans.propTypes = { isDarkMode: PropTypes.bool };
+Plans.propTypes = { isDarkMode: PropTypes.bool };
 Plans.propTypes = { isDarkMode: PropTypes.bool };
