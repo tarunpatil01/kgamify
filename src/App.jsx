@@ -156,9 +156,10 @@ function AppContent() {
             {/* Mobile Sidebar Overlay */}
             {isMobileView && isSidebarOpen && (
               <div
-                className="fixed inset-0 bg-black bg-opacity-40 z-80 md:hidden"
+                className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-[60] md:hidden"
                 onClick={() => setIsSidebarOpen(false)}
                 aria-hidden="true"
+                role="presentation"
               />
             )}
             
@@ -167,27 +168,22 @@ function AppContent() {
               <div
                 className={`${
                   isMobileView
-                    ? // Mobile: off-canvas below navbar (top-16) and full height minus navbar
-                      "fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 z-60 transform transition-transform md:hidden"
+                    ? // Mobile off-canvas: include translate on container itself
+                      `fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 z-[90] md:hidden transition-transform duration-300 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-lg ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
                     : // Desktop: static width, collapsible
-                      `${isSidebarOpen ? "w-64" : "w-20"} relative z-[1000] hidden md:block`
+                      `${isSidebarOpen ? 'w-64' : 'w-20'} relative z-[1000] hidden md:block`
                 }`}
-                style={{ willChange: "transform" }}
+                style={{ willChange: 'transform' }}
+                aria-modal={isMobileView && isSidebarOpen ? 'true' : undefined}
+                role={isMobileView && isSidebarOpen ? 'dialog' : undefined}
               >
-                {/* Mobile translate for off-canvas */}
-                {isMobileView && (
-                  <div
-                    className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} h-full transition-transform duration-300`}
-                  >
-                    <Sidebar
-                      onToggle={setIsSidebarOpen}
-                      isOpen={isSidebarOpen}
-                      isDarkMode={isDarkMode}
-                    />
-                  </div>
-                )}
-                {/* Desktop Sidebar */}
-                {!isMobileView && (
+                {isMobileView ? (
+                  <Sidebar
+                    onToggle={setIsSidebarOpen}
+                    isOpen={isSidebarOpen}
+                    isDarkMode={isDarkMode}
+                  />
+                ) : (
                   <div className="h-full overflow-visible z-50 relative">
                     <Sidebar
                       onToggle={setIsSidebarOpen}
