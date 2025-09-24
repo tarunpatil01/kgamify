@@ -71,10 +71,14 @@ export default function Plans({ isDarkMode = false }) {
     try {
       setLoadingPlan(plan);
       const res = await chooseSubscription(company.email, plan);
-      const updated = { ...company, ...res.company };
-      localStorage.setItem('companyData', JSON.stringify(updated));
-      setCompany(updated);
-      setSuccess(`${PLAN_DESCRIPTIONS[plan].title} plan activated`);
+      if (res?.company) {
+        const updated = { ...company, ...res.company };
+        localStorage.setItem('companyData', JSON.stringify(updated));
+        setCompany(updated);
+      }
+      const baseMsg = `${PLAN_DESCRIPTIONS[plan].title} plan activated`;
+      const limitMsg = res?.planLimits ? ` • Limit: ${res.planLimits} active jobs` : '';
+      setSuccess(baseMsg + limitMsg);
     } catch(err){
       setError(err.message||'Failed to choose plan');
     } finally { setLoadingPlan(''); }
@@ -100,7 +104,7 @@ export default function Plans({ isDarkMode = false }) {
         {error && <div className={`mb-4 p-3 rounded ${isDarkMode ? 'bg-red-900 text-red-200 border-red-700' : 'bg-red-50 text-red-600 border-red-200'} text-sm border`}>{error}</div>}
         {success && <div className={`mb-4 p-3 rounded ${isDarkMode ? 'bg-green-900 text-green-200 border-green-700' : 'bg-green-50 text-green-700 border-green-200'} text-sm border`}>{success}</div>}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch mb-8">
-          {cards.map((p, idx) => {
+          {cards.map((p) => {
             const desc = PLAN_DESCRIPTIONS[p.key];
             const active = company?.subscriptionPlan === p.key && company?.subscriptionStatus === 'active';
             const isAddon = p.key === 'resume';

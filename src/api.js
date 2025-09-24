@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from './config/env.js';
+import backoff from './utils/backoff.js';
 
 const API_URL = config.API_URL;
 const AI_API_URL = config.AI_API_URL;
@@ -403,13 +404,6 @@ export async function resendSignupOtp(email) {
 }
 
 // Subscription & profile helpers (company routes mounted at /api/companies)
-const backoff = async (fn, { retries = 2, base = 400 } = {}) => {
-  let attempt = 0; let lastErr;
-  while (attempt <= retries) {
-    try { return await fn(); } catch (e) { lastErr = e; attempt += 1; if (attempt > retries) break; const delay = base * Math.pow(2, attempt - 1) + Math.random()*120; await new Promise(r=>setTimeout(r, delay)); }
-  }
-  throw lastErr;
-};
 
 export async function chooseSubscription(email, plan) {
   if (!email) throw new Error('email required');

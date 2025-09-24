@@ -9,7 +9,7 @@ import {
   Alert,
   TextareaAutosize,
 } from "@mui/material";
-import { createJob } from "../api";
+import { createJob, getCompanyInfo } from "../api";
 import QuillEditor from '../components/QuillEditor'; // Added import for QuillEditor
 import PropTypes from 'prop-types';
 
@@ -68,6 +68,23 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
   const [openSnackbar, setOpenSnackbar] = useState(false); // State for Snackbar
   const [jdFiles, setJdFiles] = useState([]);
   const [jdError, setJdError] = useState("");
+  const [planMeta, setPlanMeta] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = userCompany || JSON.parse(localStorage.getItem('companyData') || 'null');
+        const emailToUse = stored?.email || email;
+        if (!emailToUse) return;
+        const fresh = await getCompanyInfo(emailToUse);
+        const plan = fresh.subscriptionPlan || 'free';
+        const limits = { free: 1, silver: 5, gold: 20 };
+        const limit = limits[plan] ?? 0;
+        const remaining = Math.max(0, (limit - (fresh.activeJobCount || 0)));
+        setPlanMeta({ plan, limit, remaining, status: fresh.subscriptionStatus });
+      } catch { /* ignore */ }
+    })();
+  }, [email, userCompany]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -152,9 +169,17 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
             : "bg-white border-orange-200"
         } p-6 sm:p-10`}
       >
-        <h1 className="text-3xl sm:text-4xl font-extrabold mb-8 text-center tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg">
-          Create a Job Post
-        </h1>
+        <div className="flex flex-col items-center mb-8 gap-2">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-center tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg">
+            Create a Job Post
+          </h1>
+          {planMeta && (
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <span className={`px-2 py-1 rounded-full border ${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-orange-300 text-orange-800'} bg-white/10`}>{planMeta.plan} plan</span>
+              <span className={`px-2 py-1 rounded-full ${planMeta.remaining>0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>{planMeta.remaining} / {planMeta.limit} posts remaining</span>
+            </div>
+          )}
+        </div>
         <form className="space-y-8" onSubmit={handleSubmit}>
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300">
