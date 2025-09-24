@@ -402,18 +402,38 @@ export async function resendSignupOtp(email) {
   return j;
 }
 
+// Subscription & profile helpers (company routes mounted at /api/companies)
 export async function chooseSubscription(email, plan) {
-  const res = await fetch(`${API_URL}/company/subscription/choose`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, plan }) });
-  const j = await res.json();
-  if (!res.ok) throw new Error(j.error || 'Subscription failed');
-  return j;
+  const res = await fetch(`${API_URL}/companies/subscription/choose`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, plan })
+  });
+  const raw = await res.text();
+  let json;
+  try { json = raw ? JSON.parse(raw) : {}; } catch {
+    // HTML or plain text came back (likely 404/500 returning fallback page)
+    throw new Error(`Subscription failed (status ${res.status})`);
+  }
+  if (!res.ok) throw new Error(json.error || 'Subscription failed');
+  // Backend currently returns only { message, planLimits }; refresh company info for caller convenience
+  try {
+    const updated = await getCompanyInfo(email);
+    return { ...json, company: updated };
+  } catch {
+    return json;
+  }
 }
 
 export async function completeProfile(formData) {
-  const res = await fetch(`${API_URL}/company/profile/complete`, { method: 'POST', body: formData });
-  const j = await res.json();
-  if (!res.ok) throw new Error(j.error || 'Profile update failed');
-  return j;
+  const res = await fetch(`${API_URL}/companies/profile/complete`, { method: 'POST', body: formData });
+  const raw = await res.text();
+  let json;
+  try { json = raw ? JSON.parse(raw) : {}; } catch {
+    throw new Error(`Profile update failed (status ${res.status})`);
+  }
+  if (!res.ok) throw new Error(json.error || 'Profile update failed');
+  return json;
 }
 
 // ---------------- Notifications (in-app) ----------------

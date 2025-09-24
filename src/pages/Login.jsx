@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaSpinner, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import Klogo from '../assets/KLOGO.png';
+import SplitText from '../components/SplitText.jsx';
 import { loginCompany, resendSignupOtp } from '../api';
 import PropTypes from 'prop-types';
 import { quickEmail, quickPassword } from '../utils/validation';
@@ -234,9 +235,21 @@ const Login = ({ setLoggedInEmail }) => {
             alt="kGamify Logo"
             className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 object-contain drop-shadow-lg"
           />
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-center tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg mb-1">
-            Welcome Back
-          </h1>
+          <SplitText
+            text="Welcome Back"
+            tag="h1"
+            className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg mb-1"
+            delay={80}
+            duration={0.5}
+            ease="power3.out"
+            splitType="chars"
+            from={{ opacity: 0, y: 30 }}
+            to={{ opacity: 1, y: 0 }}
+            threshold={0.05}
+            rootMargin="-50px"
+            scroll={false}
+            charClassName="bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent"
+          />
           <p className="text-black text-base sm:text-lg">
             Sign in to your kGamify account
           </p>
