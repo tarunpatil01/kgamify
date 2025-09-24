@@ -195,11 +195,23 @@ export default function LimitedAccessBanner({ company, isDarkMode, $isDarkmode, 
         </div>
       )}
       {planInfo && (
-        <div className={`mt-2 text-[11px] flex flex-col sm:flex-row sm:items-center gap-2 ${effectiveDark ? 'text-gray-300' : 'text-yellow-800'}`}>
+        <div className={`mt-2 text-[11px] flex flex-col gap-1 ${effectiveDark ? 'text-gray-300' : 'text-yellow-800'}`}>
           {planInfo.plan === 'free' ? (
             <span><strong>Free plan is Live.</strong> Job post limit: {planInfo.limit}. Remaining: {planInfo.remaining}.</span>
           ) : (
             <span><strong>{planInfo.plan.charAt(0).toUpperCase()+planInfo.plan.slice(1)} plan active.</strong> {planInfo.daysRemaining !== null ? `${planInfo.daysRemaining} day${planInfo.daysRemaining === 1 ? '' : 's'} remaining.` : 'No expiry.'} Posts remaining: {planInfo.remaining}/{planInfo.limit}.</span>
+          )}
+          {company?.subscriptionActivatedAt && (
+            <span className={effectiveDark ? 'text-gray-400' : 'text-yellow-700'}>
+              {(() => {
+                const started = new Date(company.subscriptionActivatedAt).toLocaleDateString();
+                if (company.subscriptionExpiresAt) {
+                  const exp = new Date(company.subscriptionExpiresAt).toLocaleDateString();
+                  return `Started: ${started} • Expires: ${exp}`;
+                }
+                return `Started: ${started}`;
+              })()}
+            </span>
           )}
         </div>
       )}

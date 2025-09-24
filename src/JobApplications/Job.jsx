@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import PropTypes from 'prop-types';
 import { useParams, useNavigate } from "react-router-dom";
 import { FaCheckCircle, FaTimesCircle, FaMapMarkerAlt, FaBriefcase, FaClock, FaMoneyBillWave, FaBuilding, FaGlobe, FaBookmark } from "react-icons/fa";
@@ -20,38 +20,63 @@ const Job = ({ isDarkMode }) => {
   const [updatingIds, setUpdatingIds] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
   // AI state
-  const [showAI, setShowAI] = useState(true);
   const [ai, setAi] = useState({ loading: false, error: '', items: [] });
   const [topN, setTopN] = useState(5);
   const [recommendedOnly, setRecommendedOnly] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch job details
-        const jobData = await getJobById(jobId);
-        setJob(jobData);
-        
-        // Fetch applications for this job
-        try {
-          const applicationsData = await getApplicationsByJobId(jobId);
-          setApplications(Array.isArray(applicationsData) ? applicationsData : []);
-  } catch {
-          setApplications([]);
-        }
-        setLoading(false);
-      } catch (e) {
-        setError(e?.message || "Failed to fetch job details");
-        setLoading(false);
+  // Cache refs to avoid re-fetching unchanged job/applications data
+  const jobCacheRef = useRef({}); // jobId -> job data
+  const appCacheRef = useRef({}); // jobId -> { items, fetchedAt }
+  const lastAppliedChangeRef = useRef(0); // timestamp of last shortlist/reject
+
+  const fetchWithRetry = useCallback(async (fn, args = [], { retries = 2, baseDelay = 400 } = {}) => {
+    let attempt = 0;
+    while (true) {
+      try { return await fn(...args); } catch (err) {
+        attempt += 1;
+        if (attempt > retries) throw err;
+        const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 120;
+        await new Promise(r => setTimeout(r, delay));
       }
-    };
+    }
+  }, []);
 
-    fetchData();
-  }, [jobId, navigate]);
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Job: use cache if present
+      if (jobCacheRef.current[jobId]) {
+        setJob(jobCacheRef.current[jobId]);
+      } else {
+        const jobData = await fetchWithRetry(getJobById, [jobId]);
+        jobCacheRef.current[jobId] = jobData;
+        setJob(jobData);
+      }
+      // Applications: reuse cache if no status changes since last fetch
+      const cacheEntry = appCacheRef.current[jobId];
+      const changedRecently = Date.now() - lastAppliedChangeRef.current < 5000; // within 5s of mutation always refetch
+      if (cacheEntry && !changedRecently) {
+        setApplications(cacheEntry.items);
+      } else {
+        try {
+          const applicationsData = await fetchWithRetry(getApplicationsByJobId, [jobId]);
+          const list = Array.isArray(applicationsData) ? applicationsData : [];
+          appCacheRef.current[jobId] = { items: list, fetchedAt: Date.now() };
+          setApplications(list);
+        } catch {
+          if (!cacheEntry) setApplications([]); // only clear if no cache fallback
+        }
+      }
+    } catch (e) {
+      setError(e?.message || 'Failed to fetch job details');
+    } finally {
+      setLoading(false);
+    }
+  }, [jobId, fetchWithRetry]);
 
-  // Fetch AI recommendations when job or topN changes
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Fetch AI recommendations when job or topN changes (still used for recommendedOnly filtering)
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -215,6 +240,9 @@ const Job = ({ isDarkMode }) => {
         await rejectApplication(applicationId);
         setSnack({ open: true, message: 'Application rejected.', severity: 'success' });
       }
+      lastAppliedChangeRef.current = Date.now();
+      // Invalidate application cache for this job so subsequent view reflects latest
+      delete appCacheRef.current[jobId];
     } catch (e) {
       // rollback
       setApplications(prevApps => prevApps.map(a => a._id === applicationId ? { ...a, status: prev } : a));
@@ -655,59 +683,7 @@ const Job = ({ isDarkMode }) => {
               {snack.message}
             </Alert>
           </Snackbar>
-          {/* AI recommendations for this job */}
-          {showAI && (
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-lg font-semibold">AI Top Candidates</div>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAI(v => !v)}
-                    className="text-xs px-2 py-1 rounded border"
-                  >
-                    {showAI ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-              </div>
-              {ai.loading && <div className="text-sm opacity-70">Fetching recommendations…</div>}
-              {ai.error && <div className="text-sm text-red-500">{ai.error}</div>}
-              {!ai.loading && !ai.error && (
-                <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm overflow-x-auto`}>
-                  <table className="w-full table-auto text-sm">
-                    <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
-                      <tr>
-                        <th className="text-left py-2 px-3">Name</th>
-                        <th className="text-left py-2 px-3">Test</th>
-                        <th className="text-left py-2 px-3">Skill</th>
-                        <th className="text-left py-2 px-3">Exp</th>
-                        <th className="text-left py-2 px-3">Edu</th>
-                        <th className="text-left py-2 px-3">Final</th>
-                        <th className="text-left py-2 px-3">Resume</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-            {(ai.items || []).map((r, idx) => (
-                        <tr key={idx} className={isDarkMode ? 'border-t border-gray-700' : 'border-t border-gray-200'}>
-              <td className="py-2 px-3">{r.applicantName || r.name || 'N/A'}</td>
-                          <td className="py-2 px-3">{r.test_score ?? '—'}</td>
-                          <td className="py-2 px-3">{r.skill_score ?? '—'}</td>
-                          <td className="py-2 px-3">{r.exp_score ?? '—'}</td>
-                          <td className="py-2 px-3">{r.edu_score ?? '—'}</td>
-                          <td className="py-2 px-3 font-medium">{r.final_score ?? '—'}</td>
-                          <td className="py-2 px-3">
-                            {r.resume_url ? (
-                              <a href={r.resume_url} target="_blank" rel="noreferrer" className="text-blue-600 underline">View</a>
-                            ) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Legacy AI Top Candidates table removed as requested */}
         </div>
       </div>
     </div>

@@ -403,37 +403,31 @@ export async function resendSignupOtp(email) {
 }
 
 // Subscription & profile helpers (company routes mounted at /api/companies)
+const backoff = async (fn, { retries = 2, base = 400 } = {}) => {
+  let attempt = 0; let lastErr;
+  while (attempt <= retries) {
+    try { return await fn(); } catch (e) { lastErr = e; attempt += 1; if (attempt > retries) break; const delay = base * Math.pow(2, attempt - 1) + Math.random()*120; await new Promise(r=>setTimeout(r, delay)); }
+  }
+  throw lastErr;
+};
+
 export async function chooseSubscription(email, plan) {
-  const res = await fetch(`${API_URL}/companies/subscription/choose`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, plan })
-  });
-  const raw = await res.text();
-  let json;
-  try { json = raw ? JSON.parse(raw) : {}; } catch {
-    // HTML or plain text came back (likely 404/500 returning fallback page)
-    throw new Error(`Subscription failed (status ${res.status})`);
-  }
-  if (!res.ok) throw new Error(json.error || 'Subscription failed');
-  // Backend currently returns only { message, planLimits }; refresh company info for caller convenience
-  try {
-    const updated = await getCompanyInfo(email);
-    return { ...json, company: updated };
-  } catch {
-    return json;
-  }
+  if (!email) throw new Error('email required');
+  const result = await backoff(() => apiClient.post('/companies/subscription/choose', { email, plan }));
+  // Refresh company info
+  let updated;
+  try { updated = await getCompanyInfo(email); } catch { /* ignore */ }
+  return { ...result.data, company: updated };
 }
 
 export async function completeProfile(formData) {
-  const res = await fetch(`${API_URL}/companies/profile/complete`, { method: 'POST', body: formData });
-  const raw = await res.text();
-  let json;
-  try { json = raw ? JSON.parse(raw) : {}; } catch {
-    throw new Error(`Profile update failed (status ${res.status})`);
+  const email = formData?.get?.('email');
+  const result = await backoff(() => apiClient.post('/companies/profile/complete', formData, { headers: { 'Content-Type': 'multipart/form-data' } }));
+  // Optionally refresh cached company
+  if (email) {
+    try { const c = await getCompanyInfo(email); return { ...result.data, company: c }; } catch { /* ignore */ }
   }
-  if (!res.ok) throw new Error(json.error || 'Profile update failed');
-  return json;
+  return result.data;
 }
 
 // ---------------- Notifications (in-app) ----------------
