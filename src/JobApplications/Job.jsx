@@ -25,9 +25,28 @@ const Job = ({ isDarkMode }) => {
   const [recommendedOnly, setRecommendedOnly] = useState(true);
 
   // Cache refs to avoid re-fetching unchanged job/applications data
-  const jobCacheRef = useRef({}); // jobId -> job data
-  const appCacheRef = useRef({}); // jobId -> { items, fetchedAt }
+  const jobCacheRef = useRef({}); // jobId -> job data (in-memory)
+  const appCacheRef = useRef({}); // jobId -> { items, fetchedAt } (in-memory)
   const lastAppliedChangeRef = useRef(0); // timestamp of last shortlist/reject
+  const SESSION_KEY_JOBS = 'jobCache';
+  const SESSION_KEY_APPS = 'appCache';
+
+  // Hydrate caches from sessionStorage once
+  useEffect(() => {
+    try {
+      const jobsRaw = sessionStorage.getItem(SESSION_KEY_JOBS);
+      if (jobsRaw) jobCacheRef.current = JSON.parse(jobsRaw) || {};
+    } catch { /* ignore */ }
+    try {
+      const appsRaw = sessionStorage.getItem(SESSION_KEY_APPS);
+      if (appsRaw) appCacheRef.current = JSON.parse(appsRaw) || {};
+    } catch { /* ignore */ }
+  }, []);
+
+  const persistCaches = () => {
+    try { sessionStorage.setItem(SESSION_KEY_JOBS, JSON.stringify(jobCacheRef.current)); } catch { /* ignore */ }
+    try { sessionStorage.setItem(SESSION_KEY_APPS, JSON.stringify(appCacheRef.current)); } catch { /* ignore */ }
+  };
 
   const fetchWithRetry = useCallback(async (fn, args = [], { retries = 2, baseDelay = 400 } = {}) => {
     let attempt = 0;
@@ -45,12 +64,14 @@ const Job = ({ isDarkMode }) => {
     try {
       setLoading(true);
       // Job: use cache if present
-      if (jobCacheRef.current[jobId]) {
-        setJob(jobCacheRef.current[jobId]);
+      const jobEntry = jobCacheRef.current[jobId];
+      if (jobEntry) {
+        setJob(jobEntry);
       } else {
         const jobData = await fetchWithRetry(getJobById, [jobId]);
         jobCacheRef.current[jobId] = jobData;
         setJob(jobData);
+        persistCaches();
       }
       // Applications: reuse cache if no status changes since last fetch
       const cacheEntry = appCacheRef.current[jobId];
@@ -63,6 +84,7 @@ const Job = ({ isDarkMode }) => {
           const list = Array.isArray(applicationsData) ? applicationsData : [];
           appCacheRef.current[jobId] = { items: list, fetchedAt: Date.now() };
           setApplications(list);
+          persistCaches();
         } catch {
           if (!cacheEntry) setApplications([]); // only clear if no cache fallback
         }
@@ -492,6 +514,11 @@ const Job = ({ isDarkMode }) => {
                 className={`px-3 py-1 rounded border ${view === 'cards' ? 'bg-[#ff8200] text-white border-[#ff8200]' : (isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900')}`}
                 onClick={() => setView('cards')}
               >Cards</button>
+              <button
+                onClick={() => { lastAppliedChangeRef.current = 0; delete appCacheRef.current[jobId]; loadData(); }}
+                className={`px-3 py-1 rounded border font-medium transition-colors ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700 text-white' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-900'}`}
+                disabled={loading}
+              >{loading ? 'Refreshing…' : 'Refresh'}</button>
             </div>
           </div>
 

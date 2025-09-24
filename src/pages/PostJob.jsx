@@ -9,7 +9,8 @@ import {
   Alert,
   TextareaAutosize,
 } from "@mui/material";
-import { createJob, getCompanyInfo } from "../api";
+import { createJob } from "../api";
+import usePlanMeta from '../hooks/usePlanMeta';
 import QuillEditor from '../components/QuillEditor'; // Added import for QuillEditor
 import PropTypes from 'prop-types';
 
@@ -68,23 +69,8 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
   const [openSnackbar, setOpenSnackbar] = useState(false); // State for Snackbar
   const [jdFiles, setJdFiles] = useState([]);
   const [jdError, setJdError] = useState("");
-  const [planMeta, setPlanMeta] = useState(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const stored = userCompany || JSON.parse(localStorage.getItem('companyData') || 'null');
-        const emailToUse = stored?.email || email;
-        if (!emailToUse) return;
-        const fresh = await getCompanyInfo(emailToUse);
-        const plan = fresh.subscriptionPlan || 'free';
-        const limits = { free: 1, silver: 5, gold: 20 };
-        const limit = limits[plan] ?? 0;
-        const remaining = Math.max(0, (limit - (fresh.activeJobCount || 0)));
-        setPlanMeta({ plan, limit, remaining, status: fresh.subscriptionStatus });
-      } catch { /* ignore */ }
-    })();
-  }, [email, userCompany]);
+  const companyEmail = (userCompany && userCompany.email) || email;
+  const { planMeta } = usePlanMeta(companyEmail);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -174,9 +160,43 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
             Create a Job Post
           </h1>
           {planMeta && (
-            <div className="flex items-center gap-2 text-xs font-medium">
-              <span className={`px-2 py-1 rounded-full border ${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-orange-300 text-orange-800'} bg-white/10`}>{planMeta.plan} plan</span>
-              <span className={`px-2 py-1 rounded-full ${planMeta.remaining>0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>{planMeta.remaining} / {planMeta.limit} posts remaining</span>
+            <div className="flex items-center gap-4 text-xs font-medium">
+              <div className="relative flex items-center justify-center" style={{ width: 54, height: 54 }}>
+                {(() => {
+                  const pct = planMeta.limit ? ((planMeta.limit - planMeta.remaining) / planMeta.limit) * 100 : 0;
+                  const stroke = 6;
+                  const r = 24 - stroke/2;
+                  const circ = 2 * Math.PI * r;
+                  const offset = circ - (pct/100) * circ;
+                  return (
+                    <svg width={54} height={54} className="rotate-[-90deg]">
+                      <circle cx={27} cy={27} r={r} stroke={isDarkMode ? '#374151' : '#f3f4f6'} strokeWidth={stroke} fill="none" />
+                      <circle
+                        cx={27}
+                        cy={27}
+                        r={r}
+                        stroke={planMeta.remaining > 0 ? '#ff8200' : '#dc2626'}
+                        strokeWidth={stroke}
+                        strokeLinecap="round"
+                        strokeDasharray={circ}
+                        strokeDashoffset={offset}
+                        fill="none"
+                        className="transition-all duration-500 ease-out"
+                      />
+                      <text
+                        x="50%" y="50%" dominantBaseline="middle" textAnchor="middle"
+                        className="rotate-[90deg] fill-current"
+                        style={{ fontSize: '10px', fontWeight: 600, fill: isDarkMode ? '#fff' : '#111' }}
+                        transform="rotate(90 27 27)"
+                      >{Math.round(pct)}%</text>
+                    </svg>
+                  );
+                })()}
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className={`px-2 py-1 w-fit rounded-full border ${isDarkMode ? 'border-gray-600 text-gray-300' : 'border-orange-300 text-orange-800'} bg-white/10`}>{planMeta.plan} plan</span>
+                <span className={`px-2 py-1 w-fit rounded-full ${planMeta.remaining>0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>{planMeta.remaining} / {planMeta.limit} posts remaining</span>
+              </div>
             </div>
           )}
         </div>

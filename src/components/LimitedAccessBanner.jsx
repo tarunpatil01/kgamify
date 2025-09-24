@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import usePlanMeta from '../hooks/usePlanMeta';
 import PropTypes from 'prop-types';
 
 /**
@@ -61,21 +62,15 @@ export default function LimitedAccessBanner({ company, isDarkMode, $isDarkmode, 
   const needsSubscription = !!limitedAccess && ( !company?.subscriptionPlan || company?.subscriptionStatus !== 'active');
 
   // Active plan info (even free) when subscriptionStatus === 'active'
+  const companyEmail = company?.email;
+  const { planMeta } = usePlanMeta(companyEmail, { auto: !!companyEmail });
   const planInfo = useMemo(() => {
     if (!company || company.subscriptionStatus !== 'active') return null;
-    const plan = company.subscriptionPlan || 'free';
-    const expiresAt = company.subscriptionExpiresAt ? new Date(company.subscriptionExpiresAt) : null;
-    let daysRemaining = null;
-    if (expiresAt) {
-      const ms = expiresAt.getTime() - Date.now();
-      daysRemaining = Math.max(0, Math.ceil(ms / (1000*60*60*24)));
+    if (planMeta) {
+      return { plan: planMeta.plan, daysRemaining: planMeta.daysRemaining, limit: planMeta.limit, remaining: planMeta.remaining };
     }
-    const PLAN_LIMITS = { free: 1, silver: 5, gold: 20 };
-    const limit = PLAN_LIMITS[plan] ?? 0;
-    const used = company.activeJobCount || 0;
-    const remaining = Math.max(0, limit - used);
-    return { plan, daysRemaining, limit, remaining };
-  }, [company]);
+    return null;
+  }, [company, planMeta]);
 
   const [showFieldDetails, setShowFieldDetails] = useState(false);
 
