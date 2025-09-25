@@ -30,7 +30,7 @@ router.post('/register-basic', async (req, res) => {
     }
 
     // Create minimal company (Username derive from email local-part if not set)
-    const username = email.split('@')[0] + '-' + Math.random().toString(36).slice(2,6);
+    const username = `${email.split('@')[0]  }-${  Math.random().toString(36).slice(2,6)}`;
     const nowYear = new Date().getFullYear().toString();
     const company = new Company({
       companyName,

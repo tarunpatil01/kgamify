@@ -535,18 +535,37 @@ function companyAuth(req, res, next) {
 // Get paginated messages for a company by email (now requires token)
 router.get('/messages', companyAuth, async (req, res) => {
   try {
-    const { email, limit = 50, page = 1 } = req.query;
+    const { email, limit, page } = req.query;
     if (!email) return res.status(400).json({ error: 'Email is required' });
-  const company = await Company.findOne({ email }, { adminMessages: 1, lastCompanyReadAt: 1 });
+    const company = await Company.findOne({ email }, { adminMessages: 1, lastCompanyReadAt: 1 });
     if (!company) return res.status(404).json({ error: 'Company not found' });
     const msgs = Array.isArray(company.adminMessages) ? company.adminMessages : [];
     const sorted = msgs.sort((a,b) => new Date(a.createdAt||0) - new Date(b.createdAt||0)); // chronological
+    
+    // If no pagination parameters provided, return ALL messages to ensure complete history access
+    if (!limit && !page) {
+      // Debug logging for message retrieval verification
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[ALL MESSAGES RETRIEVED] Company: ${company.companyName || email} | Total messages: ${sorted.length} | Oldest: ${sorted[0]?.createdAt || 'N/A'} | Newest: ${sorted[sorted.length-1]?.createdAt || 'N/A'}`);
+      }
+      // mark read timestamp
+      await Company.updateOne({ email }, { $set: { lastCompanyReadAt: new Date() } }).catch(()=>{});
+      return res.json({ page: 1, total: sorted.length, messages: sorted });
+    }
+    
+    // Otherwise, use existing pagination logic
     const l = Math.min(100, Math.max(1, parseInt(limit,10)||50));
     const p = Math.max(1, parseInt(page,10)||1);
     const start = (p-1)*l;
     const slice = sorted.slice(start, start + l);
-  // mark read timestamp
-  await Company.updateOne({ email }, { $set: { lastCompanyReadAt: new Date() } }).catch(()=>{});
+    
+    // Debug logging for paginated retrieval
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[PAGINATED MESSAGES] Company: ${company.companyName || email} | Page: ${p} | Limit: ${l} | Returned: ${slice.length}/${sorted.length} total`);
+    }
+    
+    // mark read timestamp
+    await Company.updateOne({ email }, { $set: { lastCompanyReadAt: new Date() } }).catch(()=>{});
     return res.json({ page: p, total: sorted.length, messages: slice });
   } catch {
     return res.status(500).json({ error: 'Failed to fetch messages' });
@@ -564,6 +583,12 @@ router.post('/messages', companyAuth, async (req, res) => {
     const msgDoc = { type: 'info', message: String(message).slice(0, 2000), from: 'company', createdAt: new Date() };
     company.adminMessages.push(msgDoc);
     await company.save({ validateModifiedOnly: true });
+    
+    // Debug logging for message saving verification
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[MESSAGE SAVED] Company: ${company.companyName} | Total messages: ${company.adminMessages.length} | Latest: "${msgDoc.message.substring(0, 50)}..."`);
+    }
+    
     // Socket emit
     try {
       const io = req.app.get('io');
