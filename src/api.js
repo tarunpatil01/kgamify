@@ -135,12 +135,18 @@ export const getCompanyInfo = async (email) => {
 };
 
 // Company messaging (chat-like)
-export const getCompanyMessages = async (email, page = 1, limit = 50) => {
+export const getCompanyMessages = async (email, page = null, limit = null) => {
   if (!email) throw new Error('Email required');
   const token = localStorage.getItem('companyToken');
   const headers = {};
   if (token) headers['company-auth'] = token;
-  const response = await axios.get(`${API_URL}/companies/messages`, { params: { email, page, limit }, headers });
+  
+  // Build params object, only include pagination if explicitly provided
+  const params = { email };
+  if (page !== null) params.page = page;
+  if (limit !== null) params.limit = limit;
+  
+  const response = await axios.get(`${API_URL}/companies/messages`, { params, headers });
   return response.data;
 };
 

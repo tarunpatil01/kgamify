@@ -24,7 +24,6 @@ export default function Messages({ isDarkMode }) {
   const [sending, setSending] = useState(false);
   const [files, setFiles] = useState([]);
   const [connected, setConnected] = useState(false);
-  const [page] = useState(1);
   const bottomRef = useRef(null);
   const scrollRef = useRef(null);
 
@@ -60,7 +59,7 @@ export default function Messages({ isDarkMode }) {
       }
       if (!company?._id) return;
       try {
-        const data = await getCompanyMessages(company.email, page, 200);
+        const data = await getCompanyMessages(company.email); // Remove pagination to get ALL messages
         if (active) {
           const list = Array.isArray(data.messages) ? data.messages : [];
           setMessages(list);
@@ -97,7 +96,7 @@ export default function Messages({ isDarkMode }) {
       active = false;
       try { socket?.emit('leave', `company:${company?._id}`); socket?.disconnect(); } catch { /* ignore disconnect */ }
     };
-  }, [company?._id, company?.email, page]);
+  }, [company?._id, company?.email]);
 
   const handleSend = async (e) => {
     e.preventDefault();

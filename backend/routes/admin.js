@@ -294,9 +294,9 @@ router.post('/revoke-access/:id', adminAuth, auditLogger({
 // Get messages for a given company id
 router.get('/company/:id/messages', adminAuth, async (req, res) => {
   try {
-  const company = await Company.findById(req.params.id, { adminMessages: 1, companyName: 1, email: 1, lastAdminReadAt: 1 });
+    const company = await Company.findById(req.params.id, { adminMessages: 1, companyName: 1, email: 1, lastAdminReadAt: 1 });
     if (!company) return res.status(404).json({ message: 'Company not found' });
-  const msgs = Array.isArray(company.adminMessages) ? company.adminMessages.sort((a,b)=> new Date(a.createdAt||0) - new Date(b.createdAt||0)) : [];
+    const msgs = Array.isArray(company.adminMessages) ? company.adminMessages.sort((a,b)=> new Date(a.createdAt||0) - new Date(b.createdAt||0)) : [];
   // update read timestamp
   await Company.updateOne({ _id: company._id }, { $set: { lastAdminReadAt: new Date() } }).catch(()=>{});
     res.json({ company: { id: company._id, companyName: company.companyName, email: company.email }, messages: msgs });
@@ -317,7 +317,13 @@ router.post('/company/:id/messages', adminAuth, upload.array('attachments', 5), 
   const msgDoc = { type: 'info', message: String(message || '').slice(0, 2000), from: 'admin', createdAt: new Date(), attachments, clientId };
     company.adminMessages.push(msgDoc);
     await company.save({ validateModifiedOnly: true });
-  // We purposefully do not set lastCompanyReadAt here so UI can show unread for company
+    
+    // Debug logging for message saving verification
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[ADMIN MESSAGE SAVED] To: ${company.companyName} | Total messages: ${company.adminMessages.length} | Latest: "${msgDoc.message.substring(0, 50)}..."`);
+    }
+    
+    // We purposefully do not set lastCompanyReadAt here so UI can show unread for company
     // Emit real-time event via Socket.IO (room: company:<id>)
     try {
       const io = req.app.get('io');

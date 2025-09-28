@@ -108,7 +108,7 @@ app.get('/health', (req, res) => {
 });
 
 // Connect to MongoDB
-// eslint-disable-next-line no-console
+ 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => { devLog('MongoDB connected'); })
   .catch(err => { devError('MongoDB connection error:', err); });
