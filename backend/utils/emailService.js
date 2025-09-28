@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
 
 // SMTP Configuration
 const createTransporter = () => {
@@ -30,7 +32,8 @@ const renderEmail = ({
   preheader = '',
   bodyHtml = '',
   cta = null, // { label, url }
-  footerNote = ''
+  footerNote = '',
+  logoSrc
 }) => {
   const brand = 'kGamify';
     // Note: frontend base may be used by callers to build URLs; kept implicit here
@@ -55,7 +58,7 @@ const renderEmail = ({
     : '';
 
   const frontend = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
-  const logoUrl = process.env.BRAND_LOGO_URL || `${frontend}/KLOGO.png`;
+  const logoUrl = logoSrc || process.env.BRAND_LOGO_URL || `${frontend}/KLOGO.png`;
   return `
   <!doctype html>
   <html>
@@ -114,6 +117,18 @@ const renderEmail = ({
   </html>`;
 };
 
+// Resolve logo strategy (cid or absolute url)
+const resolveLogo = () => {
+  const frontend = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const brandLogoUrl = process.env.BRAND_LOGO_URL;
+  const shouldEmbed = String(process.env.EMAIL_EMBED_LOGO || (!brandLogoUrl)).toLowerCase() === 'true';
+
+  if (shouldEmbed) {
+    return { logoSrc: 'cid:brandlogo@kgamify', embed: true, frontend };
+  }
+  return { logoSrc: brandLogoUrl || `${frontend}/KLOGO.png`, embed: false, frontend };
+};
+
 // Email templates
 const emailTemplates = {
   jobApplication: (data) => ({
@@ -134,7 +149,8 @@ const emailTemplates = {
           <p style="margin:0;color:#065f46;">${(data.coverLetter || 'No cover letter provided')}</p>
         </div>
       `,
-      cta: { label: 'Review in Dashboard', url: `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard` }
+      cta: { label: 'Review in Dashboard', url: `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard` },
+      logoSrc: data.logoSrc
     })
   }),
 
@@ -148,11 +164,12 @@ const emailTemplates = {
           <p style="margin:0 0 8px 0;"><strong>Job Title:</strong> ${data.jobTitle}</p>
           <p style="margin:0 0 8px 0;"><strong>Company:</strong> ${data.companyName}</p>
           <p style="margin:0 0 8px 0;"><strong>Location:</strong> ${data.location || 'Not specified'}</p>
-          <p style="margin:0 0 8px 0;"><strong>Salary:</strong> ${data.salary ? `$${Number(data.salary).toLocaleString()}` : 'Not specified'}</p>
+          <p style="margin:0 0 8px 0;"><strong>Salary / Project Value:</strong> ${data.salary ? String(data.salary) : 'Not specified'}</p>
           <p style="margin:0;"><strong>Posted On:</strong> ${new Date().toLocaleDateString()}</p>
         </div>
       `,
-      cta: { label: 'View in Dashboard', url: `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard` }
+      cta: { label: 'View in Dashboard', url: `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard` },
+      logoSrc: data.logoSrc
     })
   }),
 
@@ -173,7 +190,8 @@ const emailTemplates = {
             <p style="margin:0;color:#065f46;white-space:pre-wrap;">${String(data.message).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
           </div>
         ` : ''}
-      `
+      `,
+      logoSrc: data.logoSrc
     })
   }),
 
@@ -188,7 +206,8 @@ const emailTemplates = {
         <p style="color:#6b7280;font-size:14px;margin:0;">This link will expire in 1 hour.</p>
       `,
       cta: { label: 'Reset Password', url: data.resetLink },
-      footerNote: 'If you didn\'t request this, you can safely ignore this email.'
+      footerNote: 'If you didn\'t request this, you can safely ignore this email.',
+      logoSrc: data.logoSrc
     })
   }),
 
@@ -205,7 +224,8 @@ const emailTemplates = {
           ${data.code}
         </div>
         <p style="margin-top:16px;color:#6b7280;font-size:14px;">This code expires in ${data.expiresInMinutes || 10} minutes. For your security, never share this code with anyone.</p>
-      `
+      `,
+      logoSrc: data.logoSrc
     })
   }),
 
@@ -219,7 +239,8 @@ const emailTemplates = {
         <p>Hi ${data.contactName || data.companyName || 'there'},</p>
         <p>Your company <strong>${data.companyName}</strong> has been approved on kGamify. You can now log in and start posting jobs and managing applications.</p>
       `,
-      cta: { label: 'Go to Login', url: data.loginUrl || `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/login` }
+      cta: { label: 'Go to Login', url: data.loginUrl || `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/login` },
+      logoSrc: data.logoSrc
     })
   }),
 
@@ -238,7 +259,8 @@ const emailTemplates = {
         </div>
         <p style="font-size:14px;color:#4b5563;">Please log in to reply or view the full conversation.</p>
       `,
-      cta: { label: 'View Messages', url: data.messagesUrl }
+      cta: { label: 'View Messages', url: data.messagesUrl },
+      logoSrc: data.logoSrc
     })
   }),
 
@@ -253,7 +275,8 @@ const emailTemplates = {
         <p>Your account has been placed on hold${data.reason ? ` for the following reason: <strong>${String(data.reason).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong>` : ''}.</p>
         <p>Please log in to view messages from the admin team for details and next steps.</p>
       `,
-      cta: { label: 'Review Messages', url: data.messagesUrl }
+      cta: { label: 'Review Messages', url: data.messagesUrl },
+      logoSrc: data.logoSrc
     })
   }),
 
@@ -267,7 +290,8 @@ const emailTemplates = {
         <p>Hi ${data.companyName || 'there'},</p>
         <p>Your registration was denied${data.reason ? ` for the following reason: <strong>${String(data.reason).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong>` : ''}.</p>
         <p>You may re-register after addressing the issues noted by our team.</p>
-      `
+      `,
+      logoSrc: data.logoSrc
     })
   }),
 
@@ -298,7 +322,37 @@ const sendEmail = async (to, template, data) => {
     if (!emailTemplates[template]) {
       throw new Error(`Unknown email template: ${template}`);
     }
-    const emailContent = emailTemplates[template](data);
+    // Decide logo strategy and optionally embed as CID
+    const attachments = [];
+    const { logoSrc, embed, frontend } = resolveLogo();
+    if (embed) {
+      // try reading local image file first
+      const candidates = [
+        path.resolve(__dirname, '../../src/assets/KLOGO.png'),
+        path.resolve(__dirname, '../../public/KLOGO.png')
+      ];
+      let content = null;
+      for (const p of candidates) {
+        try {
+          if (fs.existsSync(p)) {
+            content = fs.readFileSync(p);
+            break;
+          }
+        } catch {
+          if (process.env.NODE_ENV !== 'production') {
+            // ignore read errors
+          }
+        }
+      }
+      if (content) {
+        attachments.push({ filename: 'logo.png', content, cid: 'brandlogo@kgamify' });
+      } else {
+        // fallback: let nodemailer fetch and embed from a URL
+        attachments.push({ filename: 'logo.png', path: `${frontend}/KLOGO.png`, cid: 'brandlogo@kgamify' });
+      }
+    }
+
+    const emailContent = emailTemplates[template]({ ...data, logoSrc });
 
     const mailOptions = {
       from: {
@@ -307,7 +361,8 @@ const sendEmail = async (to, template, data) => {
       },
       to,
       subject: emailContent.subject,
-      html: emailContent.html
+      html: emailContent.html,
+      attachments: attachments.length ? attachments : undefined
     };
 
   const result = await transporter.sendMail(mailOptions);
@@ -340,6 +395,7 @@ const sendBulkEmails = async (recipients, template, data) => {
 const sendVerificationEmail = async (email, verificationToken) => {
   const base = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
   const verificationLink = `${base}/verify-email?token=${verificationToken}`;
+  const { logoSrc } = resolveLogo();
 
   const emailContent = {
     subject: 'Verify Your Email - kGamify',
@@ -351,6 +407,7 @@ const sendVerificationEmail = async (email, verificationToken) => {
         <p>Thank you for registering. Please verify your email address to complete your registration.</p>
       `,
       cta: { label: 'Verify Email Address', url: verificationLink },
+      logoSrc,
       footerNote: 'If you didn\'t create this account, please ignore this email.'
     })
   };
