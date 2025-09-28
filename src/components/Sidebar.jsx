@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   FaHome, 
@@ -19,6 +19,7 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false, unreadMessages 
   const [localIsOpen, setLocalIsOpen] = useState(isOpen);
   const location = useLocation();
   const isForgetPasswordPage = location.pathname === "/forgot-password";
+  const prevPathRef = useRef(location.pathname);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -39,6 +40,17 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false, unreadMessages 
     return () => window.removeEventListener('resize', handleResize);
   }, [localIsOpen, onToggle]);
 
+  // Auto-collapse on route change for mobile only (avoid on initial mount)
+  useEffect(() => {
+    if (prevPathRef.current !== location.pathname) {
+      if (typeof window !== 'undefined' && window.innerWidth < 768 && localIsOpen) {
+        setLocalIsOpen(false);
+        onToggle(false);
+      }
+      prevPathRef.current = location.pathname;
+    }
+  }, [location.pathname, localIsOpen, onToggle]);
+
   if (isForgetPasswordPage) {
     return null;
   }
@@ -47,6 +59,14 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false, unreadMessages 
     const newState = !localIsOpen;
     setLocalIsOpen(newState);
     onToggle(newState);
+  };
+
+  // Collapse when user taps a nav link on small screens
+  const handleNavClick = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768 && localIsOpen) {
+      setLocalIsOpen(false);
+      onToggle(false);
+    }
   };
 
   const handleLogout = () => {
@@ -139,6 +159,7 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false, unreadMessages 
               isOpen={localIsOpen}
               isActive={isActivePath(item.to)}
               isDarkMode={isDarkMode}
+              onNavigate={handleNavClick}
             />
           ))}
           
@@ -197,9 +218,9 @@ function Sidebar({ onToggle, isOpen = false, isDarkMode = false, unreadMessages 
 }
 
 // Modern SidebarLink component
-function SidebarLink({ to, icon: Icon, text, isOpen, isActive, isDarkMode = false, badge }) {
+function SidebarLink({ to, icon: Icon, text, isOpen, isActive, isDarkMode = false, badge, onNavigate }) {
   return (
-    <Link to={to} className="relative group">
+    <Link to={to} className="relative group" onClick={onNavigate}>
       <div
         className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 ${
           isActive
@@ -251,6 +272,7 @@ SidebarLink.propTypes = {
   isActive: PropTypes.bool.isRequired,
   isDarkMode: PropTypes.bool,
   badge: PropTypes.number,
+  onNavigate: PropTypes.func,
 };
 
 export default Sidebar;

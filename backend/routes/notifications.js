@@ -4,6 +4,58 @@ const { sendEmail, sendBulkEmails, sendVerificationEmail } = require('../utils/e
 const Job = require('../models/Job');
 const Application = require('../models/Application');
 
+// In-memory store for demo purposes (avoid 404s). Replace with DB in future.
+const memStore = {
+  byEmail: new Map()
+};
+
+function getListForEmail(email) {
+  if (!email) return [];
+  if (!memStore.byEmail.has(email)) memStore.byEmail.set(email, []);
+  return memStore.byEmail.get(email);
+}
+
+// Minimal list endpoint for in-app notifications UI
+router.get('/list', async (req, res) => {
+  try {
+    const { email } = req.query;
+    // Provide an empty list (or previously stored items) to avoid 404 spam
+    const list = getListForEmail(email).slice(-50); // cap to last 50
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Mark selected notifications as read
+router.post('/mark-read', async (req, res) => {
+  try {
+    const { email, ids } = req.body || {};
+    if (!email || !Array.isArray(ids)) return res.status(400).json({ success: false, message: 'Invalid payload' });
+    const list = getListForEmail(email);
+    ids.forEach(id => {
+      const item = list.find(n => String(n.id || n._id) === String(id));
+      if (item) item.read = true;
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Mark all notifications as read
+router.post('/mark-all-read', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ success: false, message: 'Invalid payload' });
+    const list = getListForEmail(email);
+    list.forEach(n => { n.read = true; });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 // Send job application notification to employer
 router.post('/job-application', async (req, res) => {
   try {

@@ -36,7 +36,7 @@ const Hero = ({ companyLogo, userCompany, cleanDescription, isDarkMode }) => {
     ? "bg-gradient-to-r from-gray-900 to-[#ff8200]"
     : "bg-gradient-to-r from-[#ff8200] to-[#ffb347]";
   return (
-    <header className={`w-full ${headerGradient} py-10 md:py-14 mb-8 flex flex-col items-center text-center px-4`}>
+    <header className={`w-full ${headerGradient} py-10 md:py-14 mb-8 rounded-4xl flex flex-col items-center text-center px-4`}>
       <img
         src={companyLogo}
         alt={`${userCompany?.companyName || 'Company'} logo`}

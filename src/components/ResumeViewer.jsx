@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FaFilePdf, FaDownload, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaFilePdf, FaExternalLinkAlt } from 'react-icons/fa';
 import PropTypes from 'prop-types';
 
 // variant: 'card' | 'inline'
@@ -20,8 +20,7 @@ const ResumeViewer = ({ resumeUrl, applicantName, variant = 'card' }) => {
     setIsLoading(false);
   };
 
-  // Filename for display
-  const fileName = resumeUrl.split('/').pop();
+  // Filename intentionally hidden per requirement
 
   if (variant === 'inline') {
     return (
@@ -29,10 +28,7 @@ const ResumeViewer = ({ resumeUrl, applicantName, variant = 'card' }) => {
         <div className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-lg">
           <FaFilePdf className="w-5 h-5 text-red-500" />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate" title={fileName}>{fileName}</div>
-        </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 ml-1">
           <button
             onClick={handleViewResume}
             disabled={isLoading}
@@ -40,15 +36,6 @@ const ResumeViewer = ({ resumeUrl, applicantName, variant = 'card' }) => {
           >
             <FaExternalLinkAlt className="mr-1.5" /> View
           </button>
-          <a
-            href={resumeUrl}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center px-2.5 py-1.5 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors text-xs"
-          >
-            <FaDownload className="mr-1.5" /> Download
-          </a>
         </div>
       </div>
     );
@@ -62,9 +49,6 @@ const ResumeViewer = ({ resumeUrl, applicantName, variant = 'card' }) => {
         </div>
         <div className="flex-grow text-center sm:text-left">
           <h3 className="font-medium">{applicantName}&apos;s Resume</h3>
-          <p className="text-sm text-gray-500 truncate max-w-xs" title={fileName}>
-            {fileName}
-          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -74,15 +58,6 @@ const ResumeViewer = ({ resumeUrl, applicantName, variant = 'card' }) => {
           >
             <FaExternalLinkAlt className="mr-2" /> View
           </button>
-          <a
-            href={resumeUrl}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors text-sm"
-          >
-            <FaDownload className="mr-2" /> Download
-          </a>
         </div>
       </div>
     </div>

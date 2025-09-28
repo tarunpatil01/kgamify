@@ -25,6 +25,7 @@ const EditRegistration = lazy(() => import("./pages/EditRegistration"));
 const AdminPortal = lazy(() => import("./pages/AdminPortal"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminMessages = lazy(() => import("./pages/AdminMessages"));
+const AdminApplicants = lazy(() => import("./pages/AdminApplicants"));
 const EditJob = lazy(() => import("./pages/EditJob"));
 const Job = lazy(() => import("./JobApplications/Job.jsx"));
 const JobApplication = lazy(() => import("./pages/JobApplication"));
@@ -38,7 +39,7 @@ function AppContent() {
   const location = useLocation();
   const isLoginPage = ["/","/register","/forgot-password","/reset-password","/admin-login","/verify-email"].includes(location.pathname);
   
-  const isAdminPage = location.pathname === "/admin" || location.pathname.startsWith('/admin/messages');
+  const isAdminPage = location.pathname.startsWith('/admin');
   
   const showNavbar = !isLoginPage && !isAdminPage;
   const showSidebar = !isLoginPage && !isAdminPage;
@@ -152,6 +153,7 @@ function AppContent() {
           </div>
         ) : (
           /* Dashboard layout with sidebar and main content */
+          <>
           <div className="flex min-h-screen">
             {/* Mobile Sidebar Overlay */}
             {isMobileView && isSidebarOpen && (
@@ -163,15 +165,15 @@ function AppContent() {
               />
             )}
             
-            {/* Sidebar - Fixed width */}
+            {/* Sidebar - Fixed on desktop, off-canvas on mobile */}
             {showSidebar && (
               <div
                 className={`${
                   isMobileView
                     ? // Mobile off-canvas: include translate on container itself
                       `fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 z-[90] md:hidden transition-transform duration-300 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-lg ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
-                    : // Desktop: static width, collapsible
-                      `${isSidebarOpen ? 'w-64' : 'w-20'} relative z-[1000] hidden md:block`
+                    : // Desktop: fixed, collapsible width
+                      `${isSidebarOpen ? 'w-64' : 'w-20'} hidden md:block fixed left-0 top-0 h-screen z-[1000]`
                 }`}
                 style={{ willChange: 'transform' }}
                 aria-modal={isMobileView && isSidebarOpen ? 'true' : undefined}
@@ -197,8 +199,10 @@ function AppContent() {
             
             {/* Main Content Area - Flexible width */}
             <div
-              className={`flex-1 flex flex-col min-w-0 md:ml-4 transform transition-transform duration-300 ${
+              className={`flex-1 flex flex-col min-w-0 transform transition-transform duration-300 ${
                 isMobileView && isSidebarOpen ? "translate-x-64" : "translate-x-0"
+              } ${
+                showSidebar ? (isSidebarOpen ? 'md:ml-64' : 'md:ml-20') : ''
               }`}
               aria-hidden={isMobileView && isSidebarOpen ? "true" : "false"}
             >
@@ -209,6 +213,7 @@ function AppContent() {
                     onSidebarToggle={() => setIsSidebarOpen(!isSidebarOpen)}
                     onThemeToggle={handleThemeToggle}
                     isDarkMode={isDarkMode}
+                    $isDarkMode={isDarkMode}
                     userCompany={loggedInCompany || {}}
                     email={loggedInEmail}
                   />
@@ -246,8 +251,9 @@ function AppContent() {
                               </div>
                             </div>
                           ) : (
-                            <Dashboard 
-                              isDarkMode={isDarkMode} 
+                                <Dashboard 
+                                  isDarkMode={isDarkMode} 
+                                  $isDarkMode={isDarkMode}
                               email={loggedInEmail}
                               userCompany={loggedInCompany}
                             />
@@ -282,57 +288,72 @@ function AppContent() {
                             </div>
                           </div>
                         ) : (
-                          <PostJob isDarkMode={isDarkMode} email={loggedInEmail} userCompany={loggedInCompany} />
+                          <PostJob isDarkMode={isDarkMode} $isDarkMode={isDarkMode} email={loggedInEmail} userCompany={loggedInCompany} />
                         )
                       }
                     />
                     <Route
                       path="/job-posted"
                       element={
-                        <JobPosted isDarkMode={isDarkMode} email={loggedInEmail} />
+                        <JobPosted isDarkMode={isDarkMode} $isDarkMode={isDarkMode} email={loggedInEmail} />
                       }
                     />
                     <Route
                       path="/Edit-Registration"
-                      element={<EditRegistration isDarkMode={isDarkMode} />}
+                      element={<EditRegistration isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
                     />
                     <Route
                       path="/applications"
-                      element={<Applications isDarkMode={isDarkMode} />}
+                      element={<Applications isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
                     />
                     <Route
                       path="/messages"
-                      element={<Messages isDarkMode={isDarkMode} />}
+                      element={<Messages isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
                     />
                     <Route
                       path="/admin"
-                      element={<AdminPortal isDarkMode={isDarkMode} />}
+                      element={<AdminPortal isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
                     />
                     <Route
                       path="/admin/messages/:companyId"
-                      element={<AdminMessages isDarkMode={isDarkMode} />}
+                      element={<AdminMessages isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
+                    />
+                    <Route
+                      path="/admin/applicants/:companyId"
+                      element={<AdminApplicants isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
                     />
                     <Route
                       path="/edit-job/:jobId"
-                      element={<EditJob isDarkMode={isDarkMode} />}
+                      element={<EditJob isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
                     />
                     <Route
                       path="/job/:jobId"
-                      element={<Job isDarkMode={isDarkMode} />}
+                      element={<Job isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
                     />
                     <Route
                       path="/apply/:jobId"
-                      element={<JobApplication />}
+                      element={<JobApplication $isDarkMode={isDarkMode} />}
                     />
-                    <Route path="/plans" element={<Plans isDarkMode={isDarkMode} />} />
+                    <Route path="/plans" element={<Plans isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />} />
                   </Routes>
                 </Suspense>
               </div>
               
-              {/* Footer */}
-              <Footer isDarkMode={isDarkMode} />
             </div>
           </div>
+          {/* Footer should shift with content when sidebar opens */}
+          {!isAdminPage && (
+            <div
+              className={`transform transition-transform duration-300 ${
+                isMobileView && isSidebarOpen ? 'translate-x-64' : 'translate-x-0'
+              } ${
+                showSidebar ? (isSidebarOpen ? 'md:ml-64' : 'md:ml-20') : ''
+              }`}
+            >
+              <Footer isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />
+            </div>
+          )}
+          </>
         )}
       </div>
     </ErrorBoundary>

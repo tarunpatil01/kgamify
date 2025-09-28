@@ -17,7 +17,8 @@ import {
 import { fetchNotifications, markNotificationsRead, markAllNotificationsRead } from '../api';
 import Klogo from '../assets/KLOGO.png';
 
-function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null, email = '' }) {
+  function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, $isDarkMode, userCompany = null, email = '' }) {
+    const dark = $isDarkMode ?? isDarkMode;
   const location = useLocation();
   const navigate = useNavigate();
   const isForgetPasswordPage = location.pathname === "/forgot-password";
@@ -160,7 +161,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
 
   return (
     <nav className={`sticky top-0 z-30 w-full border-b backdrop-blur-sm transition-colors ${
-      isDarkMode 
+      dark 
         ? "bg-gray-900/95 border-gray-700" 
         : "bg-white/95 border-gray-200"
     }`}>
@@ -190,14 +191,14 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
               <div className="block min-w-0">
                 <h1
                   className="font-heading font-bold title-strong text-base sm:text-lg md:text-xl truncate max-w-[45vw] md:max-w-none"
-                  style={{ color: isDarkMode ? '#f3f4f6' : '#111827' }}
+                  style={{ color: dark ? '#f3f4f6' : '#111827' }}
                 >
                   {getPageTitle()}
                 </h1>
                 {userCompany?.companyName && (
                   <p
                     className="text-xs sm:text-sm subtitle-muted font-medium truncate max-w-[45vw] md:max-w-none"
-                    style={{ color: isDarkMode ? '#d1d5db' : '#374151' }}
+                    style={{ color: dark ? '#d1d5db' : '#374151' }}
                   >
                     {userCompany.companyName}
                   </p>
@@ -235,7 +236,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
               className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
               aria-label="Toggle theme"
             >
-              {isDarkMode ? (
+              {dark ? (
                 <FaSun className="h-5 w-5 text-yellow-500" />
               ) : (
                 <FaMoon className="h-5 w-5 text-gray-600" />
@@ -249,7 +250,7 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
                 className="relative p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 aria-label="Notifications"
               >
-                <FaBell className={`h-5 w-5 ${isDarkMode ? 'text-gray-300' : 'dark:text-gray-800'}`} />
+                <FaBell className={`h-5 w-5 ${dark ? 'text-gray-300' : 'dark:text-gray-800'}`} />
                 {unreadNotifications > 0 && (
                   <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                     {unreadNotifications}
@@ -261,21 +262,21 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
               {showNotifications && (
                 <div
                   className={`absolute right-0 mt-2 w-80 rounded-lg shadow-lg border z-50 ${
-                    isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                    dark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                   }`}
                 >
-                  <div className={`p-4 border-b flex items-center justify-between gap-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <h3 className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Notifications</h3>
+                  <div className={`p-4 border-b flex items-center justify-between gap-2 ${dark ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <h3 className={`font-semibold ${dark ? 'text-gray-100' : 'text-gray-900'}`}>Notifications</h3>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={hydrateNotifications}
-                        className={`text-xs px-2 py-1 rounded border ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'} transition`}
+                        className={`text-xs px-2 py-1 rounded border ${dark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'} transition`}
                         title="Refresh"
                       >↻</button>
                       <button
                         onClick={handleMarkAll}
                         disabled={markingAll || unreadNotifications === 0}
-                        className={`text-xs px-2 py-1 rounded border font-medium ${unreadNotifications === 0 ? 'opacity-40 cursor-not-allowed' : ''} ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'} transition`}
+                        className={`text-xs px-2 py-1 rounded border font-medium ${unreadNotifications === 0 ? 'opacity-40 cursor-not-allowed' : ''} ${dark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'} transition`}
                       >{markingAll ? '…' : 'Mark all'}</button>
                     </div>
                   </div>
@@ -295,24 +296,24 @@ function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, userCompany = null
                         key={n.id}
                         onMouseEnter={() => handleItemVisible(n.id)}
                         className={`p-4 border-b flex gap-3 items-start transition-colors ${
-                          isDarkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-100 hover:bg-gray-50'
+                          dark ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-100 hover:bg-gray-50'
                         } ${!n.read ? (isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50') : ''}`}
                       >
                         {!n.read ? (
                           <span className="mt-1 h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
                         ) : (
-                          <FaCheck className={`mt-0.5 h-3 w-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                          <FaCheck className={`mt-0.5 h-3 w-3 ${dark ? 'text-gray-500' : 'text-gray-400'}`} />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm leading-snug ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>{n.message}</p>
-                          <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatAgo(n.createdAt)}</p>
+                          <p className={`text-sm leading-snug ${dark ? 'text-gray-100' : 'text-gray-700'}`}>{n.message}</p>
+                          <p className={`text-[11px] mt-1 ${dark ? 'text-gray-400' : 'text-gray-500'}`}>{formatAgo(n.createdAt)}</p>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className={`p-3 text-center border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <div className={`p-3 text-center border-t ${dark ? 'border-gray-700' : 'border-gray-200'}`}>
                     <button className={`text-sm font-medium ${
-                      isDarkMode ? 'text-kgamify-500 hover:text-kgamify-400' : 'text-kgamify-500 hover:text-kgamify-600'
+                      dark ? 'text-kgamify-500 hover:text-kgamify-400' : 'text-kgamify-500 hover:text-kgamify-600'
                     }`}>
                       View all notifications
                     </button>
@@ -405,6 +406,7 @@ Navbar.propTypes = {
   onSidebarToggle: PropTypes.func.isRequired,
   onThemeToggle: PropTypes.func.isRequired,
   isDarkMode: PropTypes.bool.isRequired,
+  $isDarkMode: PropTypes.bool,
   userCompany: PropTypes.shape({
     companyName: PropTypes.string,
     logo: PropTypes.string

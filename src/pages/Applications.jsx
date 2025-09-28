@@ -67,6 +67,9 @@ export default function Applications({ isDarkMode }) {
       if (column === 'name') {
         return prev === 'nameAsc' ? 'nameDesc' : 'nameAsc';
       }
+      if (column === 'role') {
+        return prev === 'roleAsc' ? 'roleDesc' : 'roleAsc';
+      }
       if (column === 'date') {
         return prev === 'dateAsc' ? 'dateDesc' : 'dateAsc';
       }
@@ -129,6 +132,16 @@ export default function Applications({ isDarkMode }) {
         return (a.applicantName || '').localeCompare(b.applicantName || '');
       case 'nameDesc':
         return (b.applicantName || '').localeCompare(a.applicantName || '');
+      case 'roleAsc': {
+        const ar = (a.jobTitle || a.role || '').toLowerCase();
+        const br = (b.jobTitle || b.role || '').toLowerCase();
+        return ar.localeCompare(br);
+      }
+      case 'roleDesc': {
+        const ar = (a.jobTitle || a.role || '').toLowerCase();
+        const br = (b.jobTitle || b.role || '').toLowerCase();
+        return br.localeCompare(ar);
+      }
       case 'dateAsc':
         return (
           new Date(a.appliedAt).getTime() - new Date(b.appliedAt).getTime()
@@ -308,7 +321,13 @@ export default function Applications({ isDarkMode }) {
                         >
                           Name {sortBy === 'nameAsc' ? '▲' : sortBy === 'nameDesc' ? '▼' : ''}
                         </th>
-                        <th className="px-4 py-3 text-left text-base font-semibold">Role</th>
+                        <th
+                          className={`px-4 py-3 text-left select-none cursor-pointer text-base font-semibold ${sortBy.startsWith('role') ? 'text-orange-600' : ''}`}
+                          onClick={() => handleSort('role')}
+                          title="Sort by role"
+                        >
+                          Role {sortBy === 'roleAsc' ? '▲' : sortBy === 'roleDesc' ? '▼' : ''}
+                        </th>
                         <th className="px-4 py-3 text-left text-base font-semibold">Status</th>
                         <th
                           className={`px-4 py-3 text-left select-none cursor-pointer text-base font-semibold ${sortBy.startsWith('date') ? 'text-orange-600' : ''}`}

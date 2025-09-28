@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { 
   FaCheck, FaTimes, FaBuilding, FaCalendarAlt, FaEnvelope, 
   FaPhone, FaGlobeAmericas, FaUserCircle, FaKey, FaLock,
-  FaSignOutAlt, FaHome, FaClock, FaCheckCircle, FaUser
+  FaSignOutAlt, FaClock, FaCheckCircle, FaUser
 } from "react-icons/fa";
 import { changeAdminPassword, denyCompanyWithReason, holdCompanyWithReason, revokeCompanyAccess } from "../api";
 import logoUrl from "../assets/KLOGO.png";
@@ -63,8 +63,9 @@ const AdminPortal = ({ isDarkMode }) => {
   const [holdCompanies, setHoldCompanies] = useState([]);
   const [filters, setFilters] = useState({ q: '', sort: 'updatedAt', order: 'desc' });
   const [filterModal, setFilterModal] = useState(false);
-  const pageSize = 10;
   const [pages, setPages] = useState({ pending: 1, approved: 1, hold: 1, denied: 1 });
+  const [expanded, setExpanded] = useState({});
+  const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
 
   // (Optional) Filters & sorting could be added here if needed
 
@@ -458,14 +459,6 @@ const AdminPortal = ({ isDarkMode }) => {
                 </div>
               )}
               
-              <button
-                onClick={() => navigate('/')}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center text-sm"
-              >
-                <FaHome className="mr-1.5" /> 
-                <span className="hidden md:inline">Main Site</span>
-              </button>
-              
               <button 
                 onClick={handleLogout}
                 className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center text-sm"
@@ -579,7 +572,7 @@ const AdminPortal = ({ isDarkMode }) => {
       </h2>
 
   {(activeTab === 'hold' || activeTab === 'denied' || activeTab === 'pending' || activeTab === 'approved') && (
-    <div className="mb-4 flex items-center gap-3">
+    <div className="mb-4 flex flex-wrap items-center gap-3">
       <button onClick={()=>setFilterModal(true)} className="px-4 py-2 rounded bg-[#ff8200] text-white text-sm hover:bg-[#e57400]">Open Filters</button>
       {(filters.q || filters.sort !== 'updatedAt' || filters.order !== 'desc') && (
         <button onClick={()=>setFilters({ q:'', sort:'updatedAt', order:'desc' })} className="text-xs underline text-[#ff8200]">Clear</button>
@@ -602,7 +595,7 @@ const AdminPortal = ({ isDarkMode }) => {
             </div>
           ) : (
       <div className="grid grid-cols-1 gap-6">
-    {(() => { const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const page = pages.pending; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
+  {(() => { const pageSize = 10; const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const page = pages.pending; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -650,11 +643,17 @@ const AdminPortal = ({ isDarkMode }) => {
                         >
                           Messages
                         </button>
+                        <button
+                          onClick={()=> navigate(`/admin/applicants/${company._id}`)}
+                          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors shadow-sm"
+                        >
+                          Applicants
+                        </button>
                       </div>
                       
                     </div>
                   </div>
-                  
+                  {expanded[company._id] && (
                   <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className={`p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
@@ -759,15 +758,33 @@ const AdminPortal = ({ isDarkMode }) => {
                       </div>
                     )}
                   </div>
+                  )}
+                  <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-end">
+                      <button
+                        onClick={()=> toggleExpand(company._id)}
+                        className={`text-sm font-medium underline ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                      >
+                        {expanded[company._id] ? 'View less' : 'View more'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )); })()}
-              {(() => { const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const total = Math.max(1, Math.ceil(all.length / pageSize)); if (total <=1) return null; return (
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-                  <button disabled={pages.pending===1} onClick={()=>setPages(p=>({...p,pending:p.pending-1}))} className={`px-3 py-1 rounded border ${pages.pending===1?'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDarkMode?'border-gray-600':'border-gray-300'}`}>Prev</button>
-                  {Array.from({ length: total }).map((_,i)=>(
-                    <button key={i} onClick={()=>setPages(p=>({...p,pending:i+1}))} className={`px-3 py-1 rounded border ${pages.pending===i+1? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode? 'border-gray-600':'border-gray-300'}`}>{i+1}</button>
+              {(() => { const pageSize = 10; const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
+                <div className="mt-4 mb-6 w-full flex flex-wrap items-center justify-center gap-2 text-sm">
+                  <button disabled={pages.pending===1} onClick={()=>setPages(p=>({...p,pending:Math.max(1, p.pending-1)}))} className={`mr-2 ${pages.pending===1? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
+                    &lt;
+                  </button>
+                  {Array.from({ length: total }).map((_,i)=> (
+                    <span key={i} className="flex items-center">
+                      <button onClick={()=>setPages(p=>({...p,pending:i+1}))} className={`${pages.pending===i+1? 'text-[#ff8200] font-semibold underline' : isDarkMode? 'text-gray-200 hover:underline':'text-gray-800 hover:underline'} px-1`}>{i+1}</button>
+                      {i < total-1 && <span className="mx-1 opacity-60">,</span>}
+                    </span>
                   ))}
-                  <button disabled={pages.pending===total} onClick={()=>setPages(p=>({...p,pending:p.pending+1}))} className={`px-3 py-1 rounded border ${pages.pending===total?'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDarkMode?'border-gray-600':'border-gray-300'}`}>Next</button>
+                  <button disabled={pages.pending===total} onClick={()=>setPages(p=>({...p,pending:Math.min(total, p.pending+1)}))} className={`ml-2 ${pages.pending===total? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
+                    &gt;
+                  </button>
                 </div> ); })()}
             </div>
           )}
@@ -804,7 +821,7 @@ const AdminPortal = ({ isDarkMode }) => {
                   Refresh List
                 </button>
               </div>
-        {(() => { const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const page = pages.approved; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
+  {(() => { const pageSize = 10; const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const page = pages.approved; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -844,10 +861,16 @@ const AdminPortal = ({ isDarkMode }) => {
                         >
                           Messages
                         </button>
+                        <button
+                          onClick={()=> navigate(`/admin/applicants/${company._id}`)}
+                          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors shadow-sm"
+                        >
+                          Applicants
+                        </button>
                       </div>
                     </div>
                   </div>
-                  
+                  {expanded[company._id] && (
                   <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className={`p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
@@ -960,15 +983,33 @@ const AdminPortal = ({ isDarkMode }) => {
                       </div>
                     )}
                   </div>
+                  )}
+                  <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-end">
+                      <button
+                        onClick={()=> toggleExpand(company._id)}
+                        className={`text-sm font-medium underline ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                      >
+                        {expanded[company._id] ? 'View less' : 'View more'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )); })()}
-              {(() => { const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const total = Math.max(1, Math.ceil(all.length / pageSize)); if (total <=1) return null; return (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <button disabled={pages.approved===1} onClick={()=>setPages(p=>({...p,approved:p.approved-1}))} className={`px-3 py-1 rounded border ${pages.approved===1?'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDarkMode?'border-gray-600':'border-gray-300'}`}>Prev</button>
-                  {Array.from({ length: total }).map((_,i)=>(
-                    <button key={i} onClick={()=>setPages(p=>({...p,approved:i+1}))} className={`px-3 py-1 rounded border ${pages.approved===i+1? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode? 'border-gray-600':'border-gray-300'}`}>{i+1}</button>
+              {(() => { const pageSize = 10; const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
+                <div className="mt-2 mb-6 w-full flex flex-wrap items-center justify-center gap-2 text-sm">
+                  <button disabled={pages.approved===1} onClick={()=>setPages(p=>({...p,approved:Math.max(1, p.approved-1)}))} className={`mr-2 ${pages.approved===1? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
+                    &lt;
+                  </button>
+                  {Array.from({ length: total }).map((_,i)=> (
+                    <span key={i} className="flex items-center">
+                      <button onClick={()=>setPages(p=>({...p,approved:i+1}))} className={`${pages.approved===i+1? 'text-[#ff8200] font-semibold underline' : isDarkMode? 'text-gray-200 hover:underline':'text-gray-800 hover:underline'} px-1`}>{i+1}</button>
+                      {i < total-1 && <span className="mx-1 opacity-60">,</span>}
+                    </span>
                   ))}
-                  <button disabled={pages.approved===total} onClick={()=>setPages(p=>({...p,approved:p.approved+1}))} className={`px-3 py-1 rounded border ${pages.approved===total?'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDarkMode?'border-gray-600':'border-gray-300'}`}>Next</button>
+                  <button disabled={pages.approved===total} onClick={()=>setPages(p=>({...p,approved:Math.min(total, p.approved+1)}))} className={`ml-2 ${pages.approved===total? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
+                    &gt;
+                  </button>
                 </div>
               ); })()}
             </div>
@@ -991,7 +1032,7 @@ const AdminPortal = ({ isDarkMode }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {(() => { const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.denied; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
+              {(() => { const pageSize = 10; const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.denied; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1034,6 +1075,12 @@ const AdminPortal = ({ isDarkMode }) => {
                         >
                           Messages
                         </button>
+                        <button
+                          onClick={()=> navigate(`/admin/applicants/${company._id}`)}
+                          className="flex items-center px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-sm"
+                        >
+                          Applicants
+                        </button>
                       </div>
                       {/* Mobile action bar */}
                       <div className="w-full md:hidden">
@@ -1054,6 +1101,7 @@ const AdminPortal = ({ isDarkMode }) => {
                       </div>
                     </div>
                   </div>
+                  {expanded[company._id] && (
                   <div className="p-6">
                     {Array.isArray(company.adminMessages) && company.adminMessages.filter(m => m.type === 'deny').length > 0 ? (
                       <div className="text-sm">
@@ -1066,15 +1114,33 @@ const AdminPortal = ({ isDarkMode }) => {
                       <div className="text-sm opacity-70">No reason provided.</div>
                     )}
                   </div>
+                  )}
+                  <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-end">
+                      <button
+                        onClick={()=> toggleExpand(company._id)}
+                        className={`text-sm font-medium underline ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                      >
+                        {expanded[company._id] ? 'View less' : 'View more'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )); })()}
-              {(() => { const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); if (total<=1) return null; return (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <button disabled={pages.denied===1} onClick={()=>setPages(p=>({...p,denied:p.denied-1}))} className={`px-3 py-1 rounded border ${pages.denied===1?'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDarkMode?'border-gray-600':'border-gray-300'}`}>Prev</button>
-                  {Array.from({ length: total }).map((_,i)=>(
-                    <button key={i} onClick={()=>setPages(p=>({...p,denied:i+1}))} className={`px-3 py-1 rounded border ${pages.denied===i+1? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode? 'border-gray-600':'border-gray-300'}`}>{i+1}</button>
+              {(() => { const pageSize = 10; const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
+                <div className="mt-2 mb-6 w-full flex flex-wrap items-center justify-center gap-2 text-sm">
+                  <button disabled={pages.denied===1} onClick={()=>setPages(p=>({...p,denied:Math.max(1, p.denied-1)}))} className={`mr-2 ${pages.denied===1? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
+                    &lt;
+                  </button>
+                  {Array.from({ length: total }).map((_,i)=> (
+                    <span key={i} className="flex items-center">
+                      <button onClick={()=>setPages(p=>({...p,denied:i+1}))} className={`${pages.denied===i+1? 'text-[#ff8200] font-semibold underline' : isDarkMode? 'text-gray-200 hover:underline':'text-gray-800 hover:underline'} px-1`}>{i+1}</button>
+                      {i < total-1 && <span className="mx-1 opacity-60">,</span>}
+                    </span>
                   ))}
-                  <button disabled={pages.denied===total} onClick={()=>setPages(p=>({...p,denied:p.denied+1}))} className={`px-3 py-1 rounded border ${pages.denied===total?'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDarkMode?'border-gray-600':'border-gray-300'}`}>Next</button>
+                  <button disabled={pages.denied===total} onClick={()=>setPages(p=>({...p,denied:Math.min(total, p.denied+1)}))} className={`ml-2 ${pages.denied===total? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
+                    &gt;
+                  </button>
                 </div>
               ); })()}
             </div>
@@ -1096,7 +1162,7 @@ const AdminPortal = ({ isDarkMode }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {(() => { const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.hold; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
+              {(() => { const pageSize = 10; const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.hold; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between flex-wrap gap-4">
@@ -1140,9 +1206,16 @@ const AdminPortal = ({ isDarkMode }) => {
                         >
                           Messages
                         </button>
+                        <button
+                          onClick={()=> navigate(`/admin/applicants/${company._id}`)}
+                          className="flex items-center px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-sm"
+                        >
+                          Applicants
+                        </button>
                       </div>
                     </div>
                   </div>
+                  {expanded[company._id] && (
                   <div className="p-6 space-y-6">
                     {/* Reason block */}
                     <div>
@@ -1220,15 +1293,33 @@ const AdminPortal = ({ isDarkMode }) => {
                       </div>
                     )}
                   </div>
+                  )}
+                  <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex justify-end">
+                      <button
+                        onClick={()=> toggleExpand(company._id)}
+                        className={`text-sm font-medium underline ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                      >
+                        {expanded[company._id] ? 'View less' : 'View more'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )); })()}
-              {(() => { const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); if (total<=1) return null; return (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <button disabled={pages.hold===1} onClick={()=>setPages(p=>({...p,hold:p.hold-1}))} className={`px-3 py-1 rounded border ${pages.hold===1?'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDarkMode?'border-gray-600':'border-gray-300'}`}>Prev</button>
-                  {Array.from({ length: total }).map((_,i)=>(
-                    <button key={i} onClick={()=>setPages(p=>({...p,hold:i+1}))} className={`px-3 py-1 rounded border ${pages.hold===i+1? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode? 'border-gray-600':'border-gray-300'}`}>{i+1}</button>
+              {(() => { const pageSize = 10; const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
+                <div className="mt-2 mb-6 w-full flex flex-wrap items-center justify-center gap-2 text-sm">
+                  <button disabled={pages.hold===1} onClick={()=>setPages(p=>({...p,hold:Math.max(1, p.hold-1)}))} className={`mr-2 ${pages.hold===1? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
+                    &lt;
+                  </button>
+                  {Array.from({ length: total }).map((_,i)=> (
+                    <span key={i} className="flex items-center">
+                      <button onClick={()=>setPages(p=>({...p,hold:i+1}))} className={`${pages.hold===i+1? 'text-[#ff8200] font-semibold underline' : isDarkMode? 'text-gray-200 hover:underline':'text-gray-800 hover:underline'} px-1`}>{i+1}</button>
+                      {i < total-1 && <span className="mx-1 opacity-60">,</span>}
+                    </span>
                   ))}
-                  <button disabled={pages.hold===total} onClick={()=>setPages(p=>({...p,hold:p.hold+1}))} className={`px-3 py-1 rounded border ${pages.hold===total?'opacity-40 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'} ${isDarkMode?'border-gray-600':'border-gray-300'}`}>Next</button>
+                  <button disabled={pages.hold===total} onClick={()=>setPages(p=>({...p,hold:Math.min(total, p.hold+1)}))} className={`ml-2 ${pages.hold===total? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
+                    &gt;
+                  </button>
                 </div>
               ); })()}
             </div>
@@ -1474,12 +1565,48 @@ const AdminPortal = ({ isDarkMode }) => {
           )}
       </div>
       
-      {/* Custom Admin Footer */}
-      <footer className={`${isDarkMode ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600"} py-4 border-t ${isDarkMode ? "border-gray-700" : "border-gray-200"} mt-auto`}>
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <p className="text-sm">Copyright © 2021 Yantrikisoft - All Rights Reserved.</p>
-            <p className="text-sm mt-1">Version 1.0.0 | <span className="text-[#ff8200]">Admin System</span></p>
+      {/* Admin Footer (aligned with site footer) */}
+      <footer className={`bg-[#0f172a] text-gray-100 mt-8`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 gap-y-12 items-start">
+            {/* Brand */}
+            <div>
+              <div className="text-xl font-semibold">kGamify Admin</div>
+              <p className="mt-4 text-gray-300 leading-relaxed max-w-prose">
+                Administrative tools for managing companies, jobs, and applications.
+              </p>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <div className="text-white font-semibold mb-3">Quick Links</div>
+              <ul className="space-y-2">
+                <li><a className="text-gray-300 hover:text-white transition-colors" href="/admin">Overview</a></li>
+                <li><a className="text-gray-300 hover:text-white transition-colors" href="/admin">Companies</a></li>
+                <li><a className="text-gray-300 hover:text-white transition-colors" href="/admin">Jobs</a></li>
+                <li><a className="text-gray-300 hover:text-white transition-colors" href="/admin/messages">Messages</a></li>
+              </ul>
+            </div>
+
+            {/* Support */}
+            <div>
+              <div className="text-white font-semibold mb-3">Support</div>
+              <ul className="space-y-2">
+                <li><a className="text-gray-300 hover:text-white transition-colors" href="https://www.kgamify.in/privacy-policy/" target="_blank" rel="noreferrer">Privacy Policy</a></li>
+                <li><a className="text-gray-300 hover:text-white transition-colors" href="https://www.kgamify.in/terms-of-service/" target="_blank" rel="noreferrer">Terms of Service</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-10 border-t border-white/10 pt-6 flex flex-col sm:flex-row gap-3 items-center justify-between text-sm text-gray-300">
+            <p>© {new Date().getFullYear()} Yantrikisoft. All rights reserved. <span className="opacity-70">| Admin Console</span></p>
+            <div className="flex items-center gap-4">
+              <a className="text-gray-300 hover:text-white transition-colors" href="https://www.kgamify.in/privacy-policy/" target="_blank" rel="noreferrer">Privacy Policy</a>
+              <span className="opacity-30">|</span>
+              <a className="text-gray-300 hover:text-white transition-colors" href="https://www.kgamify.in/terms-of-service/" target="_blank" rel="noreferrer">Terms of Service</a>
+              <span className="opacity-30">|</span>
+              <a className="text-gray-300 hover:text-white transition-colors" href="https://www.kgamify.in/cookies/" target="_blank" rel="noreferrer">Cookie Policy</a>
+            </div>
           </div>
         </div>
       </footer>

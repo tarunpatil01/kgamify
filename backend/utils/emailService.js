@@ -40,7 +40,7 @@ const renderEmail = ({
   const ctaHtml = cta && cta.url && cta.label
     ? `<div style="margin: 28px 0 8px 0;">
       <a href="${cta.url}"
-      style="background:linear-gradient(135deg, #ee5f0f, #e74094);background-color:#ff8200;color:#ffffff;padding:12px 24px;text-decoration:none;border-radius:8px;border:2px solid transparent;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(238,95,15,0.3)" target="_blank" rel="noopener">${cta.label}</a>
+      style="background:linear-gradient(135deg, #ff7a1a, #ff4d8d);color:#ffffff;padding:14px 26px;text-decoration:none;border-radius:10px;border:0;font-weight:700;display:inline-block;box-shadow:0 6px 18px rgba(255,122,26,0.28)" target="_blank" rel="noopener">${cta.label}</a>
     </div>`
     : '';
 
@@ -65,45 +65,50 @@ const renderEmail = ({
     <head>
       <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="x-apple-disable-message-reformatting">
       <title>${title}</title>
       <style>/* fallback for clients that respect style tags */
         @media (prefers-color-scheme: dark) {
           .card { background:#0b1220 !important; color:#e5e7eb !important; }
         }
+        a { color: #ff7a1a; }
       </style>
     </head>
-    <body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;">
+    <body style="margin:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,Helvetica,sans-serif;">
       ${preheaderSpan}
+      <!-- Header -->
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="background:#ffffff;">
         <tr>
-          <td align="center" style="padding:16px 0;">
-            <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:640px;max-width:640px;">
+          <td align="center" style="padding:24px 0;border-bottom:1px solid #e5e7eb;">
+            <table role="presentation" width="680" cellspacing="0" cellpadding="0" border="0" style="width:680px;max-width:680px;">
               <tr>
-                <td align="center" style="padding:0 16px;">
-                  <img src="${logoUrl}" alt="${brand} logo" width="56" height="56" style="display:block;border:0;outline:none;text-decoration:none;height:56px;width:56px;object-fit:contain;" />
+                <td align="center" style="padding:0 24px;">
+                  <img src="${logoUrl}" alt="${brand} logo" width="72" height="72" style="display:block;border:0;outline:none;text-decoration:none;height:72px;width:72px;object-fit:contain;" />
                 </td>
               </tr>
             </table>
           </td>
         </tr>
       </table>
-      <div style="max-width:640px;margin:0 auto;padding:24px 16px;">
-  <div class="card" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:24px;box-shadow:0 12px 24px rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.08);">
-          <h2 style="margin:0 0 16px 0;color:#ff8200;font-size:20px;">${title}</h2>
-          <div style="color:#374151;font-size:15px;line-height:1.6;">
+      <!-- Body -->
+      <div style="max-width:680px;margin:0 auto;padding:28px 20px;">
+        <div class="card" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;padding:28px;box-shadow:0 10px 24px rgba(0,0,0,0.08);">
+          <h2 style="margin:0 0 16px 0;color:#ff8200;font-size:22px;line-height:1.3;">${title}</h2>
+          <div style="color:#374151;font-size:16px;line-height:1.7;">
             ${bodyHtml}
           </div>
           ${ctaHtml}
-          ${footerNote ? `<p style="margin-top:16px;color:#6b7280;font-size:12px;">${footerNote}</p>` : ''}
-          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
+          ${footerNote ? `<p style="margin-top:18px;color:#6b7280;font-size:12px;">${footerNote}</p>` : ''}
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:26px 0;"/>
           ${defaultFooter}
         </div>
-        <p style="text-align:center;color:#9ca3af;font-size:11px;margin:12px 0 0 0;">&nbsp;</p>
+        <p style="text-align:center;color:#9ca3af;font-size:11px;margin:14px 0 0 0;">&nbsp;</p>
       </div>
+      <!-- Footer -->
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#1e2938" style="background:#1e2938;">
         <tr>
-          <td align="center" style="padding:14px 16px;">
-            <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:640px;max-width:640px;">
+          <td align="center" style="padding:16px 16px;">
+            <table role="presentation" width="680" cellspacing="0" cellpadding="0" border="0" style="width:680px;max-width:680px;">
               <tr>
                 <td align="center" style="font-size:12px;color:#e5e7eb;font-family:Arial,Helvetica,sans-serif;">
                   Copyright © 2021 Yantrikisoft - All Rights Reserved.
