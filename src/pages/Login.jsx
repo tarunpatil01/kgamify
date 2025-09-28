@@ -394,6 +394,37 @@ const Login = ({ setLoggedInEmail }) => {
             ) : needsVerification ? 'Awaiting Verification' : 'Sign In'}
           </button>
 
+          {/* Terms & Policies */}
+          <p className="text-[12px] leading-5 text-center text-black/70">
+            By signing in, you agree to our
+            {' '}<a
+              href="https://www.kgamify.in/terms-of-service/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#ff8200] hover:text-[#e57400] font-semibold"
+            >
+              Terms of Service
+            </a>
+            {' '}and acknowledge our{' '}
+            <a
+              href="https://www.kgamify.in/privacy-policy/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#ff8200] hover:text-[#e57400] font-semibold"
+            >
+              Privacy Policy
+            </a>
+            {' '}and{' '}
+            <a
+              href="https://www.kgamify.in/cookies/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#ff8200] hover:text-[#e57400] font-semibold"
+            >
+              Cookie Policy
+            </a>.
+          </p>
+
           {/* Register Link */}
           <div className="text-center pt-4 border-t border-gray-200/50">
             <p className="text-black text-sm">

@@ -1,15 +1,72 @@
 import PropTypes from 'prop-types';
+import Klogo from '../assets/KLOGO.png';
+import { FaLinkedinIn, FaInstagram, FaFacebookF, FaXTwitter } from 'react-icons/fa6';
 
 function Footer({ isDarkMode }) {
+  const linkCls = "text-gray-300 hover:text-white transition-colors";
+  const sectionTitle = "text-white font-semibold mb-3";
+  const year = new Date().getFullYear();
   return (
-    <footer className={`text-center p-3 sm:p-4 ${isDarkMode ? "bg-kgamify-footer-900 text-white" : "bg-kgamify-footer-900 text-white"} mt-auto text-xs sm:text-sm`}>
-  <p>Copyright © 2021 Yantrikisoft - All Rights Reserved.</p>
+    <footer className={`${isDarkMode ? 'bg-[#0f172a] text-gray-100' : 'bg-[#0f172a] text-gray-100'} mt-auto`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          {/* Brand + About */}
+          <div>
+            <div className="flex items-center gap-3">
+              <img src={Klogo} alt="kGamify" className="w-12 h-12 rounded" />
+              <div className="text-xl font-semibold">kGamify</div>
+            </div>
+            <p className="mt-4 text-gray-300 leading-relaxed">
+              Transforming knowledge and skill-building through the power of gamification — making it fun, competitive, and rewarding.
+            </p>
+            <div className="mt-4 flex items-center gap-3 text-gray-300">
+              <a href="https://www.linkedin.com/company/kgamify" target="_blank" rel="noreferrer" aria-label="LinkedIn" className="p-2 rounded bg-white/5 hover:bg-white/10"><FaLinkedinIn /></a>
+              <a href="https://www.instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="p-2 rounded bg-white/5 hover:bg-white/10"><FaInstagram /></a>
+              <a href="https://www.facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" className="p-2 rounded bg-white/5 hover:bg-white/10"><FaFacebookF /></a>
+              <a href="https://twitter.com" target="_blank" rel="noreferrer" aria-label="X" className="p-2 rounded bg-white/5 hover:bg-white/10"><FaXTwitter /></a>
+            </div>
+          </div>
+
+          {/* Quick Links */}
+          <div>
+            <div className={sectionTitle}>Quick Links</div>
+            <ul className="space-y-2">
+              <li><a className={linkCls} href="/">Home</a></li>
+              <li><a className={linkCls} href="/features">Feature</a></li>
+              <li><a className={linkCls} href="/gallery">Gallery</a></li>
+              <li><a className={linkCls} href="/contact">Contact</a></li>
+            </ul>
+          </div>
+
+          {/* Support */}
+          <div>
+            <div className={sectionTitle}>Support</div>
+            <ul className="space-y-2">
+              <li><a className={linkCls} href="/help">Help Center</a></li>
+              <li><a className={linkCls} href="/contact">Contact Us</a></li>
+              <li><a className={linkCls} href="https://www.kgamify.in/privacy-policy/" target="_blank" rel="noreferrer">Privacy Policy</a></li>
+              <li><a className={linkCls} href="https://www.kgamify.in/terms-of-service/" target="_blank" rel="noreferrer">Terms of Service</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-10 border-t border-white/10 pt-6 flex flex-col sm:flex-row gap-3 items-center justify-between text-sm text-gray-300">
+          <p>© {year} Yantrikisoft. All rights reserved.</p>
+          <div className="flex items-center gap-4">
+            <a className={linkCls} href="https://www.kgamify.in/privacy-policy/" target="_blank" rel="noreferrer">Privacy Policy</a>
+            <span className="opacity-30">|</span>
+            <a className={linkCls} href="https://www.kgamify.in/terms-of-service/" target="_blank" rel="noreferrer">Terms of Service</a>
+            <span className="opacity-30">|</span>
+            <a className={linkCls} href="https://www.kgamify.in/cookies/" target="_blank" rel="noreferrer">Cookie Policy</a>
+          </div>
+        </div>
+      </div>
     </footer>
   );
 }
 
 Footer.propTypes = {
-  isDarkMode: PropTypes.bool.isRequired
+  isDarkMode: PropTypes.bool
 };
 
 export default Footer;
