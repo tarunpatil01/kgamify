@@ -715,7 +715,7 @@ const JobPosted = ({ isDarkMode, email }) => {
                 <div className="flex justify-between items-center mt-auto pt-4 gap-2">
                   <Link to={`/job/${job._id}`} title="View Details">
                     <button
-                      className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white rounded-xl hover:from-[#e57400] hover:to-[#ffb347] transition-colors font-medium shadow"
+                      className="flex items-center gap-1 px-5 py-2 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white rounded-lg hover:from-[#e57400] hover:to-[#ffb347] transition-colors font-medium shadow"
                       aria-label="View Details"
                     >
                       <FaEye /> <span className="hidden sm:inline">View</span>
@@ -723,14 +723,14 @@ const JobPosted = ({ isDarkMode, email }) => {
                   </Link>
                   <Link to={`/edit-job/${job._id}`} title="Edit Job">
                     <button
-                      className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-[#833f91] to-[#b47cc7] text-white rounded-xl hover:from-[#6a3274] hover:to-[#b47cc7] transition-colors font-medium shadow"
+                      className="flex items-center gap-1 px-5 py-2 bg-gradient-to-r from-[#833f91] to-[#b47cc7] text-white rounded-lg hover:from-[#6a3274] hover:to-[#b47cc7] transition-colors font-medium shadow"
                       aria-label="Edit Job"
                     >
                       <FaEdit /> <span className="hidden sm:inline">Edit</span>
                     </button>
                   </Link>
                   <button
-                    className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-red-600 to-red-400 text-white rounded-xl hover:from-red-700 hover:to-red-500 transition-colors font-medium shadow"
+                    className="flex items-center gap-1 px-5 py-2 bg-gradient-to-r from-red-600 to-red-400 text-white rounded-lg hover:from-red-700 hover:to-red-500 transition-colors font-medium shadow"
                     onClick={() => handleDelete(job._id)}
                     aria-label="Delete Job"
                     title="Delete Job"

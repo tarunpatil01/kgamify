@@ -49,6 +49,8 @@ function EditRegistration({ isDarkMode }) {
     isDarkMode ? "text-white" : "text-black"
   }`;
   const labelClass = `block mb-2 font-medium ${isDarkMode ? "text-gray-200" : "text-black"}`;
+  const Req = ({ children }) => (<span>{children} <span className="text-red-600">*</span></span>);
+  Req.propTypes = { children: PropTypes.node };
   const inputBase =
     "w-full rounded-xl border text-base font-medium focus:ring-2 focus:ring-[#ff8200] outline-none transition shadow-sm";
   const inputClass = `${inputBase} ${
@@ -381,7 +383,7 @@ function EditRegistration({ isDarkMode }) {
             <h2 className={sectionHeadingClass}>Basic Info</h2>
             <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className={labelClass}>Company Name</label>
+                <label className={labelClass}><Req>Company Name</Req></label>
                 <input
                   type="text"
                   name="companyName"
@@ -422,7 +424,7 @@ function EditRegistration({ isDarkMode }) {
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className={labelClass}>Industry</label>
+                <label className={labelClass}><Req>Industry</Req></label>
                 <input
                   type="text"
                   name="industry"
@@ -434,7 +436,7 @@ function EditRegistration({ isDarkMode }) {
             </div>
             <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className={labelClass}>Type</label>
+                <label className={labelClass}><Req>Type</Req></label>
                 <input
                   type="text"
                   name="type"
@@ -444,7 +446,7 @@ function EditRegistration({ isDarkMode }) {
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className={labelClass}>Size</label>
+                <label className={labelClass}><Req>Size</Req></label>
                 <input
                   type="text"
                   name="size"
@@ -468,7 +470,7 @@ function EditRegistration({ isDarkMode }) {
             <h2 className={sectionHeadingClass}>Contact</h2>
             <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className={labelClass}>Contact Name</label>
+                <label className={labelClass}><Req>Contact Name</Req></label>
                 <input
                   type="text"
                   name="contactName"
@@ -492,7 +494,7 @@ function EditRegistration({ isDarkMode }) {
             </div>
             <div className="mb-6 flex flex-col sm:flex-row gap-x-6">
               <div className="w-full sm:w-1/2">
-                <label className={labelClass}>Phone</label>
+                <label className={labelClass}><Req>Phone</Req></label>
                 <input
                   type="tel"
                   name="phone"
@@ -502,7 +504,7 @@ function EditRegistration({ isDarkMode }) {
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className={labelClass}>Username</label>
+                <label className={labelClass}><Req>Registration Number</Req></label>
                 <input
                   type="text"
                   name="username"
@@ -514,7 +516,7 @@ function EditRegistration({ isDarkMode }) {
             </div>
             {/* Address fields */}
             <div className="mb-6">
-              <label className={labelClass}>Address Line 1</label>
+              <label className={labelClass}><Req>Address Line 1</Req></label>
               <input
                 type="text"
                 name="addressLine1"
@@ -534,7 +536,7 @@ function EditRegistration({ isDarkMode }) {
               />
             </div>
             <div className="mb-6">
-              <label className={labelClass}>State</label>
+              <label className={labelClass}><Req>State</Req></label>
               <input
                 type="text"
                 name="state"
@@ -544,7 +546,7 @@ function EditRegistration({ isDarkMode }) {
               />
             </div>
             <div className="mb-6">
-              <label className={labelClass}>City</label>
+              <label className={labelClass}><Req>City</Req></label>
               <input
                 type="text"
                 name="city"
@@ -554,7 +556,7 @@ function EditRegistration({ isDarkMode }) {
               />
             </div>
             <div className="mb-6">
-              <label className={labelClass}>Pin Code</label>
+              <label className={labelClass}><Req>Pin Code</Req></label>
               <input
                 type="text"
                 name="pinCode"
@@ -568,7 +570,7 @@ function EditRegistration({ isDarkMode }) {
           <div>
             <h2 className={sectionHeadingClass}>Registration</h2>
             <div className="mb-6">
-              <label className={labelClass}>Year Established</label>
+              <label className={labelClass}><Req>Year Established</Req></label>
               <input
                 type="text"
                 name="yearEstablished"

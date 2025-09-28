@@ -24,155 +24,251 @@ const createTransporter = () => {
   });
 };
 
+// Core layout wrapper to ensure all emails share consistent, professional styling and disclaimers
+const renderEmail = ({
+  title = 'kGamify Notification',
+  preheader = '',
+  bodyHtml = '',
+  cta = null, // { label, url }
+  footerNote = ''
+}) => {
+  const brand = 'kGamify';
+    // Note: frontend base may be used by callers to build URLs; kept implicit here
+  const ctaHtml = cta && cta.url && cta.label
+    ? `<div style="margin: 28px 0 8px 0;">
+      <a href="${cta.url}"
+      style="background:linear-gradient(135deg, #ee5f0f, #e74094);background-color:#ff8200;color:#ffffff;padding:12px 24px;text-decoration:none;border-radius:8px;border:2px solid transparent;font-weight:600;display:inline-block;box-shadow:0 4px 12px rgba(238,95,15,0.3)" target="_blank" rel="noopener">${cta.label}</a>
+    </div>`
+    : '';
+
+  const defaultFooter = `
+    <p style="margin:4px 0;color:#6b7280;font-size:12px;line-height:1.5;">
+      If you are not the intended recipient, please ignore this email.
+    </p>
+    <p style="margin:4px 0;color:#6b7280;font-size:12px;line-height:1.5;">
+      This is an automated message from ${brand}. Please do not reply to this email.
+    </p>
+  `;
+
+  const preheaderSpan = preheader
+    ? `<span style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;color:#fff;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>`
+    : '';
+
+  const frontend = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const logoUrl = process.env.BRAND_LOGO_URL || `${frontend}/KLOGO.png`;
+  return `
+  <!doctype html>
+  <html>
+    <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>${title}</title>
+      <style>/* fallback for clients that respect style tags */
+        @media (prefers-color-scheme: dark) {
+          .card { background:#0b1220 !important; color:#e5e7eb !important; }
+        }
+      </style>
+    </head>
+    <body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;">
+      ${preheaderSpan}
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="background:#ffffff;">
+        <tr>
+          <td align="center" style="padding:16px 0;">
+            <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:640px;max-width:640px;">
+              <tr>
+                <td align="center" style="padding:0 16px;">
+                  <img src="${logoUrl}" alt="${brand} logo" width="56" height="56" style="display:block;border:0;outline:none;text-decoration:none;height:56px;width:56px;object-fit:contain;" />
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+      <div style="max-width:640px;margin:0 auto;padding:24px 16px;">
+  <div class="card" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:24px;box-shadow:0 12px 24px rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.08);">
+          <h2 style="margin:0 0 16px 0;color:#ff8200;font-size:20px;">${title}</h2>
+          <div style="color:#374151;font-size:15px;line-height:1.6;">
+            ${bodyHtml}
+          </div>
+          ${ctaHtml}
+          ${footerNote ? `<p style="margin-top:16px;color:#6b7280;font-size:12px;">${footerNote}</p>` : ''}
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
+          ${defaultFooter}
+        </div>
+        <p style="text-align:center;color:#9ca3af;font-size:11px;margin:12px 0 0 0;">&nbsp;</p>
+      </div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#1e2938" style="background:#1e2938;">
+        <tr>
+          <td align="center" style="padding:14px 16px;">
+            <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:640px;max-width:640px;">
+              <tr>
+                <td align="center" style="font-size:12px;color:#e5e7eb;font-family:Arial,Helvetica,sans-serif;">
+                  Copyright © 2021 Yantrikisoft - All Rights Reserved.
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>`;
+};
+
 // Email templates
 const emailTemplates = {
   jobApplication: (data) => ({
     subject: `New Application for ${data.jobTitle}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #3b82f6;">New Job Application Received</h2>
-        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #1f2937; margin-bottom: 15px;">Application Details</h3>
-          <p><strong>Job Title:</strong> ${data.jobTitle}</p>
-          <p><strong>Company:</strong> ${data.companyName}</p>
-          <p><strong>Applicant Name:</strong> ${data.applicantName}</p>
-          <p><strong>Applicant Email:</strong> ${data.applicantEmail}</p>
-          <p><strong>Applied On:</strong> ${new Date().toLocaleDateString()}</p>
+    html: renderEmail({
+      title: 'New Job Application Received',
+      preheader: `New application for ${data.jobTitle}`,
+      bodyHtml: `
+        <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e5e7eb;">
+          <p style="margin:0 0 8px 0;"><strong>Job Title:</strong> ${data.jobTitle}</p>
+          <p style="margin:0 0 8px 0;"><strong>Company:</strong> ${data.companyName}</p>
+          <p style="margin:0 0 8px 0;"><strong>Applicant Name:</strong> ${data.applicantName}</p>
+          <p style="margin:0 0 8px 0;"><strong>Applicant Email:</strong> ${data.applicantEmail}</p>
+          <p style="margin:0;"><strong>Applied On:</strong> ${new Date().toLocaleDateString()}</p>
         </div>
-        <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-          <p style="margin: 0; color: #065f46;"><strong>Cover Letter:</strong></p>
-          <p style="margin: 10px 0 0 0; color: #065f46;">${data.coverLetter || 'No cover letter provided'}</p>
+        <div style="background:#ecfdf5;border-left:4px solid #10b981;padding:12px 14px;border-radius:6px;margin-top:14px;">
+          <p style="margin:0 0 6px 0;color:#065f46;"><strong>Cover Letter:</strong></p>
+          <p style="margin:0;color:#065f46;">${(data.coverLetter || 'No cover letter provided')}</p>
         </div>
-        <div style="margin-top: 30px; padding: 20px; background: #fef3c7; border-radius: 8px;">
-          <p style="margin: 0; color: #92400e;">Please log in to your dashboard to review the application and download the resume.</p>
-        </div>
-      </div>
-    `
+      `,
+      cta: { label: 'Review in Dashboard', url: `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard` }
+    })
   }),
 
   jobPosted: (data) => ({
     subject: `Job Posted Successfully: ${data.jobTitle}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #10b981;">Job Posted Successfully!</h2>
-        <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #1f2937; margin-bottom: 15px;">Job Details</h3>
-          <p><strong>Job Title:</strong> ${data.jobTitle}</p>
-          <p><strong>Company:</strong> ${data.companyName}</p>
-          <p><strong>Location:</strong> ${data.location}</p>
-          <p><strong>Salary:</strong> ${data.salary ? `$${data.salary.toLocaleString()}` : 'Not specified'}</p>
-          <p><strong>Posted On:</strong> ${new Date().toLocaleDateString()}</p>
+    html: renderEmail({
+      title: 'Job Posted Successfully',
+      preheader: `Your job "${data.jobTitle}" is now live`,
+      bodyHtml: `
+  <div style="background:#ffedd5;padding:16px;border-radius:8px;border:1px solid #fdba74;">
+          <p style="margin:0 0 8px 0;"><strong>Job Title:</strong> ${data.jobTitle}</p>
+          <p style="margin:0 0 8px 0;"><strong>Company:</strong> ${data.companyName}</p>
+          <p style="margin:0 0 8px 0;"><strong>Location:</strong> ${data.location || 'Not specified'}</p>
+          <p style="margin:0 0 8px 0;"><strong>Salary:</strong> ${data.salary ? `$${Number(data.salary).toLocaleString()}` : 'Not specified'}</p>
+          <p style="margin:0;"><strong>Posted On:</strong> ${new Date().toLocaleDateString()}</p>
         </div>
-        <div style="margin-top: 30px;">
-          <a href="${process.env.FRONTEND_URL}/dashboard" 
-             style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            View in Dashboard
-          </a>
-        </div>
-      </div>
-    `
+      `,
+      cta: { label: 'View in Dashboard', url: `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard` }
+    })
   }),
 
   applicationStatusUpdate: (data) => ({
     subject: `Application Status Update: ${data.jobTitle}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #3b82f6;">Application Status Update</h2>
-        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Job Title:</strong> ${data.jobTitle}</p>
-          <p><strong>Company:</strong> ${data.companyName}</p>
-          <p><strong>Status:</strong> 
-            <span style="background: ${getStatusColor(data.status)}; color: white; padding: 4px 12px; border-radius: 4px;">
-              ${data.status}
-            </span>
-          </p>
+    html: renderEmail({
+      title: 'Application Status Update',
+      preheader: `Your application status for ${data.jobTitle} is ${data.status}`,
+      bodyHtml: `
+        <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e5e7eb;">
+          <p style="margin:0 0 8px 0;"><strong>Job Title:</strong> ${data.jobTitle}</p>
+          <p style="margin:0 0 8px 0;"><strong>Company:</strong> ${data.companyName}</p>
+          <p style="margin:0;"><strong>Status:</strong> <span style="background:${getStatusColor(data.status)};color:#fff;padding:4px 10px;border-radius:999px;text-transform:capitalize;">${data.status}</span></p>
         </div>
         ${data.message ? `
-          <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-            <p style="margin: 0; color: #065f46;"><strong>Message from employer:</strong></p>
-            <p style="margin: 10px 0 0 0; color: #065f46;">${data.message}</p>
+          <div style="background:#ffedd5;border-left:4px solid #ff8200;padding:12px 14px;border-radius:6px;margin-top:14px;">
+            <p style="margin:0 0 6px 0;color:#065f46;"><strong>Message from employer:</strong></p>
+            <p style="margin:0;color:#065f46;white-space:pre-wrap;">${String(data.message).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
           </div>
         ` : ''}
-      </div>
-    `
+      `
+    })
   }),
 
   passwordReset: (data) => ({
     subject: 'Password Reset Request - kGamify',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #dc2626;">Password Reset Request</h2>
+    html: renderEmail({
+      title: 'Password Reset Request',
+      preheader: 'Reset your kGamify account password',
+      bodyHtml: `
         <p>Hello,</p>
-  <p>We received a request to reset your password for your kGamify account.</p>
-        <div style="margin: 30px 0;">
-          <a href="${data.resetLink}" 
-             style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            Reset Password
-          </a>
-        </div>
-        <p style="color: #6b7280; font-size: 14px;">
-          This link will expire in 1 hour. If you didn't request this reset, please ignore this email.
-        </p>
-      </div>
-    `
+        <p>We received a request to reset your password for your kGamify account.</p>
+        <p style="color:#6b7280;font-size:14px;margin:0;">This link will expire in 1 hour.</p>
+      `,
+      cta: { label: 'Reset Password', url: data.resetLink },
+      footerNote: 'If you didn\'t request this, you can safely ignore this email.'
+    })
   }),
 
   // OTP email for password reset or verification
   otp: (data) => ({
     subject: 'Your kGamify OTP Code',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #3b82f6;">One-Time Password (OTP)</h2>
+    html: renderEmail({
+      title: 'One-Time Password (OTP)',
+      preheader: 'Use this code to complete your request',
+      bodyHtml: `
         <p>Hello${data.name ? ` ${data.name}` : ''},</p>
         <p>Use the following OTP to complete your request:</p>
-        <div style="font-size: 28px; font-weight: bold; letter-spacing: 4px; padding: 12px 20px; background: #f8fafc; border: 1px dashed #cbd5e1; display: inline-block; border-radius: 8px;">
+  <div style="font-size:28px;font-weight:bold;letter-spacing:4px;padding:12px 20px;background:#fff7ed;border:1px dashed #fdba74;display:inline-block;border-radius:8px;">
           ${data.code}
         </div>
-        <p style="margin-top: 16px; color: #6b7280; font-size: 14px;">This code expires in ${data.expiresInMinutes || 10} minutes.</p>
-        <p style="margin-top: 24px; color: #6b7280; font-size: 12px;">If you did not request this, you can safely ignore this email.</p>
-      </div>
-    `
+        <p style="margin-top:16px;color:#6b7280;font-size:14px;">This code expires in ${data.expiresInMinutes || 10} minutes. For your security, never share this code with anyone.</p>
+      `
+    })
   }),
 
   // Company approval notification
   companyApproved: (data) => ({
     subject: 'Your Company Has Been Approved - kGamify',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #10b981;">Congratulations!</h2>
+    html: renderEmail({
+      title: 'Company Approved',
+      preheader: 'You can now access your kGamify employer account',
+      bodyHtml: `
         <p>Hi ${data.contactName || data.companyName || 'there'},</p>
-  <p>Your company <strong>${data.companyName}</strong> has been approved on kGamify.</p>
-        <p>You can now log in and start posting jobs and managing applications.</p>
-        <div style="margin-top: 24px;">
-          <a href="${data.loginUrl || (process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : 'http://localhost:5173/login')}" 
-             style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            Go to Login
-          </a>
-        </div>
-        <p style="margin-top: 24px; color: #6b7280; font-size: 12px;">If you have questions, reply to this email.</p>
-      </div>
-    `
+        <p>Your company <strong>${data.companyName}</strong> has been approved on kGamify. You can now log in and start posting jobs and managing applications.</p>
+      `,
+      cta: { label: 'Go to Login', url: data.loginUrl || `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/login` }
+    })
   }),
 
   // Notification for a new admin message to a company
   newAdminMessage: (data) => ({
     subject: 'New Message from kGamify Admin Team',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width:600px; margin:0 auto;">
-        <h2 style="color:#3b82f6; margin-bottom:16px;">You've Got a New Message</h2>
-        <p style="font-size:15px; line-height:1.5;">Hi ${data.companyName || 'there'},</p>
-  <p style="font-size:15px; line-height:1.5;">An administrator has sent you a new message on the kGamify portal.</p>
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:16px 18px; border-radius:8px; margin:18px 0;">
-          <p style="margin:0 0 8px 0; font-weight:600; color:#1f2937;">Message Preview:</p>
-          <p style="margin:0; color:#374151; white-space:pre-wrap;">${(data.message || '').slice(0,300).replace(/</g,'&lt;').replace(/>/g,'&gt;')}${data.message && data.message.length > 300 ? '…' : ''}</p>
+    html: renderEmail({
+      title: "You've Got a New Message",
+      preheader: 'An administrator has sent you a new message',
+      bodyHtml: `
+        <p>Hi ${data.companyName || 'there'},</p>
+        <p>An administrator has sent you a new message on the kGamify portal.</p>
+  <div style="background:#fff7ed;border:1px solid #fdba74;padding:16px;border-radius:8px;margin:14px 0;">
+          <p style="margin:0 0 6px 0;font-weight:600;color:#1f2937;">Message Preview:</p>
+          <p style="margin:0;color:#374151;white-space:pre-wrap;">${(data.message || '').slice(0,300).replace(/</g,'&lt;').replace(/>/g,'&gt;')}${data.message && data.message.length > 300 ? '…' : ''}</p>
         </div>
-        <p style="font-size:14px; color:#4b5563;">Please log in to reply or view the full conversation.</p>
-        <div style="margin:28px 0 12px 0;">
-          <a href="${data.messagesUrl}" style="background:#3b82f6; color:#ffffff; padding:12px 24px; text-decoration:none; border-radius:6px; font-weight:600; display:inline-block;">View Messages</a>
-        </div>
-  <p style="font-size:12px; color:#6b7280; margin-top:32px;">This notification was sent from prasadnathe via kGamify Admin Console. If you believe you received this in error, you can ignore it.</p>
-      </div>
-    `
+        <p style="font-size:14px;color:#4b5563;">Please log in to reply or view the full conversation.</p>
+      `,
+      cta: { label: 'View Messages', url: data.messagesUrl }
+    })
+  }),
+
+  // Company put on hold
+  companyOnHold: (data) => ({
+    subject: 'Your kGamify Account Is On Hold',
+    html: renderEmail({
+      title: 'Account On Hold',
+      preheader: 'Your company account requires attention',
+      bodyHtml: `
+        <p>Hi ${data.companyName || 'there'},</p>
+        <p>Your account has been placed on hold${data.reason ? ` for the following reason: <strong>${String(data.reason).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong>` : ''}.</p>
+        <p>Please log in to view messages from the admin team for details and next steps.</p>
+      `,
+      cta: { label: 'Review Messages', url: data.messagesUrl }
+    })
+  }),
+
+  // Company registration denied
+  companyDenied: (data) => ({
+    subject: 'kGamify Registration Denied',
+    html: renderEmail({
+      title: 'Registration Denied',
+      preheader: 'Your registration was not approved',
+      bodyHtml: `
+        <p>Hi ${data.companyName || 'there'},</p>
+        <p>Your registration was denied${data.reason ? ` for the following reason: <strong>${String(data.reason).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong>` : ''}.</p>
+        <p>You may re-register after addressing the issues noted by our team.</p>
+      `
+    })
   }),
 
   // Generic/custom email passthrough
@@ -242,25 +338,21 @@ const sendBulkEmails = async (recipients, template, data) => {
 
 // Email verification
 const sendVerificationEmail = async (email, verificationToken) => {
-  const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-  
+  const base = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const verificationLink = `${base}/verify-email?token=${verificationToken}`;
+
   const emailContent = {
     subject: 'Verify Your Email - kGamify',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-  <h2 style="color: #3b82f6;">Welcome to kGamify!</h2>
-  <p>Thank you for registering with kGamify. Please verify your email address to complete your registration.</p>
-        <div style="margin: 30px 0;">
-          <a href="${verificationLink}" 
-             style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            Verify Email Address
-          </a>
-        </div>
-        <p style="color: #6b7280; font-size: 14px;">
-          If you didn't create this account, please ignore this email.
-        </p>
-      </div>
-    `
+    html: renderEmail({
+      title: 'Verify Your Email',
+      preheader: 'Confirm your email address to finish signing up',
+      bodyHtml: `
+        <p>Welcome to kGamify!</p>
+        <p>Thank you for registering. Please verify your email address to complete your registration.</p>
+      `,
+      cta: { label: 'Verify Email Address', url: verificationLink },
+      footerNote: 'If you didn\'t create this account, please ignore this email.'
+    })
   };
 
   return await sendEmail(email, 'custom', emailContent);

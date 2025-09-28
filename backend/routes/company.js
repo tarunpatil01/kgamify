@@ -553,21 +553,27 @@ router.get('/messages', companyAuth, async (req, res) => {
   }
 });
 
-// Company sends a message to admin (from company) - simple auth by email param; in future replace with proper token
-router.post('/messages', companyAuth, async (req, res) => {
+// Company sends a message to admin (from company) with optional attachments
+router.post('/messages', companyAuth, upload.array('attachments', 5), async (req, res) => {
   try {
-    const { email, message } = req.body || {};
-    if (!email || !message) return res.status(400).json({ error: 'Email and message are required' });
+  const { email, message, clientId } = req.body || {};
+    if (!email || (!message && !Array.isArray(req.files))) return res.status(400).json({ error: 'Email or content is required' });
     const company = await Company.findOne({ email });
     if (!company) return res.status(404).json({ error: 'Company not found' });
     if (!Array.isArray(company.adminMessages)) company.adminMessages = [];
-    const msgDoc = { type: 'info', message: String(message).slice(0, 2000), from: 'company', createdAt: new Date() };
+    const attachments = Array.isArray(req.files) ? req.files.map(f => ({
+      url: f.path || f.secure_url,
+      type: f.mimetype,
+      name: f.originalname,
+      size: f.size
+    })) : [];
+  const msgDoc = { type: 'info', message: String(message || '').slice(0, 2000), from: 'company', createdAt: new Date(), attachments, clientId };
     company.adminMessages.push(msgDoc);
     await company.save({ validateModifiedOnly: true });
     // Socket emit
     try {
       const io = req.app.get('io');
-      if (io) io.to(`company:${company._id}`).emit('message:new', { companyId: String(company._id), message: msgDoc });
+  if (io) io.to(`company:${company._id}`).emit('message:new', { companyId: String(company._id), message: msgDoc });
     } catch (e) {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Socket emit error (company -> admin):', e);

@@ -7,7 +7,6 @@ import {
   Autocomplete,
   Snackbar,
   Alert,
-  TextareaAutosize,
 } from "@mui/material";
 import { getJobById, editJob } from "../api";
 import QuillEditor from '../components/QuillEditor'; // Added import for QuillEditor
@@ -52,16 +51,16 @@ export default function EditJob({ isDarkMode }) {
       try {
         setLoading(true);
         const jobData = await getJobById(jobId);
-        // Map legacy experience values to new human-readable labels for backward compatibility
+        // Map legacy experience values to new numeric ranges for backward compatibility
         const legacyToLabel = {
-          'entry': 'Entry Level',
-          'entry ': 'Entry Level',
-          'junior': 'Junior',
-          'mid': 'Mid Level',
-          'mid-level': 'Mid Level',
-          'mid level': 'Mid Level',
-          'senior': 'Senior',
-          'executive': 'Executive'
+          'entry': '0-2 years',
+          'entry ': '0-2 years',
+          'junior': '0-2 years',
+          'mid': '3-5 years',
+          'mid-level': '3-5 years',
+          'mid level': '3-5 years',
+          'senior': '6-8 years',
+          'executive': '9-12 years'
         };
         const normalized = {
           ...jobData,
@@ -234,12 +233,12 @@ export default function EditJob({ isDarkMode }) {
                     '.MuiSvgIcon-root': { color: '#9ca3af' }
                   } : {}}
                 >
-                  <MenuItem value="">Select Experience Level</MenuItem>
-                  <MenuItem value="Entry Level">Entry Level</MenuItem>
-                  <MenuItem value="Junior">Junior</MenuItem>
-                  <MenuItem value="Mid Level">Mid Level</MenuItem>
-                  <MenuItem value="Senior">Senior</MenuItem>
-                  <MenuItem value="Executive">Executive</MenuItem>
+                  <MenuItem value="">Select Experience (years)</MenuItem>
+                  <MenuItem value="0-2 years">0-2 years</MenuItem>
+                  <MenuItem value="3-5 years">3-5 years</MenuItem>
+                  <MenuItem value="6-8 years">6-8 years</MenuItem>
+                  <MenuItem value="9-12 years">9-12 years</MenuItem>
+                  <MenuItem value="12+ years">12+ years</MenuItem>
                 </Select>
               </div>
             </div>
@@ -288,19 +287,14 @@ export default function EditJob({ isDarkMode }) {
             {/* Rest of form fields... */}
             <div className="mb-4 sm:mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="block">Salary Range ₹(INR)</label>
+                <label className="block">Salary / Project Value</label>
                 <TextField
                   name="salary"
                   value={formData.salary}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // Only update if the input is a number or empty
-                    if (value === "" || /^[\d,-]+$/.test(value)) {
-                      setFormData({ ...formData, salary: value });
-                    }
-                  }}
+                  onChange={handleChange}
                   fullWidth
                   className="focus:border-blue-500"
+                  placeholder="e.g., ₹50,000 per month or ₹2,00,000 per project"
                   InputProps={{ style: isDarkMode ? { color: '#e5e7eb' } : undefined }}
                   InputLabelProps={{ style: isDarkMode ? { color: '#9ca3af' } : undefined }}
                   size="small"
@@ -362,80 +356,56 @@ export default function EditJob({ isDarkMode }) {
             {/* Additional text sections mirroring PostJob */}
             <div className="mb-4 sm:mb-6">
               <label className="block">Responsibilities</label>
-              <TextareaAutosize
-                name="responsibilities"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
-                }`}
+              <QuillEditor
                 value={formData.responsibilities}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: '100%' }}
+                onChange={(content) => setFormData({ ...formData, responsibilities: content })}
+                isDarkMode={isDarkMode}
+                placeholder="List the key responsibilities..."
               />
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block">Skills</label>
-              <TextareaAutosize
-                name="skills"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
-                }`}
+              <QuillEditor
                 value={formData.skills}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: '100%' }}
+                onChange={(content) => setFormData({ ...formData, skills: content })}
+                isDarkMode={isDarkMode}
+                placeholder="List required and preferred skills..."
               />
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block">Benefits</label>
-              <TextareaAutosize
-                name="benefits"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
-                }`}
+              <QuillEditor
                 value={formData.benefits}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: '100%' }}
+                onChange={(content) => setFormData({ ...formData, benefits: content })}
+                isDarkMode={isDarkMode}
+                placeholder="Describe compensation, perks, and benefits..."
               />
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block">Eligibility</label>
-              <TextareaAutosize
-                name="eligibility"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
-                }`}
+              <QuillEditor
                 value={formData.eligibility}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: '100%' }}
+                onChange={(content) => setFormData({ ...formData, eligibility: content })}
+                isDarkMode={isDarkMode}
+                placeholder="Specify required qualifications or eligibility criteria..."
               />
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block">Company Description</label>
-              <TextareaAutosize
-                name="companyDescription"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
-                }`}
+              <QuillEditor
                 value={formData.companyDescription}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: '100%' }}
+                onChange={(content) => setFormData({ ...formData, companyDescription: content })}
+                isDarkMode={isDarkMode}
+                placeholder="Tell candidates about your company..."
               />
             </div>
             <div className="mb-4 sm:mb-6">
               <label className="block">Additional Information</label>
-              <TextareaAutosize
-                name="additionalInformation"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-400'
-                }`}
+              <QuillEditor
                 value={formData.additionalInformation}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: '100%' }}
+                onChange={(content) => setFormData({ ...formData, additionalInformation: content })}
+                isDarkMode={isDarkMode}
+                placeholder="Any other important details..."
               />
             </div>
             
@@ -489,7 +459,35 @@ export default function EditJob({ isDarkMode }) {
               <label className="block">Category</label>
               <Autocomplete
                 freeSolo
-                options={["Engineering", "Data", "Design", "Product", "Marketing", "Sales", "HR", "Finance"]}
+                options={[
+                  "Engineering",
+                  "Software Development",
+                  "Data Science",
+                  "AI / Machine Learning",
+                  "Design",
+                  "Product Management",
+                  "Project Management",
+                  "Quality Assurance",
+                  "DevOps / SRE",
+                  "IT & Networking",
+                  "Cybersecurity",
+                  "Cloud Computing",
+                  "Marketing",
+                  "Sales",
+                  "Human Resources",
+                  "Finance",
+                  "Operations",
+                  "Customer Support",
+                  "Business Development",
+                  "Content & Copywriting",
+                  "Legal",
+                  "Education & Training",
+                  "Healthcare / MedTech",
+                  "Hardware / Embedded",
+                  "Analytics & BI",
+                  "Research & Development",
+                  "Other",
+                ]}
                 value={formData.category}
                 onChange={(event, newValue) => {
                   setFormData({ ...formData, category: newValue });

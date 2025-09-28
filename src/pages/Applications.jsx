@@ -6,6 +6,7 @@ import {
   shortlistApplication,
   rejectApplication,
 } from '../api';
+import ResumeViewer from '../components/ResumeViewer';
 
 export default function Applications({ isDarkMode }) {
   const [apps, setApps] = useState([]);
@@ -316,6 +317,7 @@ export default function Applications({ isDarkMode }) {
                         >
                           Date {sortBy === 'dateAsc' ? '▲' : sortBy === 'dateDesc' ? '▼' : ''}
                         </th>
+                        <th className="px-4 py-3 text-left text-base font-semibold">Resume</th>
                         <th className="px-4 py-3 text-left text-base font-semibold">Actions</th>
                       </tr>
                     </thead>
@@ -345,6 +347,13 @@ export default function Applications({ isDarkMode }) {
                               </span>
                             </td>
                             <td className={`px-4 py-3 whitespace-nowrap ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{new Date(dateText).toLocaleDateString()}</td>
+                            <td className="px-4 py-3">
+                              {app.resume ? (
+                                <ResumeViewer resumeUrl={app.resume} applicantName={app.applicantName || app.name} variant="inline" />
+                              ) : (
+                                <span className="opacity-60 text-xs">No resume</span>
+                              )}
+                            </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center gap-2">
                                 <button
@@ -399,6 +408,13 @@ export default function Applications({ isDarkMode }) {
                         </span>
                         <span className="text-xs opacity-70">{new Date(app.appliedAt || app.createdAt || app.date).toLocaleDateString()}</span>
                       </div>
+                      {app.resume ? (
+                        <div className="mt-3">
+                          <ResumeViewer resumeUrl={app.resume} applicantName={app.applicantName || app.name} variant="inline" />
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-xs opacity-70">No resume</div>
+                      )}
                       <div className="text-xs mt-3 flex gap-2">
                         <button
                           className="text-xs px-4 py-2 rounded-lg border border-orange-400 bg-orange-500 text-white font-medium shadow-sm hover:bg-orange-600 transition"

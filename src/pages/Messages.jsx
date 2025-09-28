@@ -22,6 +22,7 @@ export default function Messages({ isDarkMode }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [files, setFiles] = useState([]);
   const [connected, setConnected] = useState(false);
   const [page] = useState(1);
   const bottomRef = useRef(null);
@@ -82,7 +83,11 @@ export default function Messages({ isDarkMode }) {
       socket.emit('join', `company:${company._id}`);
       socket.on('message:new', payload => {
         if (payload?.companyId === String(company._id)) {
-          setMessages(m => [...m, payload.message]);
+          setMessages(m => {
+            const incoming = payload.message;
+            const isDup = incoming?.clientId && m.some(x => x.clientId === incoming.clientId);
+            return isDup ? m : [...m, incoming];
+          });
           setTimeout(()=> bottomRef.current?.scrollIntoView({ behavior: 'smooth'}), 10);
         }
       });
@@ -97,13 +102,15 @@ export default function Messages({ isDarkMode }) {
   const handleSend = async (e) => {
     e.preventDefault();
     const text = input.trim();
-    if (!text || !company?.email) return;
+    if ((!text && (!files || files.length===0)) || !company?.email) return;
     setSending(true);
     try {
-      const optimistic = { message: text, type: 'info', from: 'company', createdAt: new Date().toISOString() };
+      const clientId = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+      const optimistic = { message: text, type: 'info', from: 'company', createdAt: new Date().toISOString(), clientId, attachments: Array.from(files||[]).map(f=>({ name:f.name, size:f.size, type:f.type, url:'about:blank' })) };
       setMessages(m=>[...m, optimistic]);
       setInput('');
-      await sendCompanyMessage(company.email, text);
+      await sendCompanyMessage(company.email, text, files);
+      setFiles([]);
     } catch (err) {
       setError(err?.response?.data?.error || 'Failed to send');
     } finally {
@@ -179,6 +186,13 @@ export default function Messages({ isDarkMode }) {
                 <div className={`${bubbleCommon} ${mine? mineStyle : otherStyle}`}>
                   <div className={`text-xs mb-1 opacity-70 ${mine? 'text-white':(isDarkMode? 'text-gray-300':'text-gray-500')}`}>{mine? 'You':'Admin'} • {when}</div>
                   <div className="whitespace-pre-wrap break-words leading-snug">{m.message}</div>
+                  {Array.isArray(m.attachments) && m.attachments.length > 0 && (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {m.attachments.map((a, idx) => (
+                        <AttachmentPreview key={idx} a={a} dark={isDarkMode} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -186,7 +200,7 @@ export default function Messages({ isDarkMode }) {
           <div ref={bottomRef} />
         </div>
         {/* Composer */}
-        <form onSubmit={handleSend} className="mt-2 flex gap-3">
+        <form onSubmit={handleSend} className="mt-2 flex flex-col gap-3">
           <input
             type="text"
             value={input}
@@ -195,11 +209,27 @@ export default function Messages({ isDarkMode }) {
             className={`flex-1 rounded-full border px-5 py-3 text-base shadow ${isDarkMode? 'bg-gray-800 border-gray-600 placeholder-gray-500':'bg-white border-gray-300 placeholder-gray-400'}`}
             maxLength={2000}
           />
-          <button disabled={sending || !input.trim()} className={`px-7 py-3 rounded-full font-bold text-lg text-white shadow-lg ${
-            sending||!input.trim()? 'bg-gray-400 cursor-not-allowed':'bg-gradient-to-r from-[#ff8200] to-[#ffb347] hover:from-[#e57400] hover:to-[#ffb347]'
-          } transition-all duration-200`}>
-            {sending? 'Sending…':'Send'}
-          </button>
+          {files && files.length > 0 && (
+            <div className={`flex flex-wrap gap-2 text-xs ${isDarkMode? 'text-gray-200':'text-gray-700'}`}>
+              {Array.from(files).map((f, idx) => (
+                <div key={idx} className={`px-2 py-1 rounded border ${isDarkMode? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-100'}`}>
+                  {f.name} <span className="opacity-60">({Math.round(f.size/1024)} KB)</span>
+                </div>
+              ))}
+              <button type="button" onClick={()=>setFiles([])} className="text-xs underline">Clear</button>
+            </div>
+          )}
+          <div className="flex gap-3 items-center">
+            <label className={`cursor-pointer px-4 py-2 rounded-full border text-sm ${isDarkMode? 'bg-gray-800 border-gray-600':'bg-gray-50 border-gray-300'}`}>
+              Attach
+              <input type="file" multiple onChange={e=>setFiles(e.target.files)} className="hidden" accept="image/*,.pdf,.doc,.docx" />
+            </label>
+            <button disabled={sending || (!input.trim() && (!files || files.length===0))} className={`px-7 py-3 rounded-full font-bold text-lg text-white shadow-lg ${
+              sending||(!input.trim() && (!files || files.length===0))? 'bg-gray-400 cursor-not-allowed':'bg-gradient-to-r from-[#ff8200] to-[#ffb347] hover:from-[#e57400] hover:to-[#ffb347]'
+            } transition-all duration-200`}>
+              {sending? 'Sending…':'Send'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -207,3 +237,33 @@ export default function Messages({ isDarkMode }) {
 }
 
 Messages.propTypes = { isDarkMode: PropTypes.bool };
+
+function AttachmentPreview({ a, dark }) {
+  const isImage = (a?.type || '').startsWith('image/');
+  const name = a?.name || a?.url?.split('/')?.slice(-1)[0] || 'file';
+  const url = a?.url || '';
+  return (
+    <div className={`rounded border ${dark? 'border-gray-500 bg-gray-800/40':'border-gray-200 bg-white/80'} p-2`}>
+      {isImage ? (
+        url && url.startsWith('http') ? (
+          <a href={url} target="_blank" rel="noreferrer" className="block">
+            <img src={url} alt={name} className="max-h-40 rounded" />
+          </a>
+        ) : (
+          <div className="text-xs">{name}</div>
+        )
+      ) : (
+        url && url.startsWith('http') ? (
+          <a href={url} target="_blank" rel="noreferrer" className="underline">{name}</a>
+        ) : (
+          <div className="text-xs">{name}</div>
+        )
+      )}
+    </div>
+  );
+}
+
+AttachmentPreview.propTypes = {
+  a: PropTypes.shape({ url: PropTypes.string, type: PropTypes.string, name: PropTypes.string, size: PropTypes.number }),
+  dark: PropTypes.bool
+};

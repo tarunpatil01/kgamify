@@ -46,10 +46,21 @@ const companySchema = new mongoose.Schema({
   adminMessages: [
     {
       type: { type: String, enum: ['info', 'hold', 'deny', 'system'], default: 'info' },
-      message: { type: String, required: true },
+  message: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now },
   // Sender of the message (admin/company); legacy messages will default to 'admin'
-  from: { type: String, enum: ['admin', 'company'], default: 'admin' }
+  from: { type: String, enum: ['admin', 'company'], default: 'admin' },
+      // Optional client-generated id to deduplicate optimistic updates across sockets
+      clientId: { type: String },
+  // Optional attachments associated with this message
+  attachments: [
+    {
+      url: { type: String }, // public URL (e.g., Cloudinary secure URL)
+      type: { type: String }, // MIME type
+      name: { type: String }, // original file name
+      size: { type: Number }  // bytes
+    }
+  ]
     }
   ],
   // Simple unread tracking timestamps

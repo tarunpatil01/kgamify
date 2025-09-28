@@ -144,13 +144,24 @@ export const getCompanyMessages = async (email, page = 1, limit = 50) => {
   return response.data;
 };
 
-export const sendCompanyMessage = async (email, message) => {
-  if (!email || !message) throw new Error('Email and message required');
+export const sendCompanyMessage = async (email, message, files = []) => {
+  if (!email) throw new Error('Email required');
   const token = localStorage.getItem('companyToken');
   const headers = {};
   if (token) headers['company-auth'] = token;
-  const response = await axios.post(`${API_URL}/companies/messages`, { email, message }, { headers });
-  return response.data;
+  // Build multipart if files exist
+  const clientId = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  if (files && files.length) {
+    const fd = new FormData();
+    fd.append('email', email);
+    if (message) fd.append('message', message);
+    fd.append('clientId', clientId);
+    [...files].forEach(f => fd.append('attachments', f));
+    const response = await axios.post(`${API_URL}/companies/messages`, fd, { headers: { ...headers, 'Content-Type': 'multipart/form-data' } });
+    return { ...response.data, clientId };
+  }
+  const response = await axios.post(`${API_URL}/companies/messages`, { email, message, clientId }, { headers });
+  return { ...response.data, clientId };
 };
 
 // Admin messaging helpers
@@ -160,10 +171,19 @@ export const getAdminCompanyMessages = async (companyId) => {
   return response.data;
 };
 
-export const sendAdminCompanyMessage = async (companyId, message) => {
+export const sendAdminCompanyMessage = async (companyId, message, files = []) => {
   const token = localStorage.getItem('adminToken');
-  const response = await axios.post(`${API_URL}/admin/company/${companyId}/messages`, { message }, { headers: token ? { 'x-auth-token': token } : undefined });
-  return response.data;
+  const clientId = `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  if (files && files.length) {
+    const fd = new FormData();
+    fd.append('message', message || '');
+    fd.append('clientId', clientId);
+    [...files].forEach(f => fd.append('attachments', f));
+    const response = await axios.post(`${API_URL}/admin/company/${companyId}/messages`, fd, { headers: token ? { 'x-auth-token': token } : undefined });
+    return { ...response.data, clientId };
+  }
+  const response = await axios.post(`${API_URL}/admin/company/${companyId}/messages`, { message, clientId }, { headers: token ? { 'x-auth-token': token } : undefined });
+  return { ...response.data, clientId };
 };
 
 export const editJob = async (jobId, jobData) => {

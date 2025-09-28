@@ -7,7 +7,6 @@ import {
   Autocomplete,
   Snackbar,
   Alert,
-  TextareaAutosize,
 } from "@mui/material";
 import { createJob } from "../api";
 import usePlanMeta from '../hooks/usePlanMeta';
@@ -20,11 +19,34 @@ const jobTitles = [
   "Designer",
   "Data Scientist",
 ];
-const salaryOptions = [
-  "20,000-30,000",
-  "30,000-50,000",
-  "50,000-70,000",
-  "70,000+",
+const jobCategories = [
+  "Engineering",
+  "Software Development",
+  "Data Science",
+  "AI / Machine Learning",
+  "Design",
+  "Product Management",
+  "Project Management",
+  "Quality Assurance",
+  "DevOps / SRE",
+  "IT & Networking",
+  "Cybersecurity",
+  "Cloud Computing",
+  "Marketing",
+  "Sales",
+  "Human Resources",
+  "Finance",
+  "Operations",
+  "Customer Support",
+  "Business Development",
+  "Content & Copywriting",
+  "Legal",
+  "Education & Training",
+  "Healthcare / MedTech",
+  "Hardware / Embedded",
+  "Analytics & BI",
+  "Research & Development",
+  "Other",
 ];
 
 export default function PostJob({ isDarkMode, email, userCompany }) {
@@ -38,6 +60,7 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
     remoteOrOnsite: "",
     location: "",
     salary: "",
+  relocationBenefits: "",
     equity: "",
     sponsorship: "",
     recruitmentProcess: "",
@@ -302,12 +325,12 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
                     }
                   }}
                 >
-                  <MenuItem value="">Select Experience Level</MenuItem>
-                  <MenuItem value="Entry Level">Entry Level</MenuItem>
-                  <MenuItem value="Junior">Junior</MenuItem>
-                  <MenuItem value="Mid Level">Mid Level</MenuItem>
-                  <MenuItem value="Senior">Senior</MenuItem>
-                  <MenuItem value="Executive">Executive</MenuItem>
+                  <MenuItem value="">Select Experience (years)</MenuItem>
+                  <MenuItem value="0-2 years">0-2 years</MenuItem>
+                  <MenuItem value="3-5 years">3-5 years</MenuItem>
+                  <MenuItem value="6-8 years">6-8 years</MenuItem>
+                  <MenuItem value="9-12 years">9-12 years</MenuItem>
+                  <MenuItem value="12+ years">12+ years</MenuItem>
                 </Select>
               </div>
             </div>
@@ -361,34 +384,24 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
               </div>
             </div>
             <div className="mb-6">
-              <label className="block mb-2 font-medium">Salary Range ₹(INR)</label>
-              <Select
+              <label className="block mb-2 font-medium">Salary / Project Value</label>
+              <TextField
                 name="salary"
                 value={formData.salary}
                 onChange={handleChange}
+                placeholder="e.g., ₹50,000 per month or ₹2,00,000 per project"
                 fullWidth
+                inputProps={{
+                  style: { color: isDarkMode ? 'white' : 'inherit' }
+                }}
                 sx={{
-                  color: isDarkMode ? 'white' : 'inherit',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
-                  },
-                  '& .MuiSvgIcon-root': {
-                    color: isDarkMode ? 'white' : 'inherit',
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.23)',
+                    }
                   }
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    sx: { backgroundColor: 'white' }
-                  }
-                }}
-              >
-                <MenuItem value="">Select Salary Range</MenuItem>
-                {salaryOptions.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </Select>
+              />
             </div>
             <div className="mb-6">
               <label className="block mb-2 font-medium">Relocation Benefits</label>
@@ -420,92 +433,56 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
             </div>
             <div className="mb-6">
               <label className="block mb-2 font-medium">Responsibilities</label>
-              <TextareaAutosize
-                name="responsibilities"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode
-                    ? "border-gray-600 bg-gray-700 text-white"
-                    : "border-gray-400"
-                }`}
+              <QuillEditor
                 value={formData.responsibilities}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: "100%" }}
+                onChange={(content) => setFormData({ ...formData, responsibilities: content })}
+                isDarkMode={isDarkMode}
+                placeholder="List the key responsibilities..."
               />
             </div>
             <div className="mb-6">
               <label className="block mb-2 font-medium">Skills</label>
-              <TextareaAutosize
-                name="skills"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode
-                    ? "border-gray-600 bg-gray-700 text-white"
-                    : "border-gray-400"
-                }`}
+              <QuillEditor
                 value={formData.skills}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: "100%" }}
+                onChange={(content) => setFormData({ ...formData, skills: content })}
+                isDarkMode={isDarkMode}
+                placeholder="List required and preferred skills..."
               />
             </div>
             <div className="mb-6">
               <label className="block mb-2 font-medium">Benefits</label>
-              <TextareaAutosize
-                name="benefits"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode
-                    ? "border-gray-600 bg-gray-700 text-white"
-                    : "border-gray-400"
-                }`}
+              <QuillEditor
                 value={formData.benefits}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: "100%" }}
+                onChange={(content) => setFormData({ ...formData, benefits: content })}
+                isDarkMode={isDarkMode}
+                placeholder="Describe compensation, perks, and benefits..."
               />
             </div>
             <div className="mb-6">
               <label className="block mb-2 font-medium">Eligibility</label>
-              <TextareaAutosize
-                name="eligibility"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode
-                    ? "border-gray-600 bg-gray-700 text-white"
-                    : "border-gray-400"
-                }`}
+              <QuillEditor
                 value={formData.eligibility}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: "100%" }}
+                onChange={(content) => setFormData({ ...formData, eligibility: content })}
+                isDarkMode={isDarkMode}
+                placeholder="Specify required qualifications or eligibility criteria..."
               />
             </div>
             <div className="mb-6">
               <label className="block mb-2 font-medium">Company Description</label>
-              <TextareaAutosize
-                name="companyDescription"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode
-                    ? "border-gray-600 bg-gray-700 text-white"
-                    : "border-gray-400"
-                }`}
+              <QuillEditor
                 value={formData.companyDescription}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: "100%" }}
+                onChange={(content) => setFormData({ ...formData, companyDescription: content })}
+                isDarkMode={isDarkMode}
+                placeholder="Tell candidates about your company..."
               />
             </div>
             <div className="mb-6">
               <label className="block mb-2 font-medium">Additional Information</label>
-              <TextareaAutosize
-                name="additionalInformation"
-                className={`border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-600 ${
-                  isDarkMode
-                    ? "border-gray-600 bg-gray-700 text-white"
-                    : "border-gray-400"
-                }`}
+              <QuillEditor
                 value={formData.additionalInformation}
-                onChange={handleChange}
-                minRows={3}
-                style={{ width: "100%" }}
+                onChange={(content) => setFormData({ ...formData, additionalInformation: content })}
+                isDarkMode={isDarkMode}
+                placeholder="Any other important details..."
               />
             </div>
             {/* JD attachments upload */}
@@ -589,16 +566,7 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
               <label className="block mb-2 font-medium">Category</label>
               <Autocomplete
                 freeSolo
-                options={[
-                  "Engineering",
-                  "Data",
-                  "Design",
-                  "Product",
-                  "Marketing",
-                  "Sales",
-                  "HR",
-                  "Finance",
-                ]}
+                options={jobCategories}
                 value={formData.category}
                 onChange={(event, newValue) => {
                   setFormData({ ...formData, category: newValue });

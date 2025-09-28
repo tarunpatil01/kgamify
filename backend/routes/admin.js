@@ -191,14 +191,9 @@ router.post('/deny-company/:id', adminAuth, auditLogger({
 
     // Send denial email (non-blocking)
     if (company.email) {
-      sendEmail(company.email, 'custom', {
-  subject: 'kGamify Registration Denied',
-        html: `<div style="font-family: Arial, sans-serif;">
-          <h2 style="color:#dc2626;">Registration Denied</h2>
-          <p>Hi ${company.companyName},</p>
-          <p>Your registration was denied.${reason ? ` Reason: <strong>${String(reason).trim()}</strong>.` : ''}</p>
-          <p>You will not be able to log in. You may re-register after addressing the issues.</p>
-        </div>`
+      sendEmail(company.email, 'companyDenied', {
+        companyName: company.companyName,
+        reason: reason ? String(reason).trim() : ''
       }).catch(() => {});
     }
 
@@ -236,14 +231,10 @@ router.post('/hold-company/:id', adminAuth, auditLogger({
     if (company.email) {
       const frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
       const messagesUrl = `${frontend.replace(/\/$/, '')}/messages`;
-      sendEmail(company.email, 'custom', {
-  subject: 'kGamify Account On Hold',
-        html: `<div style="font-family: Arial, sans-serif;">
-          <h2 style="color:#d97706;">Account On Hold</h2>
-          <p>Hi ${company.companyName},</p>
-          <p>Your account has been placed on hold.${reason ? ` Reason: <strong>${String(reason).trim()}</strong>.` : ''}</p>
-          <p>Please <a href="${messagesUrl}">log in and check messages</a> from admin for details and next steps.</p>
-        </div>`
+      sendEmail(company.email, 'companyOnHold', {
+        companyName: company.companyName,
+        reason: reason ? String(reason).trim() : '',
+        messagesUrl
       }).catch(() => {});
     }
 
@@ -305,7 +296,7 @@ router.get('/company/:id/messages', adminAuth, async (req, res) => {
   try {
   const company = await Company.findById(req.params.id, { adminMessages: 1, companyName: 1, email: 1, lastAdminReadAt: 1 });
     if (!company) return res.status(404).json({ message: 'Company not found' });
-    const msgs = Array.isArray(company.adminMessages) ? company.adminMessages.sort((a,b)=> new Date(a.createdAt||0) - new Date(b.createdAt||0)) : [];
+  const msgs = Array.isArray(company.adminMessages) ? company.adminMessages.sort((a,b)=> new Date(a.createdAt||0) - new Date(b.createdAt||0)) : [];
   // update read timestamp
   await Company.updateOne({ _id: company._id }, { $set: { lastAdminReadAt: new Date() } }).catch(()=>{});
     res.json({ company: { id: company._id, companyName: company.companyName, email: company.email }, messages: msgs });
@@ -314,14 +305,16 @@ router.get('/company/:id/messages', adminAuth, async (req, res) => {
   }
 });
 // Post a reply message to a company
-router.post('/company/:id/messages', adminAuth, async (req, res) => {
+const { upload } = require('../config/cloudinary');
+router.post('/company/:id/messages', adminAuth, upload.array('attachments', 5), async (req, res) => {
   try {
-    const { message } = req.body || {};
-    if (!message) return res.status(400).json({ message: 'Message is required' });
+  const { message, clientId } = req.body || {};
+  if (!message && !Array.isArray(req.files)) return res.status(400).json({ message: 'Message or attachments required' });
     const company = await Company.findById(req.params.id);
     if (!company) return res.status(404).json({ message: 'Company not found' });
     if (!Array.isArray(company.adminMessages)) company.adminMessages = [];
-    const msgDoc = { type: 'info', message: String(message).slice(0, 2000), from: 'admin', createdAt: new Date() };
+    const attachments = Array.isArray(req.files) ? req.files.map(f => ({ url: f.path || f.secure_url, type: f.mimetype, name: f.originalname, size: f.size })) : [];
+  const msgDoc = { type: 'info', message: String(message || '').slice(0, 2000), from: 'admin', createdAt: new Date(), attachments, clientId };
     company.adminMessages.push(msgDoc);
     await company.save({ validateModifiedOnly: true });
   // We purposefully do not set lastCompanyReadAt here so UI can show unread for company
