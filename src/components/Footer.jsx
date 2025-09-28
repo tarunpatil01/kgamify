@@ -7,7 +7,7 @@ function Footer({ isDarkMode }) {
   const sectionTitle = "text-white font-semibold mb-3";
   const year = new Date().getFullYear();
   return (
-    <footer className={`${isDarkMode ? 'bg-[#0f172a] text-gray-100' : 'bg-[#0f172a] text-gray-100'} mt-auto`}>
+    <footer className={`${isDarkMode ? 'bg-[#0f172a] text-gray-100' : 'bg-[#0f172a] text-gray-100'} mt-8`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           {/* Brand + About */}

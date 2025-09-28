@@ -152,7 +152,7 @@ function AppContent() {
           </div>
         ) : (
           /* Dashboard layout with sidebar and main content */
-          <div className="flex h-screen overflow-hidden md:overflow-visible">
+          <div className="flex min-h-screen">
             {/* Mobile Sidebar Overlay */}
             {isMobileView && isSidebarOpen && (
               <div
@@ -197,7 +197,7 @@ function AppContent() {
             
             {/* Main Content Area - Flexible width */}
             <div
-              className={`flex-1 flex flex-col overflow-hidden min-w-0 md:ml-4 transform transition-transform duration-300 ${
+              className={`flex-1 flex flex-col min-w-0 md:ml-4 transform transition-transform duration-300 ${
                 isMobileView && isSidebarOpen ? "translate-x-64" : "translate-x-0"
               }`}
               aria-hidden={isMobileView && isSidebarOpen ? "true" : "false"}
@@ -216,7 +216,7 @@ function AppContent() {
               )}
               
               {/* Page Content */}
-              <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 z-0 relative">
+              <div className="flex-1 bg-gray-50 dark:bg-gray-900 z-0 relative">
                 <Suspense fallback={<PageLoadingFallback type="dashboard" />}>
                   <Routes>
                     <Route
@@ -330,9 +330,7 @@ function AppContent() {
               </div>
               
               {/* Footer */}
-              <div className="bg-transparent border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <Footer isDarkMode={isDarkMode} />
-              </div>
+              <Footer isDarkMode={isDarkMode} />
             </div>
           </div>
         )}
