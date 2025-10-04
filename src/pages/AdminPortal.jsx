@@ -5,7 +5,8 @@ import PropTypes from "prop-types";
 import { 
   FaCheck, FaTimes, FaBuilding, FaCalendarAlt, FaEnvelope, 
   FaPhone, FaGlobeAmericas, FaUserCircle, FaKey, FaLock,
-  FaSignOutAlt, FaClock, FaCheckCircle, FaUser
+  FaSignOutAlt, FaClock, FaCheckCircle, FaUser, FaUsers,
+  FaChevronLeft, FaChevronRight
 } from "react-icons/fa";
 import { changeAdminPassword, denyCompanyWithReason, holdCompanyWithReason, revokeCompanyAccess } from "../api";
 import logoUrl from "../assets/KLOGO.png";
@@ -188,6 +189,29 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
       setHoldCompanies(prev => (Array.isArray(prev) ? prev.filter(c => c._id !== companyId) : []));
       fetchApprovedCompanies(token);
       setNotification({ show: true, message: 'Company approved from On Hold', type: 'success' });
+      setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+    } catch (error) {
+      setNotification({ show: true, message: 'Error approving company', type: 'error' });
+      setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+      if (error.response?.status === 401) {
+        handleLogout();
+      }
+    }
+  };
+
+  // Approve action for companies in Denied tab
+  const handleApproveFromDenied = async (companyId) => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      await axios.post(
+        `${import.meta.env.VITE_API_URL.replace(/\/api$/, "")}/api/admin/approve-company/${companyId}`,
+        {},
+        { headers: { "x-auth-token": token } }
+      );
+      // Remove from denied list and refresh approved
+      setDeniedCompanies(prev => (Array.isArray(prev) ? prev.filter(c => c._id !== companyId) : []));
+      fetchApprovedCompanies(token);
+      setNotification({ show: true, message: 'Company approved from Denied', type: 'success' });
       setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
     } catch (error) {
       setNotification({ show: true, message: 'Error approving company', type: 'error' });
@@ -602,8 +626,8 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
   {(() => { const pageSize = 10; const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const page = pages.pending; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-                      <div className="flex items-center mb-4 md:mb-0">
+                    <div className="sm:flex w-full sm:flex-col md:flex md:flex-row md:justify-between items-start md:items-center">
+                      <div className="flex items-center md:flex-1 min-w-0 mb-4 md:mb-0">
                         <div className={`w-16 h-16 mr-4 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
                           {company.logo ? (
                             <img src={company.logo} alt={company.companyName} className="w-full h-full object-cover" />
@@ -622,7 +646,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                         </div>
                       </div>
                       
-            <div className="flex space-x-4">
+                      <div className="flex flex-wrap items-center gap-4 md:ml-auto md:flex-shrink-0">
                         <button
                           onClick={() => handleApprove(company._id)}
                           className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-sm"
@@ -645,7 +669,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                           onClick={()=> navigate(`/admin/messages/${company._id}`)}
                           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm"
                         >
-                          Messages
+                          <FaEnvelope className="mr-2" /> Messages
                         </button>
                         {/* Applicants button removed for new (pending) companies */}
                       </div>
@@ -784,18 +808,32 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 </div>
               )); })()}
               {(() => { const pageSize = 10; const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
-                <div className="mt-4 mb-6 w-full flex flex-wrap items-center justify-center gap-2 text-sm">
-                  <button disabled={pages.pending===1} onClick={()=>setPages(p=>({...p,pending:Math.max(1, p.pending-1)}))} className={`mr-2 ${pages.pending===1? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
-                    &lt;
+                <div className="mt-4 mb-6 w-full flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => setPages(p => ({ ...p, pending: Math.max(1, p.pending - 1) }))}
+                    disabled={pages.pending === 1}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.pending===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    aria-label="Previous page"
+                  >
+                    <FaChevronLeft className="mr-1 h-4 w-4" /> Prev
                   </button>
-                  {Array.from({ length: total }).map((_,i)=> (
-                    <span key={i} className="flex items-center">
-                      <button onClick={()=>setPages(p=>({...p,pending:i+1}))} className={`${pages.pending===i+1? 'text-[#ff8200] font-semibold underline' : isDarkMode? 'text-gray-200 hover:underline':'text-gray-800 hover:underline'} px-1`}>{i+1}</button>
-                      {i < total-1 && <span className="mx-1 opacity-60">,</span>}
-                    </span>
+                  {Array.from({ length: total }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPages(p => ({ ...p, pending: i + 1 }))}
+                      className={`px-3 py-1.5 rounded border text-sm ${pages.pending===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+                      aria-current={pages.pending===i+1 ? 'page' : undefined}
+                    >
+                      {i + 1}
+                    </button>
                   ))}
-                  <button disabled={pages.pending===total} onClick={()=>setPages(p=>({...p,pending:Math.min(total, p.pending+1)}))} className={`ml-2 ${pages.pending===total? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
-                    &gt;
+                  <button
+                    onClick={() => setPages(p => ({ ...p, pending: Math.min(total, p.pending + 1) }))}
+                    disabled={pages.pending === total}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.pending===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    aria-label="Next page"
+                  >
+                    Next <FaChevronRight className="ml-1 h-4 w-4" />
                   </button>
                 </div> ); })()}
             </div>
@@ -836,8 +874,8 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
   {(() => { const pageSize = 10; const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const page = pages.approved; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-                      <div className="flex items-center mb-4 md:mb-0">
+                    <div className="sm:flex w-full sm:flex-col md:flex-row md:justify-between items-start md:items-center">
+                      <div className="flex items-center md:flex-1 min-w-0 mb-4 md:mb-0">
                         <div className={`w-16 h-16 mr-4 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
                           {company.logo ? (
                             <img src={company.logo} alt={company.companyName} className="w-full h-full object-cover" />
@@ -860,7 +898,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                           </div>
                         </div>
                       </div>
-                      <div className="flex space-x-3">
+                      <div className="flex flex-wrap items-center gap-4 md:ml-auto md:flex-shrink-0">
                         <button
                           onClick={() => handleRevoke(company._id)}
                           className="flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors shadow-sm"
@@ -871,13 +909,13 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                           onClick={()=> navigate(`/admin/messages/${company._id}`)}
                           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm"
                         >
-                          Messages
+                          <FaEnvelope className="mr-2" /> Messages
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/applicants/${company._id}`)}
                           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm"
                         >
-                          Applicants
+                          <FaUsers className="mr-2" /> Applicants
                         </button>
                       </div>
                     </div>
@@ -1022,18 +1060,32 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 </div>
               )); })()}
               {(() => { const pageSize = 10; const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
-                <div className="mt-2 mb-6 w-full flex flex-wrap items-center justify-center gap-2 text-sm">
-                  <button disabled={pages.approved===1} onClick={()=>setPages(p=>({...p,approved:Math.max(1, p.approved-1)}))} className={`mr-2 ${pages.approved===1? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
-                    &lt;
+                <div className="mt-3 mb-6 w-full flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => setPages(p => ({ ...p, approved: Math.max(1, p.approved - 1) }))}
+                    disabled={pages.approved === 1}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.approved===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    aria-label="Previous page"
+                  >
+                    <FaChevronLeft className="mr-1 h-4 w-4" /> Prev
                   </button>
-                  {Array.from({ length: total }).map((_,i)=> (
-                    <span key={i} className="flex items-center">
-                      <button onClick={()=>setPages(p=>({...p,approved:i+1}))} className={`${pages.approved===i+1? 'text-[#ff8200] font-semibold underline' : isDarkMode? 'text-gray-200 hover:underline':'text-gray-800 hover:underline'} px-1`}>{i+1}</button>
-                      {i < total-1 && <span className="mx-1 opacity-60">,</span>}
-                    </span>
+                  {Array.from({ length: total }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPages(p => ({ ...p, approved: i + 1 }))}
+                      className={`px-3 py-1.5 rounded border text-sm ${pages.approved===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+                      aria-current={pages.approved===i+1 ? 'page' : undefined}
+                    >
+                      {i + 1}
+                    </button>
                   ))}
-                  <button disabled={pages.approved===total} onClick={()=>setPages(p=>({...p,approved:Math.min(total, p.approved+1)}))} className={`ml-2 ${pages.approved===total? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
-                    &gt;
+                  <button
+                    onClick={() => setPages(p => ({ ...p, approved: Math.min(total, p.approved + 1) }))}
+                    disabled={pages.approved === total}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.approved===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    aria-label="Next page"
+                  >
+                    Next <FaChevronRight className="ml-1 h-4 w-4" />
                   </button>
                 </div>
               ); })()}
@@ -1060,9 +1112,9 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
               {(() => { const pageSize = 10; const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.denied; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between flex-wrap gap-3">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                    <div className="sm:flex w-full sm:flex-col md:flex-row md:justify-between items-start md:items-center">
+                      <div className="flex items-center md:flex-1 min-w-0 mb-4 md:mb-0">
+                        <div className={`w-16 h-16 mr-4 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
                           {company.logo ? (
                             <img src={company.logo} alt={company.companyName} className="w-full h-full object-cover" />
                           ) : (
@@ -1070,64 +1122,72 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                           )}
                         </div>
                         <div>
+                          <div className="flex gap-2">
+                          <h3 className="text-2xl font-bold">{company.companyName}</h3>
+                            <h2 className="mt-2">
+                              <span className=" px-2 py-0.5 rounded text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Denied</span>
+                            </h2>
+                          </div>
+                          <div className="flex items-center mt-1">
+                            <FaCalendarAlt className="text-[#ff8200] mr-2" />
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              Applied on: {formatDate(formatObjectIdToDate(company._id))}
+                            </span>
+                          </div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-xl font-bold">
-                              <HighlightedText text={company.companyName} query={filters.q} isDarkMode={isDarkMode} />
-                            </h3>
-                            <span className="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Denied</span>
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
                             <HighlightedText text={company.email} query={filters.q} isDarkMode={isDarkMode} />
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 md:flex">
+                      <div className="flex space-x-3 md:ml-auto md:flex-shrink-0">
                         <button
-                          onClick={() => handleApproveFromHold(company._id)}
-                          className="flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                          onClick={() => handleApproveFromDenied(company._id)}
+                          className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
                         >
                           <FaCheck className="mr-2" /> Approve
                         </button>
                         <button
-                          onClick={() => openReasonModal('deny', company)}
-                          className="flex items-center px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
-                        >
-                          <FaTimes className="mr-2" /> Deny
-                        </button>
-                        <button
                           onClick={()=> navigate(`/admin/messages/${company._id}`)}
-                          className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
                         >
-                          Messages
+                          <FaEnvelope className="mr-2" /> Messages
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/applicants/${company._id}`)}
-                          className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
                         >
-                          Applicants
+                          <FaUsers className="mr-2" /> Applicants
                         </button>
                       </div>
                       {/* Mobile action bar */}
                       <div className="w-full md:hidden">
-                        <div className="flex gap-2 pt-2">
+                        <div className="flex gap-4 pt-2">
                           <button
-                            onClick={() => handleApproveFromHold(company._id)}
+                            onClick={() => handleApproveFromDenied(company._id)}
                             className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
                           >
                             <FaCheck className="mr-2" /> Approve
                           </button>
                           <button
-                            onClick={() => openReasonModal('deny', company)}
-                            className="flex-1 flex items-center justify-center px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
+                            onClick={()=> navigate(`/admin/messages/${company._id}`)}
+                            className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
                           >
-                            <FaTimes className="mr-2" /> Deny
+                            <FaEnvelope className="mr-2" /> Messages
+                          </button>
+                          <button
+                            onClick={()=> navigate(`/admin/applicants/${company._id}`)}
+                            className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                          >
+                            <FaUsers className="mr-2" /> Applicants
                           </button>
                         </div>
                       </div>
                     </div>
                   </div>
                   {expanded[company._id] && (
-                  <div className="p-6">
+                  <div className="p-6 space-y-6">
                     {Array.isArray(company.adminMessages) && company.adminMessages.filter(m => m.type === 'deny').length > 0 ? (
                       <div className="text-sm">
                         <div className="font-medium mb-1">Reason</div>
@@ -1139,38 +1199,87 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                       <div className="text-sm opacity-70">No reason provided.</div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    {/* Contact & Details similar to other tabs */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                        <h4 className="font-medium mb-4 text-[#ff8200]">Documents</h4>
-                        {(company.documents || (Array.isArray(company.documentsList) && company.documentsList.length)) ? (
-                          Array.isArray(company.documentsList) && company.documentsList.length ? (
-                            <ul className="list-disc pl-5 space-y-1">
-                              {company.documentsList.map((u, i) => (
-                                <li key={i}><a href={u} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Document {i+1}</a></li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <a href={company.documents} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View Document</a>
-                          )
-                        ) : (
-                          <div className="text-sm opacity-70">No documents</div>
-                        )}
+                        <h4 className="font-medium mb-4 text-[#ff8200]">Contact Information</h4>
+                        <div className="space-y-4">
+                          <div className="flex items-center">
+                            <FaEnvelope className="text-[#ff8200] mr-3 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Email</p>
+                              <p className="font-medium break-all">{company.email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <FaPhone className="text-[#ff8200] mr-3 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Phone</p>
+                              <p className="font-medium">{company.phone || '—'}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <FaGlobeAmericas className="text-[#ff8200] mr-3 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Website</p>
+                              <p className="font-medium break-all">{company.website ? <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{company.website}</a> : 'Not provided'}</p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                        <h4 className="font-medium mb-4 text-[#ff8200]">Images</h4>
-                        {Array.isArray(company.images) && company.images.length ? (
-                          <div className="grid grid-cols-3 gap-2">
-                            {company.images.slice(0,6).map((img, idx) => (
-                              <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
-                                <img src={img} alt={`img-${idx}`} className="h-16 w-full object-cover rounded border" />
-                              </a>
-                            ))}
+                        <h4 className="font-medium mb-4 text-[#ff8200]">Company Details</h4>
+                        <div className="space-y-4">
+                          <div className="flex items-center">
+                            <FaBuilding className="text-[#ff8200] mr-3 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Industry</p>
+                              <p className="font-medium">{company.industry || 'Not specified'}</p>
+                            </div>
                           </div>
-                        ) : (
-                          <div className="text-sm opacity-70">No images</div>
-                        )}
+                          {(company.documents || (Array.isArray(company.documentsList) && company.documentsList.length)) && (
+                            <div className="flex items-start">
+                              <svg className="h-5 w-5 text-[#ff8200] mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Documents</p>
+                                {Array.isArray(company.documentsList) && company.documentsList.length ? (
+                                  <ul className="list-disc pl-5 space-y-1">
+                                    {company.documentsList.map((u, i) => (
+                                      <li key={i}><a href={u} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Document {i+1}</a></li>
+                                    ))}
+                                  </ul>
+                                ) : company.documents ? (
+                                  <a href={company.documents} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline font-medium">View Verification Documents</a>
+                                ) : null}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Images gallery */}
+                    {Array.isArray(company.images) && company.images.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Images</p>
+                        <div className="grid grid-cols-3 gap-2 mt-1">
+                          {company.images.slice(0,6).map((img, idx) => (
+                            <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
+                              <img src={img} alt={`img-${idx}`} className="h-16 w-full object-cover rounded border" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {company.description && (
+                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <h4 className="font-medium mb-2 text-[#ff8200]">Company Description</h4>
+                        <div className="prose dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: company.description }} />
+                      </div>
+                    )}
                   </div>
                   )}
                   <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700">
@@ -1186,18 +1295,32 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 </div>
               )); })()}
               {(() => { const pageSize = 10; const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
-                <div className="mt-2 mb-6 w-full flex flex-wrap items-center justify-center gap-2 text-sm">
-                  <button disabled={pages.denied===1} onClick={()=>setPages(p=>({...p,denied:Math.max(1, p.denied-1)}))} className={`mr-2 ${pages.denied===1? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
-                    &lt;
+                <div className="mt-3 mb-6 w-full flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => setPages(p => ({ ...p, denied: Math.max(1, p.denied - 1) }))}
+                    disabled={pages.denied === 1}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.denied===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    aria-label="Previous page"
+                  >
+                    <FaChevronLeft className="mr-1 h-4 w-4" /> Prev
                   </button>
-                  {Array.from({ length: total }).map((_,i)=> (
-                    <span key={i} className="flex items-center">
-                      <button onClick={()=>setPages(p=>({...p,denied:i+1}))} className={`${pages.denied===i+1? 'text-[#ff8200] font-semibold underline' : isDarkMode? 'text-gray-200 hover:underline':'text-gray-800 hover:underline'} px-1`}>{i+1}</button>
-                      {i < total-1 && <span className="mx-1 opacity-60">,</span>}
-                    </span>
+                  {Array.from({ length: total }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPages(p => ({ ...p, denied: i + 1 }))}
+                      className={`px-3 py-1.5 rounded border text-sm ${pages.denied===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+                      aria-current={pages.denied===i+1 ? 'page' : undefined}
+                    >
+                      {i + 1}
+                    </button>
                   ))}
-                  <button disabled={pages.denied===total} onClick={()=>setPages(p=>({...p,denied:Math.min(total, p.denied+1)}))} className={`ml-2 ${pages.denied===total? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
-                    &gt;
+                  <button
+                    onClick={() => setPages(p => ({ ...p, denied: Math.min(total, p.denied + 1) }))}
+                    disabled={pages.denied === total}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.denied===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    aria-label="Next page"
+                  >
+                    Next <FaChevronRight className="ml-1 h-4 w-4" />
                   </button>
                 </div>
               ); })()}
@@ -1245,7 +1368,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                         </div>
                       </div>
                       {/* Action buttons */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-4">
                         <button
                           onClick={() => handleApproveFromHold(company._id)}
                           className="flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
@@ -1262,13 +1385,13 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                           onClick={()=> navigate(`/admin/messages/${company._id}`)}
                           className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
                         >
-                          Messages
+                          <FaEnvelope className="mr-2" /> Messages
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/applicants/${company._id}`)}
                           className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
                         >
-                          Applicants
+                          <FaUsers className="mr-2" /> Applicants
                         </button>
                       </div>
                     </div>
@@ -1385,18 +1508,32 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 </div>
               )); })()}
               {(() => { const pageSize = 10; const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
-                <div className="mt-2 mb-6 w-full flex flex-wrap items-center justify-center gap-2 text-sm">
-                  <button disabled={pages.hold===1} onClick={()=>setPages(p=>({...p,hold:Math.max(1, p.hold-1)}))} className={`mr-2 ${pages.hold===1? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
-                    &lt;
+                <div className="mt-3 mb-6 w-full flex items-center justify-center gap-2">
+                  <button
+                    onClick={() => setPages(p => ({ ...p, hold: Math.max(1, p.hold - 1) }))}
+                    disabled={pages.hold === 1}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.hold===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    aria-label="Previous page"
+                  >
+                    <FaChevronLeft className="mr-1 h-4 w-4" /> Prev
                   </button>
-                  {Array.from({ length: total }).map((_,i)=> (
-                    <span key={i} className="flex items-center">
-                      <button onClick={()=>setPages(p=>({...p,hold:i+1}))} className={`${pages.hold===i+1? 'text-[#ff8200] font-semibold underline' : isDarkMode? 'text-gray-200 hover:underline':'text-gray-800 hover:underline'} px-1`}>{i+1}</button>
-                      {i < total-1 && <span className="mx-1 opacity-60">,</span>}
-                    </span>
+                  {Array.from({ length: total }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPages(p => ({ ...p, hold: i + 1 }))}
+                      className={`px-3 py-1.5 rounded border text-sm ${pages.hold===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+                      aria-current={pages.hold===i+1 ? 'page' : undefined}
+                    >
+                      {i + 1}
+                    </button>
                   ))}
-                  <button disabled={pages.hold===total} onClick={()=>setPages(p=>({...p,hold:Math.min(total, p.hold+1)}))} className={`ml-2 ${pages.hold===total? 'opacity-40 cursor-not-allowed' : isDarkMode? 'text-gray-200 hover:underline' : 'text-gray-800 hover:underline'}`}>
-                    &gt;
+                  <button
+                    onClick={() => setPages(p => ({ ...p, hold: Math.min(total, p.hold + 1) }))}
+                    disabled={pages.hold === total}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.hold===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    aria-label="Next page"
+                  >
+                    Next <FaChevronRight className="ml-1 h-4 w-4" />
                   </button>
                 </div>
               ); })()}

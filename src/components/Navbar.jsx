@@ -16,6 +16,7 @@ import {
 } from "react-icons/fa";
 import { fetchNotifications, markNotificationsRead, markAllNotificationsRead } from '../api';
 import Klogo from '../assets/KLOGO.png';
+import { colors } from '../config/designSystem';
 
   function Navbar({ onSidebarToggle, onThemeToggle, isDarkMode, $isDarkMode, userCompany = null, email = '' }) {
     const dark = $isDarkMode ?? isDarkMode;
@@ -312,9 +313,7 @@ import Klogo from '../assets/KLOGO.png';
                     ))}
                   </div>
                   <div className={`p-3 text-center border-t ${dark ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <button className={`text-sm font-medium ${
-                      dark ? 'text-kgamify-500 hover:text-kgamify-400' : 'text-kgamify-500 hover:text-kgamify-600'
-                    }`}>
+                    <button className={`text-sm font-medium`} style={{ color: colors.brand.orange }}>
                       View all notifications
                     </button>
                   </div>
@@ -329,11 +328,11 @@ import Klogo from '../assets/KLOGO.png';
                 className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                 aria-label="User menu"
               >
-                <div className="h-8 w-8 bg-kgamify-500 rounded-full flex items-center justify-center">
+                <div className="h-8 w-8 rounded-full flex items-center justify-center" style={{ backgroundColor: colors.brand.orange }}>
                   <FaUser className="h-4 w-4 text-white" />
                 </div>
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium text-kgamify-500 dark:text-kgamify-500">
+                  <p className="text-sm font-medium" style={{ color: colors.brand.orange }}>
                     {userCompany?.companyName || "Company"}
                   </p>
                   <p className="text-xs text-gray-800 dark:text-gray-200">
@@ -351,7 +350,7 @@ import Klogo from '../assets/KLOGO.png';
                   }`}
                 >
                   <div className={`p-3 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <p className="font-medium text-kgamify-500">
+                    <p className="font-medium" style={{ color: colors.brand.orange }}>
                       {userCompany?.companyName || "Company"}
                     </p>
                     <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{email}</p>
@@ -362,7 +361,7 @@ import Klogo from '../assets/KLOGO.png';
                         onClick={() => { navigate('/messages'); setShowUserDropdown(false); }}
                         className={`${isDarkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'} flex items-center w-full px-4 py-2 text-sm`}
                       >
-                        <span className="mr-3 inline-flex items-center justify-center h-5 w-5 rounded-full bg-[#ff8200] text-white text-[10px]">
+                        <span className="mr-3 inline-flex items-center justify-center h-5 w-5 rounded-full text-white text-[10px]" style={{ backgroundColor: colors.brand.orange }}>
                           {userCompany?.adminMessages?.length || 0}
                         </span>
                         Account Messages
