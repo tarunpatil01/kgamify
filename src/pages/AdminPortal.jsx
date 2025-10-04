@@ -6,13 +6,14 @@ import {
   FaCheck, FaTimes, FaBuilding, FaCalendarAlt, FaEnvelope, 
   FaPhone, FaGlobeAmericas, FaUserCircle, FaKey, FaLock,
   FaSignOutAlt, FaClock, FaCheckCircle, FaUser, FaUsers,
-  FaChevronLeft, FaChevronRight
+  FaChevronLeft, FaChevronRight, FaMoon, FaSun
 } from "react-icons/fa";
 import { changeAdminPassword, denyCompanyWithReason, holdCompanyWithReason, revokeCompanyAccess } from "../api";
+import Footer from "../components/Footer";
 import logoUrl from "../assets/KLOGO.png";
 
 // Inline helper to highlight search matches in text (case-insensitive)
-const HighlightedText = ({ text, query, isDarkMode }) => {
+const HighlightedText = ({ text, query, $isDarkMode }) => {
   const safeText = typeof text === 'string' ? text : '';
   const q = (query || '').trim();
   if (!q) return <>{safeText}</>;
@@ -27,7 +28,8 @@ const HighlightedText = ({ text, query, isDarkMode }) => {
     i = idx + q.length;
   }
   if (i < safeText.length) parts.push({ text: safeText.slice(i), match: false });
-  const cls = isDarkMode ? 'bg-yellow-600/40 rounded px-0.5' : 'bg-yellow-200 rounded px-0.5';
+  const dark = !!$isDarkMode;
+  const cls = dark ? 'bg-yellow-600/40 rounded px-0.5' : 'bg-yellow-200 rounded px-0.5';
   return (
     <>
       {parts.map((p, key) => p.match ? <span key={key} className={cls}>{p.text}</span> : <span key={key}>{p.text}</span>)}
@@ -38,14 +40,10 @@ const HighlightedText = ({ text, query, isDarkMode }) => {
 HighlightedText.propTypes = {
   text: PropTypes.string,
   query: PropTypes.string,
-  isDarkMode: PropTypes.bool,
+  $isDarkMode: PropTypes.bool,
 };
 
-const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
-  if (typeof $isDarkMode === 'boolean') {
-    // Prefer standardized alias when provided
-    isDarkMode = $isDarkMode;
-  }
+const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
   const [pendingCompanies, setPendingCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
   const [activeTab, setActiveTab] = useState("pending"); // "pending", "approved", "denied", or "profile"
@@ -71,6 +69,26 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
   const [pages, setPages] = useState({ pending: 1, approved: 1, hold: 1, denied: 1 });
   const [expanded, setExpanded] = useState({});
   const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+
+  // Theme toggle handler: prefer parent-provided, fallback to direct document/localStorage update
+  const toggleTheme = () => {
+    if (typeof onThemeToggle === 'function') {
+      onThemeToggle();
+      return;
+    }
+    try {
+      const currentlyDark = document.documentElement.classList.contains('dark') || localStorage.getItem('theme') === 'dark';
+      if (currentlyDark) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      }
+    } catch {
+      // no-op: accessing document/localStorage may fail in non-browser contexts
+    }
+  };
 
   // (Optional) Filters & sorting could be added here if needed
 
@@ -442,24 +460,24 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
   // If not authenticated, show redirect placeholder (dedicated login page handles UI)
   if (!isAuthenticated) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
+  <div className={`min-h-screen flex items-center justify-center ${$isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
         <div className="text-sm opacity-75">Redirecting to admin login…</div>
       </div>
     );
   }
 
   return (
-    <div className={`flex flex-col min-h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
+  <div className={`flex flex-col min-h-screen ${$isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
       {/* Custom Admin Header/Navbar */}
-      <header className={`${isDarkMode ? "bg-gray-800" : "bg-white"} shadow-md sticky top-0 z-50`}>
-        <div className="container mx-auto px-4 py-3">
+  <header className={`${$isDarkMode ? "bg-gray-800" : "bg-white"} shadow-md sticky top-0 z-50`}>
+        <div className="container mx-auto px-4 md:px-6 lg:px-8 py-3">
           <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
-              <div className="bg-gray-100 dark:bg-gray-700 rounded-full p-1.5 mr-3">
+              <div className=" p-1.5 mr-3">
                 <img 
                   src={logoUrl} 
                   alt="kGamify Logo" 
-                  className="h-8 w-8" 
+                  className="h-10 w-10" 
                 />
               </div>
               <div>
@@ -469,10 +487,24 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     Admin
                   </span>
                 </div>
-                <p className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>Admin Control Panel</p>
+                <p className={`text-xs ${$isDarkMode ? "text-gray-400" : "text-gray-600"}`}>Admin Control Panel</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
+              {/* Dark mode toggle */}
+              <button
+                onClick={toggleTheme}
+                className="px-3.5 py-2 rounded-full border text-base flex items-center bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors shadow-sm"
+                aria-label={$isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                title={$isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {$isDarkMode ? (
+                  <FaSun className="text-yellow-400 text-xl" />
+                ) : (
+                  <FaMoon className="text-blue-500 text-xl" />
+                )}
+                <span className="hidden md:inline ml-2">{$isDarkMode ? 'Light' : 'Dark'}</span>
+              </button>
               {admin && (
                 <div className="hidden md:flex items-center mr-2 bg-gray-100 dark:bg-gray-700 rounded-full pl-1 pr-3 py-1">
                   <div className="w-7 h-7 rounded-full bg-[#ff8200] flex items-center justify-center mr-2">
@@ -489,9 +521,9 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
               
               <button 
                 onClick={handleLogout}
-                className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center text-sm"
+                className="px-3.5 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center text-sm"
               >
-                <FaSignOutAlt className="mr-1.5" /> 
+                <FaSignOutAlt className="mr-1.5 text-lg" /> 
                 <span className="hidden md:inline">Logout</span>
               </button>
             </div>
@@ -499,9 +531,9 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
         </div>
       </header>
       
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="mb-6">
+    {/* Main Content */}
+  <div className="flex-1 container mx-auto px-4 md:px-6 lg:px-8 py-8">
+        <div className="my-6">
           <h1 className="text-3xl font-bold">Admin Portal</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Manage company registrations and account settings</p>
         </div>
@@ -527,7 +559,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
       )}
       
       {/* Tabs for switching between pending, approved companies, and profile */}
-      <nav className="admin-tabs">
+      <nav className="admin-tabs mt-2 mb-6">
         <div className="flex gap-6 border-b border-gray-200 dark:border-gray-700">
           <button
             type="button"
@@ -612,23 +644,23 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
     {activeTab === "pending" && (
         <>
       {(!Array.isArray(pendingCompanies) || pendingCompanies.filter(c => (c.status || 'pending') === 'pending').length === 0) ? (
-            <div className="text-center p-16 bg-white rounded-lg shadow-sm dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <div className={`text-center p-16 rounded-lg shadow-sm border ${$isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="mb-6 flex justify-center">
-                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${$isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
                   <FaBuilding className="text-[#ff8200] text-3xl" />
                 </div>
               </div>
               <p className="text-xl font-medium">No pending company approvals at the moment</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">New registration requests will appear here</p>
+              <p className={`text-sm mt-2 ${$isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>New registration requests will appear here</p>
             </div>
           ) : (
       <div className="grid grid-cols-1 gap-6">
   {(() => { const pageSize = 10; const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const page = pages.pending; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
-                <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
+                <div key={company._id} className={`rounded-lg shadow-md ${$isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${$isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="sm:flex w-full sm:flex-col md:flex md:flex-row md:justify-between items-start md:items-center">
                       <div className="flex items-center md:flex-1 min-w-0 mb-4 md:mb-0">
-                        <div className={`w-16 h-16 mr-4 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
+                        <div className={`w-16 h-16 mr-4 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${$isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
                           {company.logo ? (
                             <img src={company.logo} alt={company.companyName} className="w-full h-full object-cover" />
                           ) : (
@@ -679,7 +711,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                   {expanded[company._id] && (
                   <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className={`p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                      <div className={`p-4 rounded-lg ${$isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
                         <h4 className="font-medium mb-4 text-[#ff8200]">Contact Information</h4>
                         <div className="space-y-4">
                           <div className="flex items-center">
@@ -714,7 +746,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                         </div>
                       </div>
                       
-                      <div className={`p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                      <div className={`p-4 rounded-lg ${$isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
                         <h4 className="font-medium mb-4 text-[#ff8200]">Company Details</h4>
                         <div className="space-y-4">
                           <div className="flex items-center">
@@ -788,7 +820,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     )}
                     
                     {company.description && (
-                      <div className={`mt-6 p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                      <div className={`mt-6 p-4 rounded-lg ${$isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
                         <h4 className="font-medium mb-2 text-[#ff8200]">Company Description</h4>
                         <div className="prose dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: company.description }} />
                       </div>
@@ -799,7 +831,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     <div className="flex justify-end">
                       <button
                         onClick={()=> toggleExpand(company._id)}
-                        className={`text-sm font-medium underline ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                        className={`text-sm font-medium underline ${$isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
                       >
                         {expanded[company._id] ? 'View less' : 'View more'}
                       </button>
@@ -808,11 +840,11 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 </div>
               )); })()}
               {(() => { const pageSize = 10; const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
-                <div className="mt-4 mb-6 w-full flex items-center justify-center gap-2">
+                <div className="mt-6 mb-8 w-full flex items-center justify-center gap-2">
                   <button
                     onClick={() => setPages(p => ({ ...p, pending: Math.max(1, p.pending - 1) }))}
                     disabled={pages.pending === 1}
-                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.pending===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.pending===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${$isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
                     aria-label="Previous page"
                   >
                     <FaChevronLeft className="mr-1 h-4 w-4" /> Prev
@@ -821,7 +853,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     <button
                       key={i}
                       onClick={() => setPages(p => ({ ...p, pending: i + 1 }))}
-                      className={`px-3 py-1.5 rounded border text-sm ${pages.pending===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+                      className={`px-3 py-1.5 rounded border text-sm ${pages.pending===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : $isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
                       aria-current={pages.pending===i+1 ? 'page' : undefined}
                     >
                       {i + 1}
@@ -830,7 +862,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                   <button
                     onClick={() => setPages(p => ({ ...p, pending: Math.min(total, p.pending + 1) }))}
                     disabled={pages.pending === total}
-                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.pending===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.pending===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${$isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
                     aria-label="Next page"
                   >
                     Next <FaChevronRight className="ml-1 h-4 w-4" />
@@ -846,14 +878,14 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
         <>
           {/* Approved list */}
       {(() => { const filtered = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); return filtered.length === 0; })() ? (
-            <div className="text-center p-16 bg-white rounded-lg shadow-sm dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <div className={`text-center p-16 rounded-lg shadow-sm border ${$isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="mb-6 flex justify-center">
-                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${$isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
                   <FaBuilding className="text-[#ff8200] text-3xl" />
                 </div>
               </div>
               <p className="text-xl font-medium">No approved companies yet</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Approved companies will appear here</p>
+              <p className={`text-sm mt-2 ${$isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Approved companies will appear here</p>
               <button
                 onClick={() => fetchApprovedCompanies()}
                 className="mt-6 inline-flex items-center px-4 py-2 rounded bg-[#ff8200] text-white text-sm font-medium hover:bg-[#e57400] transition"
@@ -863,7 +895,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              <div className="flex justify-end mb-2">
+              <div className="flex justify-start  ">
                 <button
                   onClick={() => fetchApprovedCompanies()}
                   className="inline-flex items-center px-3 py-1.5 rounded bg-[#ff8200] text-white text-xs font-semibold hover:bg-[#e57400] transition"
@@ -872,11 +904,11 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 </button>
               </div>
   {(() => { const pageSize = 10; const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const page = pages.approved; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
-                <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
+                <div key={company._id} className={`rounded-lg shadow-md ${$isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${$isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="sm:flex w-full sm:flex-col md:flex-row md:justify-between items-start md:items-center">
                       <div className="flex items-center md:flex-1 min-w-0 mb-4 md:mb-0">
-                        <div className={`w-16 h-16 mr-4 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
+                        <div className={`w-16 h-16 mr-4 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${$isDarkMode ? "border-gray-600" : "border-gray-300"}`}>
                           {company.logo ? (
                             <img src={company.logo} alt={company.companyName} className="w-full h-full object-cover" />
                           ) : (
@@ -923,7 +955,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                   {expanded[company._id] && (
                   <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className={`p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                      <div className={`p-4 rounded-lg ${$isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
                         <h4 className="font-medium mb-4 text-[#ff8200]">Contact Information</h4>
                         <div className="space-y-4">
                           <div className="flex items-center">
@@ -958,7 +990,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                         </div>
                       </div>
                       
-                      <div className={`p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                      <div className={`p-4 rounded-lg ${$isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
                         <h4 className="font-medium mb-4 text-[#ff8200]">Company Details</h4>
                         <div className="flex items-center">
                           <FaBuilding className="text-[#ff8200] mr-3 flex-shrink-0" />
@@ -1040,7 +1072,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     </div>
                     
                     {company.description && (
-                      <div className={`mt-6 p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                      <div className={`mt-6 p-4 rounded-lg ${$isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}>
                         <h4 className="font-medium mb-2 text-[#ff8200]">Company Description</h4>
                         <div className="prose dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: company.description }} />
                       </div>
@@ -1051,7 +1083,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     <div className="flex justify-end">
                       <button
                         onClick={()=> toggleExpand(company._id)}
-                        className={`text-sm font-medium underline ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                        className={`text-sm font-medium underline ${$isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
                       >
                         {expanded[company._id] ? 'View less' : 'View more'}
                       </button>
@@ -1060,11 +1092,11 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 </div>
               )); })()}
               {(() => { const pageSize = 10; const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
-                <div className="mt-3 mb-6 w-full flex items-center justify-center gap-2">
+                <div className="mt-6 mb-8 w-full flex items-center justify-center gap-2">
                   <button
                     onClick={() => setPages(p => ({ ...p, approved: Math.max(1, p.approved - 1) }))}
                     disabled={pages.approved === 1}
-                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.approved===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.approved===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${$isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
                     aria-label="Previous page"
                   >
                     <FaChevronLeft className="mr-1 h-4 w-4" /> Prev
@@ -1073,7 +1105,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     <button
                       key={i}
                       onClick={() => setPages(p => ({ ...p, approved: i + 1 }))}
-                      className={`px-3 py-1.5 rounded border text-sm ${pages.approved===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+                      className={`px-3 py-1.5 rounded border text-sm ${pages.approved===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : $isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
                       aria-current={pages.approved===i+1 ? 'page' : undefined}
                     >
                       {i + 1}
@@ -1082,7 +1114,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                   <button
                     onClick={() => setPages(p => ({ ...p, approved: Math.min(total, p.approved + 1) }))}
                     disabled={pages.approved === total}
-                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.approved===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.approved===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${$isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
                     aria-label="Next page"
                   >
                     Next <FaChevronRight className="ml-1 h-4 w-4" />
@@ -1098,23 +1130,23 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
       {activeTab === 'denied' && (
         <>
           {deniedCompanies.length === 0 ? (
-            <div className="text-center p-16 bg-white rounded-lg shadow-sm dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <div className={`text-center p-16 rounded-lg shadow-sm border ${$isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="mb-6 flex justify-center">
-                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${$isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
                   <FaTimes className="text-red-600 text-3xl" />
                 </div>
               </div>
               <p className="text-xl font-medium">No denied companies</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Denied companies will appear here</p>
+              <p className={`text-sm mt-2 ${$isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Denied companies will appear here</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
               {(() => { const pageSize = 10; const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.denied; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
-                <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div key={company._id} className={`rounded-lg shadow-md ${$isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${$isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="sm:flex w-full sm:flex-col md:flex-row md:justify-between items-start md:items-center">
                       <div className="flex items-center md:flex-1 min-w-0 mb-4 md:mb-0">
-                        <div className={`w-16 h-16 mr-4 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                        <div className={`w-16 h-16 mr-4 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${$isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
                           {company.logo ? (
                             <img src={company.logo} alt={company.companyName} className="w-full h-full object-cover" />
                           ) : (
@@ -1137,26 +1169,26 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                           <div className="flex items-center gap-2">
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            <HighlightedText text={company.email} query={filters.q} isDarkMode={isDarkMode} />
+                            <HighlightedText text={company.email} query={filters.q} $isDarkMode={$isDarkMode} />
                           </div>
                         </div>
                       </div>
-                      <div className="flex space-x-3 md:ml-auto md:flex-shrink-0">
+                      <div className="flex flex-wrap items-center gap-4 md:ml-auto md:flex-shrink-0">
                         <button
                           onClick={() => handleApproveFromDenied(company._id)}
-                          className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                          className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm shadow-sm"
                         >
                           <FaCheck className="mr-2" /> Approve
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/messages/${company._id}`)}
-                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm shadow-sm"
                         >
                           <FaEnvelope className="mr-2" /> Messages
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/applicants/${company._id}`)}
-                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm shadow-sm"
                         >
                           <FaUsers className="mr-2" /> Applicants
                         </button>
@@ -1166,19 +1198,19 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                         <div className="flex gap-4 pt-2">
                           <button
                             onClick={() => handleApproveFromDenied(company._id)}
-                            className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                            className="flex-1 flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm shadow-sm"
                           >
                             <FaCheck className="mr-2" /> Approve
                           </button>
                           <button
                             onClick={()=> navigate(`/admin/messages/${company._id}`)}
-                            className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                            className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm shadow-sm"
                           >
                             <FaEnvelope className="mr-2" /> Messages
                           </button>
                           <button
                             onClick={()=> navigate(`/admin/applicants/${company._id}`)}
-                            className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                            className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm shadow-sm"
                           >
                             <FaUsers className="mr-2" /> Applicants
                           </button>
@@ -1201,7 +1233,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
 
                     {/* Contact & Details similar to other tabs */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className={`p-4 rounded-lg ${$isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                         <h4 className="font-medium mb-4 text-[#ff8200]">Contact Information</h4>
                         <div className="space-y-4">
                           <div className="flex items-center">
@@ -1227,7 +1259,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                           </div>
                         </div>
                       </div>
-                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className={`p-4 rounded-lg ${$isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                         <h4 className="font-medium mb-4 text-[#ff8200]">Company Details</h4>
                         <div className="space-y-4">
                           <div className="flex items-center">
@@ -1275,7 +1307,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     )}
 
                     {company.description && (
-                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className={`p-4 rounded-lg ${$isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                         <h4 className="font-medium mb-2 text-[#ff8200]">Company Description</h4>
                         <div className="prose dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: company.description }} />
                       </div>
@@ -1286,7 +1318,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     <div className="flex justify-end">
                       <button
                         onClick={()=> toggleExpand(company._id)}
-                        className={`text-sm font-medium underline ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                        className={`text-sm font-medium underline ${$isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
                       >
                         {expanded[company._id] ? 'View less' : 'View more'}
                       </button>
@@ -1295,11 +1327,11 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 </div>
               )); })()}
               {(() => { const pageSize = 10; const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
-                <div className="mt-3 mb-6 w-full flex items-center justify-center gap-2">
+                <div className="mt-6 mb-8 w-full flex items-center justify-center gap-2">
                   <button
                     onClick={() => setPages(p => ({ ...p, denied: Math.max(1, p.denied - 1) }))}
                     disabled={pages.denied === 1}
-                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.denied===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.denied===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${$isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
                     aria-label="Previous page"
                   >
                     <FaChevronLeft className="mr-1 h-4 w-4" /> Prev
@@ -1308,7 +1340,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     <button
                       key={i}
                       onClick={() => setPages(p => ({ ...p, denied: i + 1 }))}
-                      className={`px-3 py-1.5 rounded border text-sm ${pages.denied===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+                      className={`px-3 py-1.5 rounded border text-sm ${pages.denied===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : $isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
                       aria-current={pages.denied===i+1 ? 'page' : undefined}
                     >
                       {i + 1}
@@ -1317,7 +1349,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                   <button
                     onClick={() => setPages(p => ({ ...p, denied: Math.min(total, p.denied + 1) }))}
                     disabled={pages.denied === total}
-                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.denied===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.denied===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${$isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
                     aria-label="Next page"
                   >
                     Next <FaChevronRight className="ml-1 h-4 w-4" />
@@ -1332,23 +1364,23 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
       {activeTab === 'hold' && (
         <>
           {holdCompanies.length === 0 ? (
-            <div className="text-center p-16 bg-white rounded-lg shadow-sm dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <div className={`text-center p-16 rounded-lg shadow-sm border ${$isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
               <div className="mb-6 flex justify-center">
-                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${$isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
                   <FaClock className="text-yellow-600 text-3xl" />
                 </div>
               </div>
-              <p className="text-xl font-medium">No companies on hold</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">On-hold companies will appear here</p>
+              <p className="text-xl font-medium">No on-hold companies yet</p>
+              <p className={`text-sm mt-2 ${$isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>On-hold companies will appear here</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
               {(() => { const pageSize = 10; const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.hold; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
-                <div key={company._id} className={`rounded-lg shadow-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div key={company._id} className={`rounded-lg shadow-md ${$isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${$isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                       <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                        <div className={`w-12 h-12 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border ${$isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
                           {company.logo ? (
                             <img src={company.logo} alt={company.companyName} className="w-full h-full object-cover" />
                           ) : (
@@ -1358,12 +1390,12 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="text-xl font-bold">
-                              <HighlightedText text={company.companyName} query={filters.q} isDarkMode={isDarkMode} />
+                              <HighlightedText text={company.companyName} query={filters.q} $isDarkMode={$isDarkMode} />
                             </h3>
                             <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">On Hold</span>
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            <HighlightedText text={company.email} query={filters.q} isDarkMode={isDarkMode} />
+                            <HighlightedText text={company.email} query={filters.q} $isDarkMode={$isDarkMode} />
                           </div>
                         </div>
                       </div>
@@ -1371,25 +1403,25 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                       <div className="flex flex-wrap items-center gap-4">
                         <button
                           onClick={() => handleApproveFromHold(company._id)}
-                          className="flex items-center px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                          className="flex items-center px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm shadow-sm"
                         >
                           <FaCheck className="mr-2" /> Approve
                         </button>
                         <button
                           onClick={() => openReasonModal('deny', company)}
-                          className="flex items-center px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
+                          className="flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm shadow-sm"
                         >
                           <FaTimes className="mr-2" /> Deny
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/messages/${company._id}`)}
-                          className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm shadow-sm"
                         >
                           <FaEnvelope className="mr-2" /> Messages
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/applicants/${company._id}`)}
-                          className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm shadow-sm"
                         >
                           <FaUsers className="mr-2" /> Applicants
                         </button>
@@ -1413,7 +1445,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     </div>
                     {/* Contact & Details similar to pending */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className={`p-4 rounded-lg ${$isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                         <h4 className="font-medium mb-4 text-[#ff8200]">Contact Information</h4>
                         <div className="space-y-4">
                           <div className="flex items-center">
@@ -1439,7 +1471,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                           </div>
                         </div>
                       </div>
-                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className={`p-4 rounded-lg ${$isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                         <h4 className="font-medium mb-4 text-[#ff8200]">Company Details</h4>
                         <div className="space-y-4">
                           <div className="flex items-center">
@@ -1488,7 +1520,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                       </div>
                     </div>
                     {company.description && (
-                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className={`p-4 rounded-lg ${$isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                         <h4 className="font-medium mb-2 text-[#ff8200]">Company Description</h4>
                         <div className="prose dark:prose-invert max-w-none text-sm" dangerouslySetInnerHTML={{ __html: company.description }} />
                       </div>
@@ -1499,7 +1531,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     <div className="flex justify-end">
                       <button
                         onClick={()=> toggleExpand(company._id)}
-                        className={`text-sm font-medium underline ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                        className={`text-sm font-medium underline ${$isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
                       >
                         {expanded[company._id] ? 'View less' : 'View more'}
                       </button>
@@ -1508,11 +1540,11 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 </div>
               )); })()}
               {(() => { const pageSize = 10; const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
-                <div className="mt-3 mb-6 w-full flex items-center justify-center gap-2">
+                <div className="mt-6 mb-8 w-full flex items-center justify-center gap-2">
                   <button
                     onClick={() => setPages(p => ({ ...p, hold: Math.max(1, p.hold - 1) }))}
                     disabled={pages.hold === 1}
-                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.hold===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.hold===1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${$isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
                     aria-label="Previous page"
                   >
                     <FaChevronLeft className="mr-1 h-4 w-4" /> Prev
@@ -1521,7 +1553,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     <button
                       key={i}
                       onClick={() => setPages(p => ({ ...p, hold: i + 1 }))}
-                      className={`px-3 py-1.5 rounded border text-sm ${pages.hold===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+                      className={`px-3 py-1.5 rounded border text-sm ${pages.hold===i+1 ? 'bg-[#ff8200] text-white border-[#ff8200]' : $isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
                       aria-current={pages.hold===i+1 ? 'page' : undefined}
                     >
                       {i + 1}
@@ -1530,7 +1562,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                   <button
                     onClick={() => setPages(p => ({ ...p, hold: Math.min(total, p.hold + 1) }))}
                     disabled={pages.hold === total}
-                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.hold===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
+                    className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${pages.hold===total ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} ${$isDarkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'}`}
                     aria-label="Next page"
                   >
                     Next <FaChevronRight className="ml-1 h-4 w-4" />
@@ -1545,14 +1577,14 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
       {activeTab === "profile" && (
         <div className="space-y-6">
           {/* Admin Info Card */}
-          <div className={`p-8 rounded-lg shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-white"}`}>
+          <div className={`p-8 rounded-lg shadow-sm ${$isDarkMode ? "bg-gray-800" : "bg-white"}`}>
             <div className="flex flex-col items-center">
               <div className="flex flex-col items-center mb-6">
                 <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
                   <FaUserCircle className="text-[#ff8200] text-6xl" />
                 </div>
                 <h3 className="text-2xl font-bold mt-3">{admin?.firstName || 'System'} {admin?.lastName || 'Admin'}</h3>
-                <p className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>{admin?.email}</p>
+                <p className={`text-sm ${$isDarkMode ? "text-gray-400" : "text-gray-600"}`}>{admin?.email}</p>
                 <div className="mt-2">
                   <span className="text-sm bg-[#ff8200] text-white px-3 py-1 rounded-full inline-block">
                     {admin?.role === 'super_admin' ? 'Super Admin' : admin?.role === 'moderator' ? 'Moderator' : 'Admin'}
@@ -1561,7 +1593,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
               </div>
               
               <div className="w-full max-w-3xl">
-                <div className={`p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                <div className={`p-4 rounded-lg ${$isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}>
                   <h4 className="font-semibold mb-2 flex items-center">
                     <FaKey className="mr-2 text-[#ff8200]" /> Account Security
                   </h4>
@@ -1585,7 +1617,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
           </div>
           
           {/* Change Password Card */}
-          <div className={`p-8 rounded-lg shadow-sm ${isDarkMode ? "bg-gray-800" : "bg-white"}`}>
+          <div className={`p-8 rounded-lg shadow-sm ${$isDarkMode ? "bg-gray-800" : "bg-white"}`}>
             <h3 className="text-xl font-bold mb-4 flex items-center">
               <FaKey className="mr-2 text-[#ff8200]" /> Change Password
             </h3>
@@ -1617,7 +1649,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    className={`w-full px-4 py-3 border rounded ${isDarkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-300"}`}
+                    className={`w-full px-4 py-3 border rounded ${$isDarkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-300"}`}
                     required
                   />
                   <FaLock className="absolute right-3 top-3.5 text-gray-400" />
@@ -1634,7 +1666,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className={`w-full px-4 py-3 border rounded ${isDarkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-300"}`}
+                    className={`w-full px-4 py-3 border rounded ${$isDarkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-300"}`}
                     required
                     minLength="6"
                   />
@@ -1652,7 +1684,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`w-full px-4 py-3 border rounded ${isDarkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-300"}`}
+                    className={`w-full px-4 py-3 border rounded ${$isDarkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-300"}`}
                     required
                     minLength="6"
                   />
@@ -1700,7 +1732,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
           {/* Reason Modal */}
           {reasonModal.open && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <div className={`w-full max-w-md rounded-lg shadow-lg ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
+              <div className={`w-full max-w-md rounded-lg shadow-lg ${$isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
                 <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
                   <h3 className="text-lg font-semibold">
                     {reasonModal.mode === 'hold' ? 'Put Company on Hold' : 'Deny Company Registration'}
@@ -1718,7 +1750,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                       rows={4}
                       value={reasonModal.reason}
                       onChange={(e) => setReasonModal(s => ({ ...s, reason: e.target.value }))}
-                      className={`w-full rounded border px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                      className={`w-full rounded border px-3 py-2 ${$isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
                       placeholder="Enter a clear, actionable reason..."
                     />
                   </div>
@@ -1726,7 +1758,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2">
                   <button
                     onClick={() => setReasonModal({ open: false, mode: null, company: null, reason: '' })}
-                    className={`px-4 py-2 rounded ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}
+                    className={`px-4 py-2 rounded ${$isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'}`}
                   >
                     Cancel
                   </button>
@@ -1743,7 +1775,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
           )}
           {filterModal && (
             <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-              <div className={`w-full max-w-md rounded-lg shadow-lg ${isDarkMode? 'bg-gray-800 text-white':'bg-white text-gray-900'}`}>
+              <div className={`w-full max-w-md rounded-lg shadow-lg ${$isDarkMode? 'bg-gray-800 text-white':'bg-white text-gray-900'}`}>
                 <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                   <h3 className="text-lg font-semibold">Filters</h3>
                   <button onClick={()=>setFilterModal(false)} className="text-sm opacity-70 hover:opacity-100">✕</button>
@@ -1751,12 +1783,12 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                 <div className="px-5 py-5 space-y-5">
                   <div>
                     <label className="block text-sm font-medium mb-1">Search</label>
-                    <input value={filters.q} onChange={e=>setFilters(s=>({...s,q:e.target.value}))} placeholder="Name / Email / Industry" className={`w-full rounded border px-3 py-2 ${isDarkMode? 'bg-gray-700 border-gray-600':'bg-white border-gray-300'}`} />
+                    <input value={filters.q} onChange={e=>setFilters(s=>({...s,q:e.target.value}))} placeholder="Name / Email / Industry" className={`w-full rounded border px-3 py-2 ${$isDarkMode? 'bg-gray-700 border-gray-600':'bg-white border-gray-300'}`} />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">Sort By</label>
-                      <select value={filters.sort} onChange={e=>setFilters(s=>({...s,sort:e.target.value}))} className={`w-full rounded border px-3 py-2 ${isDarkMode? 'bg-gray-700 border-gray-600':'bg-white border-gray-300'}`}>
+                      <select value={filters.sort} onChange={e=>setFilters(s=>({...s,sort:e.target.value}))} className={`w-full rounded border px-3 py-2 ${$isDarkMode? 'bg-gray-700 border-gray-600':'bg-white border-gray-300'}`}>
                         <option value="updatedAt">Updated</option>
                         <option value="name">Name</option>
                         <option value="status">Status</option>
@@ -1764,7 +1796,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Order</label>
-                      <select value={filters.order} onChange={e=>setFilters(s=>({...s,order:e.target.value}))} className={`w-full rounded border px-3 py-2 ${isDarkMode? 'bg-gray-700 border-gray-600':'bg-white border-gray-300'}`}>
+                      <select value={filters.order} onChange={e=>setFilters(s=>({...s,order:e.target.value}))} className={`w-full rounded border px-3 py-2 ${$isDarkMode? 'bg-gray-700 border-gray-600':'bg-white border-gray-300'}`}>
                         <option value="desc">Descending</option>
                         <option value="asc">Ascending</option>
                       </select>
@@ -1772,7 +1804,7 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
                   </div>
                 </div>
                 <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2">
-                  <button onClick={()=>setFilters({ q:'', sort:'updatedAt', order:'desc' })} className={`px-4 py-2 rounded ${isDarkMode? 'bg-gray-700 hover:bg-gray-600':'bg-gray-100 hover:bg-gray-200'}`}>Reset</button>
+                  <button onClick={()=>setFilters({ q:'', sort:'updatedAt', order:'desc' })} className={`px-4 py-2 rounded ${$isDarkMode? 'bg-gray-700 hover:bg-gray-600':'bg-gray-100 hover:bg-gray-200'}`}>Reset</button>
                   <button onClick={()=>setFilterModal(false)} className="px-4 py-2 rounded bg-[#ff8200] text-white hover:bg-[#e57400]">Apply</button>
                 </div>
               </div>
@@ -1780,58 +1812,16 @@ const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
           )}
       </div>
       
-      {/* Admin Footer (aligned with site footer) */}
-      <footer className={`bg-[#0f172a] text-gray-100 mt-8`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 gap-y-12 items-start">
-            {/* Brand */}
-            <div>
-              <div className="text-xl font-semibold">kGamify Admin</div>
-              <p className="mt-4 text-gray-300 leading-relaxed max-w-prose">
-                Administrative tools for managing companies, jobs, and applications.
-              </p>
-            </div>
-
-            {/* Quick Links */}
-            <div>
-              <div className="text-white font-semibold mb-3">Quick Links</div>
-              <ul className="space-y-2">
-                <li><a className="text-gray-300 hover:text-white transition-colors" href="/admin">Overview</a></li>
-                <li><a className="text-gray-300 hover:text-white transition-colors" href="/admin">Companies</a></li>
-                <li><a className="text-gray-300 hover:text-white transition-colors" href="/admin">Jobs</a></li>
-                <li><a className="text-gray-300 hover:text-white transition-colors" href="/admin/messages">Messages</a></li>
-              </ul>
-            </div>
-
-            {/* Support */}
-            <div>
-              <div className="text-white font-semibold mb-3">Support</div>
-              <ul className="space-y-2">
-                <li><a className="text-gray-300 hover:text-white transition-colors" href="https://www.kgamify.in/privacy-policy/" target="_blank" rel="noreferrer">Privacy Policy</a></li>
-                <li><a className="text-gray-300 hover:text-white transition-colors" href="https://www.kgamify.in/terms-of-service/" target="_blank" rel="noreferrer">Terms of Service</a></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-10 border-t border-white/10 pt-6 flex flex-col sm:flex-row gap-3 items-center justify-between text-sm text-gray-300">
-            <p>© {new Date().getFullYear()} Yantrikisoft. All rights reserved. <span className="opacity-70">| Admin Console</span></p>
-            <div className="flex items-center gap-4">
-              <a className="text-gray-300 hover:text-white transition-colors" href="https://www.kgamify.in/privacy-policy/" target="_blank" rel="noreferrer">Privacy Policy</a>
-              <span className="opacity-30">|</span>
-              <a className="text-gray-300 hover:text-white transition-colors" href="https://www.kgamify.in/terms-of-service/" target="_blank" rel="noreferrer">Terms of Service</a>
-              <span className="opacity-30">|</span>
-              <a className="text-gray-300 hover:text-white transition-colors" href="https://www.kgamify.in/cookies/" target="_blank" rel="noreferrer">Cookie Policy</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Global site footer reused in Admin */}
+      <Footer isDarkMode={$isDarkMode} $isDarkMode={$isDarkMode} />
     </div>
   );
 };
 
 AdminPortal.propTypes = {
   isDarkMode: PropTypes.bool,
-  $isDarkMode: PropTypes.bool
+  $isDarkMode: PropTypes.bool,
+  onThemeToggle: PropTypes.func
 };
 
 export default AdminPortal;

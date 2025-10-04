@@ -312,7 +312,7 @@ function AppContent() {
                     />
                     <Route
                       path="/admin"
-                      element={<AdminPortal isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
+                      element={<AdminPortal isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle} />}
                     />
                     <Route
                       path="/admin/messages/:companyId"
