@@ -3,24 +3,18 @@ const router = express.Router();
 const { sendEmail, sendBulkEmails, sendVerificationEmail } = require('../utils/emailService');
 const Job = require('../models/Job');
 const Application = require('../models/Application');
+const Notification = require('../models/Notification');
 
-// In-memory store for demo purposes (avoid 404s). Replace with DB in future.
-const memStore = {
-  byEmail: new Map()
-};
-
-function getListForEmail(email) {
-  if (!email) return [];
-  if (!memStore.byEmail.has(email)) memStore.byEmail.set(email, []);
-  return memStore.byEmail.get(email);
-}
-
-// Minimal list endpoint for in-app notifications UI
+// Minimal list endpoint for in-app notifications UI (Mongo-backed)
 router.get('/list', async (req, res) => {
   try {
-    const { email } = req.query;
-    // Provide an empty list (or previously stored items) to avoid 404 spam
-    const list = getListForEmail(email).slice(-50); // cap to last 50
+    const { email, after } = req.query;
+    if (!email) return res.json([]);
+    const filter = { email };
+    if (after) {
+      filter.createdAt = { $gt: new Date(after) };
+    }
+    const list = await Notification.find(filter).sort({ createdAt: -1 }).limit(50).lean();
     res.json(list);
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -31,12 +25,8 @@ router.get('/list', async (req, res) => {
 router.post('/mark-read', async (req, res) => {
   try {
     const { email, ids } = req.body || {};
-    if (!email || !Array.isArray(ids)) return res.status(400).json({ success: false, message: 'Invalid payload' });
-    const list = getListForEmail(email);
-    ids.forEach(id => {
-      const item = list.find(n => String(n.id || n._id) === String(id));
-      if (item) item.read = true;
-    });
+    if (!email || !Array.isArray(ids) || !ids.length) return res.status(400).json({ success: false, message: 'Invalid payload' });
+    await Notification.updateMany({ email, _id: { $in: ids } }, { $set: { read: true } });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -48,8 +38,7 @@ router.post('/mark-all-read', async (req, res) => {
   try {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ success: false, message: 'Invalid payload' });
-    const list = getListForEmail(email);
-    list.forEach(n => { n.read = true; });
+    await Notification.updateMany({ email, read: false }, { $set: { read: true } });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -76,6 +65,17 @@ router.post('/job-application', async (req, res) => {
     };
 
     const result = await sendEmail(employerEmail, 'jobApplication', emailData);
+
+    // Persist in-app notification for employer
+    try {
+      await Notification.create({
+        email: employerEmail,
+        type: 'application',
+        title: `New application for ${job.title}`,
+        message: `${applicantData.name} applied to ${job.title}`,
+        meta: { jobId: String(job._id), applicantEmail: applicantData.email }
+      });
+    } catch { /* ignore */ }
 
     if (result.success) {
       res.json({ 
@@ -117,6 +117,16 @@ router.post('/job-posted', async (req, res) => {
     };
 
     const result = await sendEmail(employerEmail, 'jobPosted', emailData);
+
+    try {
+      await Notification.create({
+        email: employerEmail,
+        type: 'job',
+        title: `Job posted: ${job.title}`,
+        message: `Your job "${job.title}" has been posted.`,
+        meta: { jobId: String(job._id) }
+      });
+    } catch { /* ignore */ }
 
     if (result.success) {
       res.json({ 
@@ -163,6 +173,16 @@ router.post('/application-status', async (req, res) => {
     };
 
     const result = await sendEmail(application.user.email, 'applicationStatusUpdate', emailData);
+
+    try {
+      await Notification.create({
+        email: application.user.email,
+        type: 'status',
+        title: `Application ${status}`,
+        message: message || `Your application for ${job.title} was ${status}.`,
+        meta: { applicationId: String(application._id), jobId: String(job._id) }
+      });
+    } catch { /* ignore */ }
 
     if (result.success) {
       // Update application status in database

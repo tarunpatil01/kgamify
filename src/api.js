@@ -267,6 +267,22 @@ export const updateCompanyProfile = async (email, formData) => {
   return response.data;
 };
 
+export const deleteCompanyDocument = async (email, { index, url }) => {
+  const params = new URLSearchParams();
+  if (typeof index !== 'undefined') params.set('index', String(index));
+  if (url) params.set('url', url);
+  const res = await axios.delete(`${API_URL}/companies/update/${encodeURIComponent(email)}/document?${params.toString()}`);
+  return res.data;
+};
+
+export const deleteCompanyImage = async (email, { index, url }) => {
+  const params = new URLSearchParams();
+  if (typeof index !== 'undefined') params.set('index', String(index));
+  if (url) params.set('url', url);
+  const res = await axios.delete(`${API_URL}/companies/update/${encodeURIComponent(email)}/image?${params.toString()}`);
+  return res.data;
+};
+
 export const requestPasswordReset = async (email) => {
   const response = await axios.post(`${API_URL}/auth/forgot-password`, { email });
   return response.data;

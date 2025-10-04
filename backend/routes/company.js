@@ -36,7 +36,8 @@ const authenticateCompany = async (req, res, next) => {
 // Regular company registration
 router.post('/', upload.fields([
   { name: 'logo', maxCount: 1 },
-  { name: 'documents', maxCount: 1 }
+  { name: 'documents', maxCount: 10 },
+  { name: 'images', maxCount: 10 }
 ]), async (req, res) => {
   try {
 
@@ -79,6 +80,9 @@ router.post('/', upload.fields([
       }
     }
 
+    const documentsArr = Array.isArray(req.files?.documents) ? req.files.documents.map(f => f.path) : [];
+    const imagesArr = Array.isArray(req.files?.images) ? req.files.images.map(f => f.path) : [];
+
     const newCompany = new Company({
       ...companyData,
       // Ensure optional fields exist for minimal registration
@@ -88,7 +92,10 @@ router.post('/', upload.fields([
       size: companyData.size || undefined,
       registrationNumber: companyData.registrationNumber ? companyData.registrationNumber : undefined,
       logo: req.files?.logo ? req.files.logo[0].path : null,
-      documents: req.files?.documents ? req.files.documents[0].path : null,
+      // Keep first document for legacy field; store all in documentsList
+      documents: documentsArr[0] || null,
+      documentsList: documentsArr,
+      images: imagesArr,
       approved: false,
       profileCompleted: false
     });
@@ -205,11 +212,13 @@ router.get('/info', async (req, res) => {
 // Update company profile
 router.put('/update/:email', upload.fields([
   { name: 'logo', maxCount: 1 },
-  { name: 'documents', maxCount: 1 }
+  { name: 'documents', maxCount: 10 },
+  { name: 'images', maxCount: 10 }
 ]), async (req, res) => {
   try {
     const { email } = req.params;
     const updateData = { ...req.body };
+    const replaceExisting = String(req.body.replaceExisting || '').toLowerCase() === 'true';
     
     // Find the company
     const company = await Company.findOne({ email });
@@ -256,7 +265,7 @@ router.put('/update/:email', upload.fields([
       delete updateData.password;
     }
 
-    // Handle file uploads
+  // Handle file uploads
     if (req.files?.logo) {
       // If there's an existing logo, delete it from Cloudinary
       if (company.logo) {
@@ -272,35 +281,158 @@ router.put('/update/:email', upload.fields([
       updateData.logo = req.files.logo[0].path;
     }
     
-    if (req.files?.documents) {
-      // If there are existing documents, delete them from Cloudinary
-      if (company.documents) {
+    // If replaceExisting is true, clear existing arrays and (best-effort) delete from Cloudinary
+    if (replaceExisting) {
+      const urlsToDelete = [
+        ...(Array.isArray(company.documentsList) ? company.documentsList : []),
+        ...(Array.isArray(company.images) ? company.images : [])
+      ];
+      // Fire and forget deletions
+      const destroyByUrl = async (url) => {
         try {
-          // Extract public_id correctly from the URL
-          const publicId = company.documents.includes('/')
-            ? `kgamify/${  company.documents.split('/').pop().split('.')[0]}`
-            : `kgamify/${  company.documents}`;
-          
-          await cloudinary.uploader.destroy(publicId);
-        } catch (error) {
-          console.error('Error deleting old documents:', error);
-        }
+          // Extract public id with folder from URL, e.g., https://res.cloudinary.com/<cloud>/image/upload/vNN/kgamify/<public_id>.<ext>
+          const parts = url.split('/');
+          // Find index of folder 'kgamify' and build public id from there without extension
+          const idx = parts.findIndex(p => p === 'kgamify');
+          let publicId;
+          if (idx !== -1) {
+            const last = parts.slice(idx).join('/');
+            publicId = last.replace(/\.[^/.]+$/, '');
+          } else {
+            // Fallback: last path segment without extension
+            publicId = parts.slice(-2).join('/').replace(/\.[^/.]+$/, '');
+          }
+          // Try image first, then raw
+          try { await cloudinary.uploader.destroy(publicId); } catch { await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' }); }
+        } catch { /* ignore */ }
+      };
+      urlsToDelete.forEach(u => { destroyByUrl(u); });
+      updateData.documents = undefined;
+      updateData.documentsList = [];
+      updateData.images = [];
+    }
+
+    if (req.files?.documents) {
+      const newDocs = req.files.documents.map(f => f.path);
+      // Keep first doc in legacy field for backward compatibility
+      updateData.documents = newDocs[0] || (replaceExisting ? undefined : (company.documents || undefined));
+      if (replaceExisting) {
+        // Replace entire array
+        updateData.documentsList = newDocs;
+      } else {
+        updateData.$addToSet = updateData.$addToSet || {};
+        updateData.$addToSet.documentsList = { $each: newDocs };
       }
-      
-      // Store the complete Cloudinary URL rather than just the path
-      const uploadedDoc = req.files.documents[0];
-      updateData.documents = uploadedDoc.path;
-      
-      // Log the document URL for debugging
+    }
+
+    if (req.files?.images) {
+      const newImgs = req.files.images.map(f => f.path);
+      if (replaceExisting) {
+        updateData.images = newImgs;
+      } else {
+        updateData.$addToSet = updateData.$addToSet || {};
+        updateData.$addToSet.images = { $each: newImgs };
+      }
     }
 
     // Update the company data
-    await Company.findOneAndUpdate({ email }, updateData, { new: true });
+  // If using $addToSet, split atomic ops from $set
+  const { $addToSet, ...$set } = updateData;
+  const updateOps = {};
+  if (Object.keys($set).length) updateOps.$set = $set;
+  if ($addToSet) updateOps.$addToSet = $addToSet;
+  await Company.findOneAndUpdate({ email }, updateOps, { new: true });
 
     res.status(200).json({ message: 'Company profile updated successfully' });
   } catch (error) {
     console.error('Error updating company profile:', error);
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Delete a specific document by index or url
+router.delete('/update/:email/document', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { index, url } = req.query;
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+    const list = Array.isArray(company.documentsList) ? [...company.documentsList] : [];
+    let removedUrl;
+    if (typeof index !== 'undefined') {
+      const i = parseInt(index, 10);
+      if (isNaN(i) || i < 0 || i >= list.length) return res.status(400).json({ error: 'Invalid index' });
+      removedUrl = list.splice(i, 1)[0];
+    } else if (url) {
+      const idx = list.findIndex(u => String(u) === String(url));
+      if (idx === -1) return res.status(404).json({ error: 'Document not found' });
+      removedUrl = list.splice(idx, 1)[0];
+    } else {
+      return res.status(400).json({ error: 'Provide index or url' });
+    }
+    // Update legacy primary doc
+    const newPrimary = list[0] || null;
+    company.documentsList = list;
+    company.documents = newPrimary;
+    await company.save({ validateModifiedOnly: true });
+    // Best-effort delete from Cloudinary
+    (async () => {
+      try {
+        const parts = removedUrl.split('/');
+        const start = parts.findIndex(p => p === 'kgamify');
+        let publicId;
+        if (start !== -1) {
+          publicId = parts.slice(start).join('/').replace(/\.[^/.]+$/, '');
+        } else {
+          publicId = parts.slice(-2).join('/').replace(/\.[^/.]+$/, '');
+        }
+        try { await cloudinary.uploader.destroy(publicId); } catch { await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' }); }
+      } catch { /* ignore */ }
+    })();
+    return res.json({ message: 'Document removed', documentsList: company.documentsList, documents: company.documents });
+  } catch {
+    return res.status(500).json({ error: 'Failed to remove document' });
+  }
+});
+
+// Delete a specific image by index or url
+router.delete('/update/:email/image', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { index, url } = req.query;
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+    const list = Array.isArray(company.images) ? [...company.images] : [];
+    let removedUrl;
+    if (typeof index !== 'undefined') {
+      const i = parseInt(index, 10);
+      if (isNaN(i) || i < 0 || i >= list.length) return res.status(400).json({ error: 'Invalid index' });
+      removedUrl = list.splice(i, 1)[0];
+    } else if (url) {
+      const idx = list.findIndex(u => String(u) === String(url));
+      if (idx === -1) return res.status(404).json({ error: 'Image not found' });
+      removedUrl = list.splice(idx, 1)[0];
+    } else {
+      return res.status(400).json({ error: 'Provide index or url' });
+    }
+    company.images = list;
+    await company.save({ validateModifiedOnly: true });
+    (async () => {
+      try {
+        const parts = removedUrl.split('/');
+        const start = parts.findIndex(p => p === 'kgamify');
+        let publicId;
+        if (start !== -1) {
+          publicId = parts.slice(start).join('/').replace(/\.[^/.]+$/, '');
+        } else {
+          publicId = parts.slice(-2).join('/').replace(/\.[^/.]+$/, '');
+        }
+        try { await cloudinary.uploader.destroy(publicId); } catch { await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' }); }
+      } catch { /* ignore */ }
+    })();
+    return res.json({ message: 'Image removed', images: company.images });
+  } catch {
+    return res.status(500).json({ error: 'Failed to remove image' });
   }
 });
 
@@ -458,7 +590,8 @@ router.post('/subscription/choose', async (req, res) => {
 // Update profile completion details (calculates completion %)
 router.post('/profile/complete', upload.fields([
   { name: 'logo', maxCount: 1 },
-  { name: 'documents', maxCount: 1 }
+  { name: 'documents', maxCount: 10 },
+  { name: 'images', maxCount: 10 }
 ]), async (req, res) => {
   try {
     const { email } = req.body;
@@ -476,9 +609,22 @@ router.post('/profile/complete', upload.fields([
       if (req.body[f]) updated[f] = req.body[f];
     });
     if (req.files?.logo) updated.logo = req.files.logo[0].path;
-    if (req.files?.documents) updated.documents = req.files.documents[0].path;
+    if (req.files?.documents) {
+      const newDocs = req.files.documents.map(f => f.path);
+      updated.documents = newDocs[0];
+      updated.$addToSet = updated.$addToSet || {};
+      updated.$addToSet.documentsList = { $each: newDocs };
+    }
+    if (req.files?.images) {
+      const newImgs = req.files.images.map(f => f.path);
+      updated.$addToSet = updated.$addToSet || {};
+      updated.$addToSet.images = { $each: newImgs };
+    }
 
-    await Company.updateOne({ email }, { $set: updated });
+  const { $addToSet, ...$set } = updated;
+  const ops = { $set };
+  if ($addToSet) ops.$addToSet = $addToSet;
+  await Company.updateOne({ email }, ops);
     const fresh = await Company.findOne({ email });
     // Compute completion
     const completedList = completionFields.filter(f => !!fresh[f]);

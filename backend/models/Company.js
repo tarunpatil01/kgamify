@@ -30,9 +30,12 @@ const companySchema = new mongoose.Schema({
   Username: { type: String, required: true, unique: true },
   yearEstablished: { type: String, required: true },
   documents: {
-    type: String, // Cloudinary URL
+    type: String, // Legacy primary document URL
     required: false
   },
+  // New: support multiple documents and images
+  documentsList: { type: [String], default: [] },
+  images: { type: [String], default: [] },
   description: { type: String, default: 'No description provided' },
   socialMediaLinks: {
     type: socialMediaLinksSchema,

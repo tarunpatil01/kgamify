@@ -40,7 +40,11 @@ HighlightedText.propTypes = {
   isDarkMode: PropTypes.bool,
 };
 
-const AdminPortal = ({ isDarkMode }) => {
+const AdminPortal = ({ isDarkMode, $isDarkMode }) => {
+  if (typeof $isDarkMode === 'boolean') {
+    // Prefer standardized alias when provided
+    isDarkMode = $isDarkMode;
+  }
   const [pendingCompanies, setPendingCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
   const [activeTab, setActiveTab] = useState("pending"); // "pending", "approved", "denied", or "profile"
@@ -627,7 +631,7 @@ const AdminPortal = ({ isDarkMode }) => {
                         </button>
                         <button
               onClick={() => openReasonModal('hold', company)}
-                          className="flex items-center px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors shadow-sm"
+                          className="flex items-center px-4 py-2 bg-[#ff8200] text-white rounded hover:bg-[#e57400] transition-colors shadow-sm"
                         >
                           <FaClock className="mr-2" /> Hold
                         </button>
@@ -643,12 +647,7 @@ const AdminPortal = ({ isDarkMode }) => {
                         >
                           Messages
                         </button>
-                        <button
-                          onClick={()=> navigate(`/admin/applicants/${company._id}`)}
-                          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors shadow-sm"
-                        >
-                          Applicants
-                        </button>
+                        {/* Applicants button removed for new (pending) companies */}
                       </div>
                       
                     </div>
@@ -714,21 +713,34 @@ const AdminPortal = ({ isDarkMode }) => {
                             )}
                           </div>
                           
-                          {company.documents && (
+                          {(company.documents || (Array.isArray(company.documentsList) && company.documentsList.length)) && (
                             <div className="flex items-start">
                               <svg className="h-5 w-5 text-[#ff8200] mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                               </svg>
                               <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Documents</p>
-                                <a 
-                                  href={company.documents} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer" 
-                                  className="text-blue-500 hover:underline font-medium"
-                                >
-                                  View Verification Documents
-                                </a>
+                                {Array.isArray(company.documentsList) && company.documentsList.length ? (
+                                  <ul className="list-disc pl-5 space-y-1">
+                                    {company.documentsList.map((u, i) => (
+                                      <li key={i}><a href={u} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Document {i+1}</a></li>
+                                    ))}
+                                  </ul>
+                                ) : company.documents ? (
+                                  <a href={company.documents} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline font-medium">View Verification Documents</a>
+                                ) : null}
+                              </div>
+                            </div>
+                          )}
+                          {Array.isArray(company.images) && company.images.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Gallery</p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {company.images.slice(0,6).map((img, idx) => (
+                                  <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
+                                    <img src={img} alt={`img-${idx}`} className="h-16 w-full object-cover rounded border" />
+                                  </a>
+                                ))}
                               </div>
                             </div>
                           )}
@@ -851,7 +863,7 @@ const AdminPortal = ({ isDarkMode }) => {
                       <div className="flex space-x-3">
                         <button
                           onClick={() => handleRevoke(company._id)}
-                          className="flex items-center px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors shadow-sm"
+                          className="flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors shadow-sm"
                         >
                           <FaTimes className="mr-2" /> Deny Access
                         </button>
@@ -863,7 +875,7 @@ const AdminPortal = ({ isDarkMode }) => {
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/applicants/${company._id}`)}
-                          className="flex items-center px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors shadow-sm"
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm"
                         >
                           Applicants
                         </button>
@@ -960,17 +972,30 @@ const AdminPortal = ({ isDarkMode }) => {
                             </div>
                           </div>
                         )}
-                        {company.documents && (
+                        {(company.documents || (Array.isArray(company.documentsList) && company.documentsList.length)) && (
                           <div className="mt-4">
                             <p className="text-xs text-gray-500 dark:text-gray-400">Verification Document</p>
-                            <a
-                              href={company.documents}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-500 hover:underline font-medium"
-                            >
-                              View Document
-                            </a>
+                            {Array.isArray(company.documentsList) && company.documentsList.length ? (
+                              <ul className="list-disc pl-5 space-y-1">
+                                {company.documentsList.map((u, i) => (
+                                  <li key={i}><a href={u} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Document {i+1}</a></li>
+                                ))}
+                              </ul>
+                            ) : company.documents ? (
+                              <a href={company.documents} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline font-medium">View Document</a>
+                            ) : null}
+                          </div>
+                        )}
+                        {Array.isArray(company.images) && company.images.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Images</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {company.images.slice(0,6).map((img, idx) => (
+                                <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
+                                  <img src={img} alt={`img-${idx}`} className="h-16 w-full object-cover rounded border" />
+                                </a>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1077,7 +1102,7 @@ const AdminPortal = ({ isDarkMode }) => {
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/applicants/${company._id}`)}
-                          className="flex items-center px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-sm"
+                          className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
                         >
                           Applicants
                         </button>
@@ -1113,6 +1138,39 @@ const AdminPortal = ({ isDarkMode }) => {
                     ) : (
                       <div className="text-sm opacity-70">No reason provided.</div>
                     )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <h4 className="font-medium mb-4 text-[#ff8200]">Documents</h4>
+                        {(company.documents || (Array.isArray(company.documentsList) && company.documentsList.length)) ? (
+                          Array.isArray(company.documentsList) && company.documentsList.length ? (
+                            <ul className="list-disc pl-5 space-y-1">
+                              {company.documentsList.map((u, i) => (
+                                <li key={i}><a href={u} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Document {i+1}</a></li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <a href={company.documents} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">View Document</a>
+                          )
+                        ) : (
+                          <div className="text-sm opacity-70">No documents</div>
+                        )}
+                      </div>
+                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <h4 className="font-medium mb-4 text-[#ff8200]">Images</h4>
+                        {Array.isArray(company.images) && company.images.length ? (
+                          <div className="grid grid-cols-3 gap-2">
+                            {company.images.slice(0,6).map((img, idx) => (
+                              <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
+                                <img src={img} alt={`img-${idx}`} className="h-16 w-full object-cover rounded border" />
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm opacity-70">No images</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   )}
                   <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700">
@@ -1208,7 +1266,7 @@ const AdminPortal = ({ isDarkMode }) => {
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/applicants/${company._id}`)}
-                          className="flex items-center px-3 py-1.5 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-sm"
+                          className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
                         >
                           Applicants
                         </button>
@@ -1272,14 +1330,34 @@ const AdminPortal = ({ isDarkMode }) => {
                             <span className="text-xs text-gray-500 dark:text-gray-400">Status:</span>
                             <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">On Hold</span>
                           </div>
-                          {company.documents && (
+                          {(company.documents || (Array.isArray(company.documentsList) && company.documentsList.length)) && (
                             <div className="flex items-start">
                               <svg className="h-5 w-5 text-[#ff8200] mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                               </svg>
                               <div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">Documents</p>
-                                <a href={company.documents} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline font-medium">View Verification Documents</a>
+                                {Array.isArray(company.documentsList) && company.documentsList.length ? (
+                                  <ul className="list-disc pl-5 space-y-1">
+                                    {company.documentsList.map((u, i) => (
+                                      <li key={i}><a href={u} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Document {i+1}</a></li>
+                                    ))}
+                                  </ul>
+                                ) : company.documents ? (
+                                  <a href={company.documents} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline font-medium">View Verification Documents</a>
+                                ) : null}
+                              </div>
+                            </div>
+                          )}
+                          {Array.isArray(company.images) && company.images.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Images</p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {company.images.slice(0,6).map((img, idx) => (
+                                  <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
+                                    <img src={img} alt={`img-${idx}`} className="h-16 w-full object-cover rounded border" />
+                                  </a>
+                                ))}
                               </div>
                             </div>
                           )}
@@ -1615,7 +1693,8 @@ const AdminPortal = ({ isDarkMode }) => {
 };
 
 AdminPortal.propTypes = {
-  isDarkMode: PropTypes.bool
+  isDarkMode: PropTypes.bool,
+  $isDarkMode: PropTypes.bool
 };
 
 export default AdminPortal;

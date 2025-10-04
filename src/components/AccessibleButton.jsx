@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { colors, resolveDarkMode } from '../config/designSystem';
 
 const AccessibleButton = ({
   children,
@@ -12,18 +13,22 @@ const AccessibleButton = ({
   type = 'button',
   'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedby,
+  $isDarkMode,
   ...props
 }) => {
   const baseClasses = 'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
   
+  const isDark = resolveDarkMode({ isDarkMode: props.isDarkMode, $isDarkMode });
+
   const variantClasses = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500',
-    secondary: 'bg-gray-600 hover:bg-gray-700 text-white focus:ring-gray-500',
-    success: 'bg-green-600 hover:bg-green-700 text-white focus:ring-green-500',
-    danger: 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500',
-    warning: 'bg-yellow-600 hover:bg-yellow-700 text-white focus:ring-yellow-500',
+  primary: `${colors.status.blue.replace(' text-white', '')} text-white focus:ring-blue-500`,
+    secondary: `${isDark ? 'bg-gray-600 hover:bg-gray-700 text-white focus:ring-gray-500' : 'bg-gray-600 hover:bg-gray-700 text-white focus:ring-gray-500'}`,
+  success: `${colors.status.green.replace(' text-white', '')} text-white focus:ring-green-500`,
+  danger: `${colors.status.red.replace(' text-white', '')} text-white focus:ring-red-500`,
+  warning: `${colors.status.yellow.replace(' text-white', '')} text-white focus:ring-yellow-500`,
     outline: 'border border-gray-300 hover:bg-gray-50 text-gray-700 focus:ring-gray-500 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-200',
-    ghost: 'hover:bg-gray-100 text-gray-700 focus:ring-gray-500 dark:hover:bg-gray-700 dark:text-gray-200'
+    ghost: 'hover:bg-gray-100 text-gray-700 focus:ring-gray-500 dark:hover:bg-gray-700 dark:text-gray-200',
+    orange: colors.status.orange
   };
 
   const sizeClasses = {
@@ -228,12 +233,14 @@ AccessibleButton.propTypes = {
   onClick: PropTypes.func,
   disabled: PropTypes.bool,
   loading: PropTypes.bool,
-  variant: PropTypes.oneOf(['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'outline']),
+  variant: PropTypes.oneOf(['primary', 'secondary', 'success', 'danger', 'warning', 'outline', 'ghost', 'orange']),
   size: PropTypes.oneOf(['sm', 'md', 'lg']),
   className: PropTypes.string,
   type: PropTypes.oneOf(['button', 'submit', 'reset']),
   'aria-label': PropTypes.string,
   'aria-describedby': PropTypes.string,
+  $isDarkMode: PropTypes.bool,
+  isDarkMode: PropTypes.bool,
 };
 
 AccessibleInput.propTypes = {

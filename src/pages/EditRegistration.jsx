@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { getCompanyInfo, updateCompanyProfile } from "../api";
+import { getCompanyInfo, updateCompanyProfile, deleteCompanyDocument, deleteCompanyImage } from "../api";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import QuillEditor from '../components/QuillEditor'; // Replace ReactQuill import
 import PropTypes from 'prop-types';
 
-function EditRegistration({ isDarkMode }) {
+function EditRegistration({ isDarkMode, $isDarkMode }) {
+  if (typeof $isDarkMode === 'boolean') {
+    isDarkMode = $isDarkMode;
+  }
   const navigate = useNavigate();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [formData, setFormData] = useState({
@@ -27,7 +30,8 @@ function EditRegistration({ isDarkMode }) {
     pinCode: "",
     username: "", // Added username field
     yearEstablished: "",
-    documents: null,
+  documents: [],
+  images: [],
     description: "",
     instagram: "",
     twitter: "",
@@ -38,11 +42,13 @@ function EditRegistration({ isDarkMode }) {
     confirmPassword: "" // For password confirmation
   });
   const [currentLogo, setCurrentLogo] = useState(null);
-  const [currentDocuments, setCurrentDocuments] = useState(null);
+  const [currentDocuments, setCurrentDocuments] = useState([]);
+  const [currentImages, setCurrentImages] = useState([]);
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [replaceExisting, setReplaceExisting] = useState(false);
 
   // Tailwind utility classes that adapt to dark mode
   const sectionHeadingClass = `text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 ${
@@ -165,9 +171,11 @@ function EditRegistration({ isDarkMode }) {
           setCurrentLogo(companyData.logo);
         }
         
-        if (companyData.documents) {
-          setCurrentDocuments(companyData.documents);
-        }
+        // Handle legacy single doc and new arrays
+        const docsArr = Array.isArray(companyData.documentsList) ? companyData.documentsList : (companyData.documents ? [companyData.documents] : []);
+        setCurrentDocuments(docsArr);
+        const imgsArr = Array.isArray(companyData.images) ? companyData.images : [];
+        setCurrentImages(imgsArr);
         
       } catch (error) {
         void error;
@@ -181,11 +189,13 @@ function EditRegistration({ isDarkMode }) {
   }, [navigate]);
 
   const handleChange = (event) => {
-    const { name, value, files } = event.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: files ? files[0] : value,
-    }));
+    const { name, value, files, multiple } = event.target;
+    if (files) {
+      const list = multiple ? Array.from(files) : [files[0]];
+      setFormData((prev) => ({ ...prev, [name]: list }));
+    } else {
+      setFormData((prevData) => ({ ...prevData, [name]: value }));
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -198,8 +208,8 @@ function EditRegistration({ isDarkMode }) {
       return;
     }
 
-    if (formData.documents && !formData.documents.type?.includes('pdf')) {
-      setErrorMessage('Documents must be PDF files');
+    if (Array.isArray(formData.documents) && formData.documents.some(f => !/(pdf|doc|docx|png|jpg|jpeg)$/i.test(f.name))) {
+      setErrorMessage('Documents must be PDF/DOC/DOCX or image files');
       return;
     }
     
@@ -225,22 +235,30 @@ function EditRegistration({ isDarkMode }) {
           return;
         }
         
-        if (key === 'logo' || key === 'documents') {
-          // Only append files if they've been changed
-          if (formData[key] && formData[key] instanceof File) {
-            formDataToSend.append(key, formData[key]);
+        if (key === 'logo') {
+          if (formData.logo && formData.logo[0] instanceof File) {
+            formDataToSend.append('logo', formData.logo[0]);
+          }
+        } else if (key === 'documents' || key === 'images') {
+          if (Array.isArray(formData[key]) && formData[key].length) {
+            formData[key].forEach(f => {
+              if (f instanceof File) formDataToSend.append(key, f);
+            });
           }
         } else if (formData[key] !== null && formData[key] !== undefined) {
           formDataToSend.append(key, formData[key]);
         }
       });
       
-      // Add the combined address
+  // Add the combined address
       formDataToSend.append('address', combinedAddress);
       
       // Send username as registrationNumber for backend compatibility
       formDataToSend.append('registrationNumber', formData.username);
       
+      // Replace vs append behavior
+      formDataToSend.append('replaceExisting', String(replaceExisting));
+
       // Handle password separately
       if (formData.newPassword) {
         formDataToSend.append('password', formData.newPassword);
@@ -304,8 +322,10 @@ function EditRegistration({ isDarkMode }) {
           // keep password fields untouched
         }));
 
-        if (latest.logo) setCurrentLogo(latest.logo);
-        if (latest.documents) setCurrentDocuments(latest.documents);
+  if (latest.logo) setCurrentLogo(latest.logo);
+  const docsArr2 = Array.isArray(latest.documentsList) ? latest.documentsList : (latest.documents ? [latest.documents] : []);
+  setCurrentDocuments(docsArr2);
+  setCurrentImages(Array.isArray(latest.images) ? latest.images : []);
       } catch { /* ignore refresh errors */ }
       
       // Check if password was changed
@@ -326,6 +346,26 @@ function EditRegistration({ isDarkMode }) {
       void error;
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteDocument = async (idx) => {
+    try {
+      await deleteCompanyDocument(formData.email, { index: idx });
+      setCurrentDocuments(prev => prev.filter((_, i) => i !== idx));
+      setOpenSnackbar(true);
+    } catch (e) {
+      setErrorMessage(e?.response?.data?.error || 'Failed to delete document');
+    }
+  };
+
+  const handleDeleteImage = async (idx) => {
+    try {
+      await deleteCompanyImage(formData.email, { index: idx });
+      setCurrentImages(prev => prev.filter((_, i) => i !== idx));
+      setOpenSnackbar(true);
+    } catch (e) {
+      setErrorMessage(e?.response?.data?.error || 'Failed to delete image');
     }
   };
 
@@ -570,6 +610,11 @@ function EditRegistration({ isDarkMode }) {
           <div>
             <h2 className={sectionHeadingClass}>Registration</h2>
             <div className="mb-6">
+              <label className={labelClass}>Upload Mode</label>
+              <div className="flex items-center gap-2 mb-2">
+                <input id="replaceExisting" type="checkbox" checked={replaceExisting} onChange={(e)=>setReplaceExisting(e.target.checked)} />
+                <label htmlFor="replaceExisting" className="text-sm">Replace existing items (instead of appending)</label>
+              </div>
               <label className={labelClass}><Req>Year Established</Req></label>
               <input
                 type="text"
@@ -581,24 +626,36 @@ function EditRegistration({ isDarkMode }) {
             </div>
             <div className="mb-6">
               <label className={labelClass}>Documents</label>
-              {currentDocuments && (
-                <div className="mb-2">
-                  <a
-                    href={currentDocuments}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#ff8200] hover:underline"
-                  >
-                    View Current Documents
-                  </a>
+              {Array.isArray(currentDocuments) && currentDocuments.length > 0 && (
+                <ul className="mb-2 list-none space-y-2">
+                  {currentDocuments.map((doc, idx) => (
+                    <li key={idx} className="flex items-center justify-between gap-3 p-2 rounded border">
+                      <div className="truncate">
+                        <a href={doc} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline break-all">
+                          {doc}
+                        </a>
+                      </div>
+                      <button type="button" onClick={() => handleDeleteDocument(idx)} className="px-3 py-1.5 rounded bg-red-600 text-white text-sm hover:bg-red-700">Remove</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <input type="file" name="documents" multiple onChange={handleChange} className={inputSmY} />
+            </div>
+
+            <div className="mb-6">
+              <label className={labelClass}>Images</label>
+              {Array.isArray(currentImages) && currentImages.length > 0 && (
+                <div className="mb-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {currentImages.map((img, idx) => (
+                    <div key={idx} className="relative group">
+                      <img src={img} alt={`Company img ${idx+1}`} className="h-24 w-full object-cover rounded border" />
+                      <button type="button" onClick={() => handleDeleteImage(idx)} className="absolute top-1 right-1 opacity-90 px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700">Remove</button>
+                    </div>
+                  ))}
                 </div>
               )}
-              <input
-                type="file"
-                name="documents"
-                onChange={handleChange}
-                className={inputSmY}
-              />
+              <input type="file" name="images" accept="image/*" multiple onChange={handleChange} className={inputSmY} />
             </div>
           </div>
           {/* Password */}
@@ -730,4 +787,5 @@ export default EditRegistration;
 
 EditRegistration.propTypes = {
   isDarkMode: PropTypes.bool,
+  $isDarkMode: PropTypes.bool,
 };
