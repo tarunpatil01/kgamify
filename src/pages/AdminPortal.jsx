@@ -58,19 +58,7 @@ function GrantSensitiveEditButton({ company, $isDarkMode, onNotify }) {
       </button>
       {allowed && !used && (
         <button
-          onClick={async () => {
-            if (!company?._id) return;
-            setRevoking(true);
-            try {
-              await revokeSensitiveEdit(company._id);
-              company.sensitiveEditAllowed = false;
-              if (typeof onNotify === 'function') onNotify('success', 'Unused edit access revoked');
-            } catch {
-              if (typeof onNotify === 'function') onNotify('error', 'Failed to revoke edit access');
-            } finally {
-              setRevoking(false);
-            }
-          }}
+          onClick={() => setConfirmOpen(true)}
           disabled={revoking}
           className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${$isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
           title="Revoke unused edit access"
@@ -1524,8 +1512,8 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                   <FaClock className="text-yellow-600 text-3xl" />
                 </div>
               </div>
-              <p className="text-xl font-medium">No on-hold companies yet</p>
-              <p className={`text-sm mt-2 ${$isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>On-hold companies will appear here</p>
+              <p className="text-xl font-medium">No companies on hold</p>
+              <p className={`text-sm mt-2 ${$isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Companies marked as on hold will appear here</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
