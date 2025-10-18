@@ -191,9 +191,12 @@ router.post('/deny-company/:id', adminAuth, auditLogger({
 
     // Send denial email (non-blocking)
     if (company.email) {
+      const frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const messagesUrl = `${frontend.replace(/\/$/, '')}/messages`;
       sendEmail(company.email, 'companyDenied', {
         companyName: company.companyName,
-        reason: reason ? String(reason).trim() : ''
+        reason: reason ? String(reason).trim() : '',
+        messagesUrl
       }).catch(() => {});
     }
 
@@ -285,6 +288,65 @@ router.post('/revoke-access/:id', adminAuth, auditLogger({
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') {
       console.error('REVOKE ACCESS error:', err);
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Grant one-time sensitive edit access to a company
+router.post('/grant-sensitive-edit/:id', adminAuth, auditLogger({
+  action: 'grant_sensitive_edit',
+  entityType: 'company'
+}), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const company = await Company.findById(id);
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+
+    company.sensitiveEditAllowed = true;
+    company.sensitiveEditUsed = false; // reset if previously used improperly
+    company.sensitiveEditGrantedAt = new Date();
+    await company.save({ validateModifiedOnly: true });
+
+    // Optional: notify company via email
+    if (company.email) {
+      const frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const profileUrl = `${frontend.replace(/\/$/, '')}/edit-profile`;
+      sendEmail(company.email, 'custom', {
+        subject: 'Edit Access Granted - kGamify',
+        html: `You have been granted one-time access to edit your sensitive company details. <a href="${profileUrl}">Click here</a> to update your information.`
+      }).catch(()=>{});
+    }
+
+    return res.json({ message: 'Sensitive edit access granted', company: { id: company._id, sensitiveEditAllowed: company.sensitiveEditAllowed } });
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('grant-sensitive-edit error:', err);
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Revoke one-time sensitive edit access (only if not used yet)
+router.post('/revoke-sensitive-edit/:id', adminAuth, auditLogger({
+  action: 'revoke_sensitive_edit',
+  entityType: 'company'
+}), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const company = await Company.findById(id);
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+
+    if (!company.sensitiveEditAllowed || company.sensitiveEditUsed) {
+      return res.status(400).json({ message: 'No active unused edit grant to revoke' });
+    }
+
+    company.sensitiveEditAllowed = false;
+    await company.save({ validateModifiedOnly: true });
+    return res.json({ message: 'Sensitive edit access revoked' });
+  } catch (err) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('revoke-sensitive-edit error:', err);
     }
     res.status(500).json({ message: 'Server error' });
   }

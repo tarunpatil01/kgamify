@@ -398,27 +398,21 @@ const Login = ({ setLoggedInEmail }) => {
           <p className="text-[12px] leading-5 text-center text-black/70">
             By signing in, you agree to our
             {' '}<a
-              href="https://www.kgamify.in/terms-of-service/"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/terms-of-service?from=login"
               className="text-[#ff8200] hover:text-[#e57400] font-semibold"
             >
               Terms of Service
             </a>
             {' '}and acknowledge our{' '}
             <a
-              href="https://www.kgamify.in/privacy-policy/"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/privacy-policy?from=login"
               className="text-[#ff8200] hover:text-[#e57400] font-semibold"
             >
               Privacy Policy
             </a>
             {' '}and{' '}
             <a
-              href="https://www.kgamify.in/cookies/"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/cookies?from=login"
               className="text-[#ff8200] hover:text-[#e57400] font-semibold"
             >
               Cookie Policy

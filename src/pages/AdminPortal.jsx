@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
@@ -8,9 +8,118 @@ import {
   FaSignOutAlt, FaClock, FaCheckCircle, FaUser, FaUsers,
   FaChevronLeft, FaChevronRight, FaMoon, FaSun
 } from "react-icons/fa";
-import { changeAdminPassword, denyCompanyWithReason, holdCompanyWithReason, revokeCompanyAccess } from "../api";
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import { grantSensitiveEdit, revokeSensitiveEdit, changeAdminPassword, denyCompanyWithReason, holdCompanyWithReason, revokeCompanyAccess } from '../api';
 import Footer from "../components/Footer";
 import logoUrl from "../assets/KLOGO.png";
+
+function GrantSensitiveEditButton({ company, $isDarkMode, onNotify }) {
+  const [loading, setLoading] = React.useState(false);
+  const [revoking, setRevoking] = React.useState(false);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const allowed = company?.sensitiveEditAllowed;
+  const used = company?.sensitiveEditUsed;
+  const companyLabel = company?.companyName || company?.email || 'company';
+
+  const onGrant = async () => {
+    if (!company?._id) return;
+    setLoading(true);
+    try {
+      await grantSensitiveEdit(company._id);
+      // Optimistic UI: reflect allowed=true
+      company.sensitiveEditAllowed = true;
+      if (typeof onNotify === 'function') onNotify('success', `One-time sensitive edit access granted for ${companyLabel}`);
+    } catch {
+      if (typeof onNotify === 'function') onNotify('error', `Failed to grant edit access for ${companyLabel}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mr-3">
+      <span className={`mr-2 text-xs px-2 py-0.5 rounded ${allowed ? (used ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700') : 'bg-gray-100 text-gray-600'}`}>
+        {allowed ? (used ? 'Edit used' : 'Edit allowed') : 'Edit locked'}
+      </span>
+      <button
+        onClick={onGrant}
+        disabled={loading}
+        className={`mr-3 inline-flex items-center px-3 py-1.5 rounded border text-sm ${$isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+        title="Allow company to edit sensitive fields once"
+      >
+        {loading ? 'Granting…' : (allowed && !used ? 'Edit Access Granted' : 'Grant Edit Access')}
+      </button>
+      {allowed && !used && (
+        <button
+          onClick={async () => {
+            if (!company?._id) return;
+            setRevoking(true);
+            try {
+              await revokeSensitiveEdit(company._id);
+              company.sensitiveEditAllowed = false;
+              if (typeof onNotify === 'function') onNotify('success', 'Unused edit access revoked');
+            } catch {
+              if (typeof onNotify === 'function') onNotify('error', 'Failed to revoke edit access');
+            } finally {
+              setRevoking(false);
+            }
+          }}
+          disabled={revoking}
+          className={`inline-flex items-center px-3 py-1.5 rounded border text-sm ${$isDarkMode ? 'border-gray-600 text-gray-200 hover:bg-gray-800' : 'border-gray-300 text-gray-800 hover:bg-gray-100'}`}
+          title="Revoke unused edit access"
+        >
+          {revoking ? 'Revoking…' : 'Revoke Edit Access'}
+        </button>
+      )}
+      {allowed && !used && (
+        <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+          <DialogTitle>Revoke edit access?</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to revoke the unused one-time edit access for {companyLabel}?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              disabled={revoking}
+              onClick={async () => {
+                if (!company?._id) return;
+                setRevoking(true);
+                try {
+                  await revokeSensitiveEdit(company._id);
+                  company.sensitiveEditAllowed = false;
+                  if (typeof onNotify === 'function') onNotify('success', `Unused edit access revoked for ${companyLabel}`);
+                } catch {
+                  if (typeof onNotify === 'function') onNotify('error', `Failed to revoke edit access for ${companyLabel}`);
+                } finally {
+                  setRevoking(false);
+                  setConfirmOpen(false);
+                }
+              }}
+            >
+              Revoke
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+    </div>
+  );
+}
+GrantSensitiveEditButton.propTypes = {
+  company: PropTypes.object,
+  $isDarkMode: PropTypes.bool,
+  onNotify: PropTypes.func,
+};
 
 // Inline helper to highlight search matches in text (case-insensitive)
 const HighlightedText = ({ text, query, $isDarkMode }) => {
@@ -59,6 +168,10 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState(null);
   const navigate = useNavigate();
+  const notify = (type, message) => {
+    setNotification({ show: true, message, type });
+    setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+  };
 
   // Reason modal for Hold / Deny
   const [reasonModal, setReasonModal] = useState({ open: false, mode: null, company: null, reason: "" });
@@ -67,6 +180,7 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
   const [filters, setFilters] = useState({ q: '', sort: 'updatedAt', order: 'desc' });
   const [filterModal, setFilterModal] = useState(false);
   const [pages, setPages] = useState({ pending: 1, approved: 1, hold: 1, denied: 1 });
+  const [pageSizes, setPageSizes] = useState({ pending: 10, approved: 10, hold: 10, denied: 10 });
   const [expanded, setExpanded] = useState({});
   const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
 
@@ -538,25 +652,21 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
           <p className="text-gray-500 dark:text-gray-400 mt-1">Manage company registrations and account settings</p>
         </div>
       
-      {notification.show && (
-        <div className={`p-4 mb-6 rounded ${
-          notification.type === "success" ? "bg-green-100 text-green-700 border border-green-200" : 
-          "bg-red-100 text-red-700 border border-red-200"
-        } flex items-center`}>
-          <div className="mr-3 flex-shrink-0">
-            {notification.type === "success" ? (
-              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            )}
-          </div>
+      <Snackbar
+        open={notification.show}
+        autoHideDuration={3000}
+        onClose={() => setNotification({ show: false, message: '', type: '' })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        sx={{ width: '100%', position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1400 }}
+      >
+        <Alert
+          onClose={() => setNotification({ show: false, message: '', type: '' })}
+          severity={notification.type === 'success' ? 'success' : 'error'}
+          sx={{ width: '100%', maxWidth: '600px', fontSize: '1rem', '& .MuiAlert-message': { fontSize: '1rem' } }}
+        >
           {notification.message}
-        </div>
-      )}
+        </Alert>
+      </Snackbar>
       
       {/* Tabs for switching between pending, approved companies, and profile */}
       <nav className="admin-tabs mt-2 mb-6">
@@ -655,7 +765,17 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
             </div>
           ) : (
       <div className="grid grid-cols-1 gap-6">
-  {(() => { const pageSize = 10; const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const page = pages.pending; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
+        <div className="flex justify-end items-center mb-2 text-sm">
+          <span className="mr-2">Rows per page:</span>
+          <select
+            className={`border rounded px-2 py-1 ${$isDarkMode ? 'bg-gray-800 border-gray-600 text-gray-200' : 'bg-white border-gray-300 text-gray-800'}`}
+            value={pageSizes.pending}
+            onChange={(e)=>{ const v = Number(e.target.value)||10; setPageSizes(ps=>({...ps, pending:v})); setPages(p=>({...p, pending:1})); }}
+          >
+            {[10,25,50,100].map(n=> <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+  {(() => { const pageSize = pageSizes.pending; const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const page = pages.pending; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${$isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${$isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="sm:flex w-full sm:flex-col md:flex md:flex-row md:justify-between items-start md:items-center">
@@ -839,7 +959,7 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                   </div>
                 </div>
               )); })()}
-              {(() => { const pageSize = 10; const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
+              {(() => { const pageSize = pageSizes.pending; const all = pendingCompanies.filter(c => (c.status || 'pending') === 'pending'); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
                 <div className="mt-6 mb-8 w-full flex items-center justify-center gap-2">
                   <button
                     onClick={() => setPages(p => ({ ...p, pending: Math.max(1, p.pending - 1) }))}
@@ -903,7 +1023,17 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                   Refresh List
                 </button>
               </div>
-  {(() => { const pageSize = 10; const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const page = pages.approved; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
+              <div className="flex justify-end items-center -mt-3 mb-2 text-sm">
+                <span className="mr-2">Rows per page:</span>
+                <select
+                  className={`border rounded px-2 py-1 ${$isDarkMode ? 'bg-gray-800 border-gray-600 text-gray-200' : 'bg-white border-gray-300 text-gray-800'}`}
+                  value={pageSizes.approved}
+                  onChange={(e)=>{ const v = Number(e.target.value)||10; setPageSizes(ps=>({...ps, approved:v})); setPages(p=>({...p, approved:1})); }}
+                >
+                  {[10,25,50,100].map(n=> <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+  {(() => { const pageSize = pageSizes.approved; const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const page = pages.approved; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${$isDarkMode ? "bg-gray-800" : "bg-white"} transition-all hover:shadow-xl border ${$isDarkMode ? "border-gray-700" : "border-gray-200"}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="sm:flex w-full sm:flex-col md:flex-row md:justify-between items-start md:items-center">
@@ -1026,8 +1156,20 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                           </div>
                           {company.registrationNumber && (
                             <div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">Registration Number</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">CIN / Registration Number</p>
                               <p className="font-medium">{company.registrationNumber}</p>
+                            </div>
+                          )}
+                          {(company.addressLine1 || company.addressLine2) && (
+                            <div className="sm:col-span-2">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Address (Lines)</p>
+                              <p className="font-medium break-words">{company.addressLine1 || '—'}{company.addressLine2 ? `, ${company.addressLine2}` : ''}</p>
+                            </div>
+                          )}
+                          {company.gstNumber && (
+                            <div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">GST Number</p>
+                              <p className="font-medium">{company.gstNumber}</p>
                             </div>
                           )}
                         </div>
@@ -1081,6 +1223,8 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                   )}
                   <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex justify-end">
+                      {/* Grant one-time sensitive edit access */}
+                      <GrantSensitiveEditButton company={company} $isDarkMode={$isDarkMode} onNotify={notify} />
                       <button
                         onClick={()=> toggleExpand(company._id)}
                         className={`text-sm font-medium underline ${$isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
@@ -1091,7 +1235,7 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                   </div>
                 </div>
               )); })()}
-              {(() => { const pageSize = 10; const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
+              {(() => { const pageSize = pageSizes.approved; const all = approvedCompanies.filter(c => c.approved === true && (c.status === 'approved' || c.status === undefined || c.status === null) && (!filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase())))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
                 <div className="mt-6 mb-8 w-full flex items-center justify-center gap-2">
                   <button
                     onClick={() => setPages(p => ({ ...p, approved: Math.max(1, p.approved - 1) }))}
@@ -1141,7 +1285,17 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {(() => { const pageSize = 10; const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.denied; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
+              <div className="flex justify-end items-center mb-2 text-sm">
+                <span className="mr-2">Rows per page:</span>
+                <select
+                  className={`border rounded px-2 py-1 ${$isDarkMode ? 'bg-gray-800 border-gray-600 text-gray-200' : 'bg-white border-gray-300 text-gray-800'}`}
+                  value={pageSizes.denied}
+                  onChange={(e)=>{ const v = Number(e.target.value)||10; setPageSizes(ps=>({...ps, denied:v})); setPages(p=>({...p, denied:1})); }}
+                >
+                  {[10,25,50,100].map(n=> <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              {(() => { const pageSize = pageSizes.denied; const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.denied; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${$isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${$isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="sm:flex w-full sm:flex-col md:flex-row md:justify-between items-start md:items-center">
@@ -1326,7 +1480,7 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                   </div>
                 </div>
               )); })()}
-              {(() => { const pageSize = 10; const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
+              {(() => { const pageSize = pageSizes.denied; const all = deniedCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
                 <div className="mt-6 mb-8 w-full flex items-center justify-center gap-2">
                   <button
                     onClick={() => setPages(p => ({ ...p, denied: Math.max(1, p.denied - 1) }))}
@@ -1375,7 +1529,17 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
-              {(() => { const pageSize = 10; const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.hold; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
+              <div className="flex justify-end items-center mb-2 text-sm">
+                <span className="mr-2">Rows per page:</span>
+                <select
+                  className={`border rounded px-2 py-1 ${$isDarkMode ? 'bg-gray-800 border-gray-600 text-gray-200' : 'bg-white border-gray-300 text-gray-800'}`}
+                  value={pageSizes.hold}
+                  onChange={(e)=>{ const v = Number(e.target.value)||10; setPageSizes(ps=>({...ps, hold:v})); setPages(p=>({...p, hold:1})); }}
+                >
+                  {[10,25,50,100].map(n=> <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              {(() => { const pageSize = pageSizes.hold; const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const page = pages.hold; const slice = all.slice((page-1)*pageSize, page*pageSize); return slice.map((company) => (
                 <div key={company._id} className={`rounded-lg shadow-md ${$isDarkMode ? 'bg-gray-800' : 'bg-white'} transition-all hover:shadow-xl border ${$isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                   <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between flex-wrap gap-4">
@@ -1539,7 +1703,7 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                   </div>
                 </div>
               )); })()}
-              {(() => { const pageSize = 10; const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
+              {(() => { const pageSize = pageSizes.hold; const all = holdCompanies.filter(c => !filters.q || (c.companyName?.toLowerCase().includes(filters.q.toLowerCase()) || c.email?.toLowerCase().includes(filters.q.toLowerCase()) || c.industry?.toLowerCase().includes(filters.q.toLowerCase()))); const total = Math.max(1, Math.ceil(all.length / pageSize)); return (
                 <div className="mt-6 mb-8 w-full flex items-center justify-center gap-2">
                   <button
                     onClick={() => setPages(p => ({ ...p, hold: Math.max(1, p.hold - 1) }))}

@@ -25,8 +25,13 @@ const companySchema = new mongoose.Schema({
   // Made optional to support minimal registration; complete later in profile
   phone: { type: String },
   address: { type: String },
+  // New address lines for finer control (non-editable post-registration without admin grant)
+  addressLine1: { type: String },
+  addressLine2: { type: String },
   // Optional government/company registration number; must be unique when provided
   registrationNumber: { type: String, default: undefined },
+  // GST Number (non-editable post-registration without admin grant)
+  gstNumber: { type: String },
   Username: { type: String, required: true, unique: true },
   yearEstablished: { type: String, required: true },
   documents: {
@@ -95,6 +100,13 @@ const companySchema = new mongoose.Schema({
   // Profile completion tracking (percentage cached for quick UI display)
   profileCompletion: { type: Number, default: 0 },
   profileFieldsCompleted: { type: [String], default: [] },
+
+  // One-time sensitive edit control
+  sensitiveEditAllowed: { type: Boolean, default: false },
+  sensitiveEditUsed: { type: Boolean, default: false },
+  sensitiveEditGrantedAt: { type: Date },
+  sensitiveEditUsedAt: { type: Date },
+  sensitiveEditedFields: { type: [String], default: [] },
 }, { toJSON: { getters: true } });
 
 // Ensure uniqueness of registrationNumber only when it exists (string values)

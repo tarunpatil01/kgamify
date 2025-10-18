@@ -28,6 +28,7 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
     city: "",
     state: "",
     pinCode: "",
+  gstNumber: "",
     username: "", // Added username field
     yearEstablished: "",
   documents: [],
@@ -49,6 +50,7 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [replaceExisting, setReplaceExisting] = useState(false);
+  const [sensitiveEditAllowed, setSensitiveEditAllowed] = useState(false);
 
   // Tailwind utility classes that adapt to dark mode
   const sectionHeadingClass = `text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300 ${
@@ -154,6 +156,7 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
           city: addressComponents.city,
           state: addressComponents.state,
           pinCode: addressComponents.pinCode,
+          gstNumber: companyData.gstNumber || "",
           username: companyData.registrationNumber || "", // Use registration number as username
           yearEstablished: companyData.yearEstablished || "",
           description: companyData.description || "",
@@ -165,6 +168,7 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
           newPassword: "", // Initialize new password field
           confirmPassword: "", // Initialize confirm password field
         });
+  setSensitiveEditAllowed(!!companyData.sensitiveEditAllowed && !companyData.sensitiveEditUsed);
         
         // Store the current logo and documents URLs
         if (companyData.logo) {
@@ -253,8 +257,12 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
   // Add the combined address
       formDataToSend.append('address', combinedAddress);
       
-      // Send username as registrationNumber for backend compatibility
-      formDataToSend.append('registrationNumber', formData.username);
+  // Send username as registrationNumber for backend compatibility
+  formDataToSend.append('registrationNumber', formData.username);
+  // New fields
+  if (formData.gstNumber) formDataToSend.append('gstNumber', formData.gstNumber);
+  if (formData.addressLine1) formDataToSend.append('addressLine1', formData.addressLine1);
+  if (formData.addressLine2) formDataToSend.append('addressLine2', formData.addressLine2);
       
       // Replace vs append behavior
       formDataToSend.append('replaceExisting', String(replaceExisting));
@@ -417,6 +425,17 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
         <h1 className="text-3xl sm:text-4xl font-extrabold mb-8 text-center tracking-tight bg-gradient-to-r from-[#ff8200] to-[#ffb347] bg-clip-text text-transparent drop-shadow-lg">
           Edit Company Profile
         </h1>
+        {!sensitiveEditAllowed && (
+          <div
+            className={`mb-6 text-sm rounded border p-3 ${
+              isDarkMode
+                ? "bg-yellow-900/20 border-yellow-800 text-yellow-200"
+                : "bg-yellow-50 border-yellow-200 text-yellow-800"
+            }`}
+          >
+            Sensitive fields are locked. Please contact an administrator to request a one-time edit.
+          </div>
+        )}
         <form className="space-y-8" onSubmit={handleSubmit}>
           {/* Basic Info */}
           <div>
@@ -429,7 +448,8 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
-                  className={inputMdY}
+                  className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                  disabled={!sensitiveEditAllowed}
                 />
               </div>
               <div className="w-full sm:w-1/2">
@@ -470,7 +490,8 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
                   name="industry"
                   value={formData.industry}
                   onChange={handleChange}
-                  className={inputMdY}
+                  className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                  disabled={!sensitiveEditAllowed}
                 />
               </div>
             </div>
@@ -482,7 +503,8 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
-                  className={inputMdY}
+                  className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                  disabled={!sensitiveEditAllowed}
                 />
               </div>
               <div className="w-full sm:w-1/2">
@@ -544,13 +566,14 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
                 />
               </div>
               <div className="w-full sm:w-1/2">
-                <label className={labelClass}><Req>Registration Number</Req></label>
+                <label className={labelClass}><Req>CIN / Registration Number</Req></label>
                 <input
                   type="text"
                   name="username"
                   value={formData.username}
                   onChange={handleChange}
-                  className={inputMdY}
+                  className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                  disabled={!sensitiveEditAllowed}
                 />
               </div>
             </div>
@@ -562,7 +585,8 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
                 name="addressLine1"
                 value={formData.addressLine1}
                 onChange={handleChange}
-                className={inputMdY}
+                className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                disabled={!sensitiveEditAllowed}
               />
             </div>
             <div className="mb-6">
@@ -572,7 +596,8 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
                 name="addressLine2"
                 value={formData.addressLine2}
                 onChange={handleChange}
-                className={inputMdY}
+                className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                disabled={!sensitiveEditAllowed}
               />
             </div>
             <div className="mb-6">
@@ -582,7 +607,8 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
                 name="state"
                 value={formData.state}
                 onChange={handleChange}
-                className={inputMdY}
+                className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                disabled={!sensitiveEditAllowed}
               />
             </div>
             <div className="mb-6">
@@ -592,7 +618,8 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
-                className={inputMdY}
+                className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                disabled={!sensitiveEditAllowed}
               />
             </div>
             <div className="mb-6">
@@ -602,8 +629,20 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
                 name="pinCode"
                 value={formData.pinCode}
                 onChange={handleChange}
-                className={inputMdY}
+                className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                disabled={!sensitiveEditAllowed}
               />
+            <div className="mb-6">
+              <label className={labelClass}>GST Number</label>
+              <input
+                type="text"
+                name="gstNumber"
+                value={formData.gstNumber}
+                onChange={handleChange}
+                className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                disabled={!sensitiveEditAllowed}
+              />
+            </div>
             </div>
           </div>
           {/* Registration */}
@@ -621,7 +660,8 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
                 name="yearEstablished"
                 value={formData.yearEstablished}
                 onChange={handleChange}
-                className={inputMdY}
+                className={sensitiveEditAllowed ? inputMdY : disabledInputClass}
+                disabled={!sensitiveEditAllowed}
               />
             </div>
             <div className="mb-6">

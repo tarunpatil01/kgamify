@@ -46,8 +46,9 @@ function Footer({ isDarkMode, $isDarkMode }) {
             <ul className="space-y-2">
               <li><a className={linkCls} href="/help">Help Center</a></li>
               <li><a className={linkCls} href="/contact">Contact Us</a></li>
-              <li><a className={linkCls} href="https://www.kgamify.in/privacy-policy/" target="_blank" rel="noreferrer">Privacy Policy</a></li>
-              <li><a className={linkCls} href="https://www.kgamify.in/terms-of-service/" target="_blank" rel="noreferrer">Terms of Service</a></li>
+              <li><a className={linkCls} href="/privacy-policy">Privacy Policy</a></li>
+              <li><a className={linkCls} href="/terms-of-service?from=login">Terms of Service</a></li>
+              <li><a className={linkCls} href="/cookies?from=login">Cookie Policy</a></li>
             </ul>
           </div>
         </div>
@@ -55,11 +56,11 @@ function Footer({ isDarkMode, $isDarkMode }) {
         <div className="mt-10 border-t border-white/10 pt-6 flex flex-col sm:flex-row gap-3 items-center justify-between text-sm text-gray-300">
           <p>© {year} Yantrikisoft. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <a className={linkCls} href="https://www.kgamify.in/privacy-policy/" target="_blank" rel="noreferrer">Privacy Policy</a>
+            <a className={linkCls} href="/privacy-policy?from=login">Privacy Policy</a>
             <span className="opacity-30">|</span>
-            <a className={linkCls} href="https://www.kgamify.in/terms-of-service/" target="_blank" rel="noreferrer">Terms of Service</a>
+            <a className={linkCls} href="/terms-of-service?from=login">Terms of Service</a>
             <span className="opacity-30">|</span>
-            <a className={linkCls} href="https://www.kgamify.in/cookies/" target="_blank" rel="noreferrer">Cookie Policy</a>
+            <a className={linkCls} href="/cookies?from=login">Cookie Policy</a>
           </div>
         </div>
       </div>

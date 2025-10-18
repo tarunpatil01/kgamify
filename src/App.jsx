@@ -34,10 +34,13 @@ const Applications = lazy(() => import("./pages/Applications"));
 const Messages = lazy(() => import("./pages/Messages"));
 const Plans = lazy(() => import("./pages/Plans"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 
 function AppContent() {
   const location = useLocation();
-  const isLoginPage = ["/","/register","/forgot-password","/reset-password","/admin-login","/verify-email"].includes(location.pathname);
+  const isLoginPage = ["/","/register","/forgot-password","/reset-password","/admin-login","/verify-email","/terms-of-service","/cookies","/privacy-policy"].includes(location.pathname);
   
   const isAdminPage = location.pathname.startsWith('/admin');
   
@@ -148,6 +151,9 @@ function AppContent() {
                 />
                 <Route path="/admin-login" element={<AdminLogin />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route path="/terms-of-service" element={<TermsOfService $isDarkMode={isDarkMode} isDarkMode={isDarkMode} />} />
+                <Route path="/cookies" element={<CookiePolicy $isDarkMode={isDarkMode} isDarkMode={isDarkMode} />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy $isDarkMode={isDarkMode} isDarkMode={isDarkMode} />} />
               </Routes>
             </Suspense>
           </div>

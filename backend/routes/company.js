@@ -226,6 +226,20 @@ router.put('/update/:email', upload.fields([
       return res.status(404).json({ error: 'Company not found' });
     }
 
+    // Enforce non-editable fields after registration unless admin granted one-time edit
+    const sensitiveFields = [
+      'industry', 'type', 'companyName', 'registrationNumber', 'addressLine1', 'addressLine2',
+      'yearEstablished', 'gstNumber', 'address' // include legacy address too
+    ];
+    const requestedSensitive = sensitiveFields.filter(f => Object.prototype.hasOwnProperty.call(updateData, f));
+    if (requestedSensitive.length) {
+      if (!company.sensitiveEditAllowed || company.sensitiveEditUsed) {
+        return res.status(403).json({
+          error: 'Sensitive company details are locked. Please contact admin to grant edit access.'
+        });
+      }
+    }
+
     // Create social media links object from individual fields
     if (updateData.instagram || updateData.twitter || updateData.linkedin || updateData.youtube) {
       updateData.socialMediaLinks = {
@@ -335,12 +349,42 @@ router.put('/update/:email', upload.fields([
       }
     }
 
+    // If address lines are present, assemble legacy combined address
+    const hasAddressParts = (
+      (updateData.addressLine1 && String(updateData.addressLine1).trim()) ||
+      (updateData.addressLine2 && String(updateData.addressLine2).trim()) ||
+      (updateData.city && String(updateData.city).trim()) ||
+      (updateData.state && String(updateData.state).trim()) ||
+      (updateData.pinCode && String(updateData.pinCode).trim())
+    );
+    if (hasAddressParts) {
+      const parts = [];
+      if (updateData.addressLine1) parts.push(String(updateData.addressLine1).trim());
+      if (updateData.addressLine2) parts.push(String(updateData.addressLine2).trim());
+      if (updateData.city) parts.push(String(updateData.city).trim());
+      if (updateData.state) parts.push(String(updateData.state).trim());
+      if (updateData.pinCode) parts.push(String(updateData.pinCode).trim());
+      const combined = parts.filter(Boolean).join(', ');
+      updateData.address = combined;
+    }
+
     // Update the company data
   // If using $addToSet, split atomic ops from $set
   const { $addToSet, ...$set } = updateData;
   const updateOps = {};
   if (Object.keys($set).length) updateOps.$set = $set;
   if ($addToSet) updateOps.$addToSet = $addToSet;
+
+  // If sensitive fields were updated, mark one-time allowance as used
+  if (requestedSensitive.length) {
+    updateOps.$set = updateOps.$set || {};
+    updateOps.$set.sensitiveEditAllowed = false;
+    updateOps.$set.sensitiveEditUsed = true;
+    updateOps.$set.sensitiveEditUsedAt = new Date();
+    updateOps.$addToSet = updateOps.$addToSet || {};
+    updateOps.$addToSet.sensitiveEditedFields = { $each: requestedSensitive };
+  }
+
   await Company.findOneAndUpdate({ email }, updateOps, { new: true });
 
     res.status(200).json({ message: 'Company profile updated successfully' });
@@ -601,11 +645,11 @@ router.post('/profile/complete', upload.fields([
 
     // Fields considered for completion
     const completionFields = [
-      'companyName','contactName','website','industry','type','size','phone','address','registrationNumber','description','documents','logo'
+      'companyName','contactName','website','industry','type','size','phone','address','addressLine1','addressLine2','registrationNumber','gstNumber','description','documents','logo'
     ];
     const updated = {};
     // Apply simple scalar fields
-    ['contactName','website','industry','type','size','phone','address','registrationNumber','description'].forEach(f => {
+    ['contactName','website','industry','type','size','phone','address','addressLine1','addressLine2','registrationNumber','gstNumber','description'].forEach(f => {
       if (req.body[f]) updated[f] = req.body[f];
     });
     if (req.files?.logo) updated.logo = req.files.logo[0].path;

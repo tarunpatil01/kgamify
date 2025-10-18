@@ -247,6 +247,22 @@ export const revokeCompanyAccess = async (companyId, reason) => {
   return response.data;
 };
 
+export const grantSensitiveEdit = async (companyId) => {
+  const token = localStorage.getItem('adminToken');
+  const response = await axios.post(`${API_URL}/admin/grant-sensitive-edit/${companyId}`, {}, {
+    headers: token ? { 'x-auth-token': token } : undefined
+  });
+  return response.data;
+};
+
+export const revokeSensitiveEdit = async (companyId) => {
+  const token = localStorage.getItem('adminToken');
+  const response = await axios.post(`${API_URL}/admin/revoke-sensitive-edit/${companyId}`, {}, {
+    headers: token ? { 'x-auth-token': token } : undefined
+  });
+  return response.data;
+};
+
 export const adminLogin = async (loginData) => {
   try {
     const response = await axios.post(`${API_URL}/admin/login`, loginData);

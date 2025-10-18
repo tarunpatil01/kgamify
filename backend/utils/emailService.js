@@ -53,12 +53,27 @@ const renderEmail = ({
     </p>
   `;
 
+  const frontend = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const logoUrl = logoSrc || process.env.BRAND_LOGO_URL || `${frontend}/KLOGO.png`;
+
+  const signatureBlock = `
+    <div style="margin-top:22px;color:#111827;">
+      <p style="margin:0 0 10px 0;">Regards,<br/><strong>kGamify Team</strong></p>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+        <a href="https://www.kgamify.in" target="_blank" rel="noopener" style="text-decoration:none;color:#ff8200;font-weight:600;">www.kgamify.in</a>
+        <span style="color:#d1d5db;">|</span>
+        <a href="https://www.linkedin.com/company/kgamify" target="_blank" rel="noopener" style="display:inline-block;width:24px;height:24px;border-radius:999px;background:#0a66c2;color:#fff;text-align:center;line-height:24px;font-size:12px;text-decoration:none;">in</a>
+        <a href="https://www.instagram.com" target="_blank" rel="noopener" style="display:inline-block;width:24px;height:24px;border-radius:999px;background:#e1306c;color:#fff;text-align:center;line-height:24px;font-size:12px;text-decoration:none;">IG</a>
+        <a href="https://www.facebook.com" target="_blank" rel="noopener" style="display:inline-block;width:24px;height:24px;border-radius:999px;background:#1877f2;color:#fff;text-align:center;line-height:24px;font-size:12px;text-decoration:none;">f</a>
+        <a href="https://twitter.com" target="_blank" rel="noopener" style="display:inline-block;width:24px;height:24px;border-radius:999px;background:#111827;color:#fff;text-align:center;line-height:24px;font-size:12px;text-decoration:none;">X</a>
+      </div>
+    </div>
+  `;
+
   const preheaderSpan = preheader
     ? `<span style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;color:#fff;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>`
     : '';
 
-  const frontend = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
-  const logoUrl = logoSrc || process.env.BRAND_LOGO_URL || `${frontend}/KLOGO.png`;
   return `
   <!doctype html>
   <html>
@@ -99,6 +114,7 @@ const renderEmail = ({
           </div>
           ${ctaHtml}
           ${footerNote ? `<p style="margin-top:18px;color:#6b7280;font-size:12px;">${footerNote}</p>` : ''}
+          ${signatureBlock}
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:26px 0;"/>
           ${defaultFooter}
         </div>
@@ -142,6 +158,8 @@ const emailTemplates = {
       title: 'New Job Application Received',
       preheader: `New application for ${data.jobTitle}`,
       bodyHtml: `
+        <p>Hi ${data.companyName ? `${data.companyName} Team` : 'there'},</p>
+        <p>You have received a new application for the job below.</p>
         <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e5e7eb;">
           <p style="margin:0 0 8px 0;"><strong>Job Title:</strong> ${data.jobTitle}</p>
           <p style="margin:0 0 8px 0;"><strong>Company:</strong> ${data.companyName}</p>
@@ -155,6 +173,7 @@ const emailTemplates = {
         </div>
       `,
       cta: { label: 'Review in Dashboard', url: `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard` },
+      footerNote: `If the button doesn't work, open this link: <br/><a href="${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard" target="_blank" rel="noopener">${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard</a>`,
       logoSrc: data.logoSrc
     })
   }),
@@ -165,6 +184,8 @@ const emailTemplates = {
       title: 'Job Posted Successfully',
       preheader: `Your job "${data.jobTitle}" is now live`,
       bodyHtml: `
+  <p>Hi ${data.companyName ? `${data.companyName} Team` : 'there'},</p>
+  <p>Your job has been posted successfully. Here are the details:</p>
   <div style="background:#ffedd5;padding:16px;border-radius:8px;border:1px solid #fdba74;">
           <p style="margin:0 0 8px 0;"><strong>Job Title:</strong> ${data.jobTitle}</p>
           <p style="margin:0 0 8px 0;"><strong>Company:</strong> ${data.companyName}</p>
@@ -174,6 +195,7 @@ const emailTemplates = {
         </div>
       `,
       cta: { label: 'View in Dashboard', url: `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard` },
+      footerNote: `If the button doesn't work, open this link: <br/><a href="${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard" target="_blank" rel="noopener">${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard</a>`,
       logoSrc: data.logoSrc
     })
   }),
@@ -184,6 +206,8 @@ const emailTemplates = {
       title: 'Application Status Update',
       preheader: `Your application status for ${data.jobTitle} is ${data.status}`,
       bodyHtml: `
+        <p>Hi ${data.applicantName || 'there'},</p>
+        <p>Your application has been updated.</p>
         <div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e5e7eb;">
           <p style="margin:0 0 8px 0;"><strong>Job Title:</strong> ${data.jobTitle}</p>
           <p style="margin:0 0 8px 0;"><strong>Company:</strong> ${data.companyName}</p>
@@ -195,7 +219,10 @@ const emailTemplates = {
             <p style="margin:0;color:#065f46;white-space:pre-wrap;">${String(data.message).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
           </div>
         ` : ''}
+        <p style="font-size:14px;color:#4b5563;margin-top:12px;">You can log in to view full details.</p>
       `,
+      cta: data.viewUrl ? { label: 'View Application', url: data.viewUrl } : undefined,
+      footerNote: data.viewUrl ? `If the button doesn't work, open this link: <br/><a href="${data.viewUrl}" target="_blank" rel="noopener">${data.viewUrl}</a>` : '',
       logoSrc: data.logoSrc
     })
   }),
@@ -211,28 +238,42 @@ const emailTemplates = {
         <p style="color:#6b7280;font-size:14px;margin:0;">This link will expire in 1 hour.</p>
       `,
       cta: { label: 'Reset Password', url: data.resetLink },
-      footerNote: 'If you didn\'t request this, you can safely ignore this email.',
+      footerNote: `If the button doesn't work, open this link: <br/><a href="${data.resetLink}" target="_blank" rel="noopener">${data.resetLink}</a><br/><br/>If you didn't request this, you can safely ignore this email.`,
       logoSrc: data.logoSrc
     })
   }),
 
   // OTP email for password reset or verification
-  otp: (data) => ({
-    subject: 'Your kGamify OTP Code',
-    html: renderEmail({
-      title: 'One-Time Password (OTP)',
-      preheader: 'Use this code to complete your request',
-      bodyHtml: `
-        <p>Hello${data.name ? ` ${data.name}` : ''},</p>
-        <p>Use the following OTP to complete your request:</p>
-  <div style="font-size:28px;font-weight:bold;letter-spacing:4px;padding:12px 20px;background:#fff7ed;border:1px dashed #fdba74;display:inline-block;border-radius:8px;">
-          ${data.code}
-        </div>
-        <p style="margin-top:16px;color:#6b7280;font-size:14px;">This code expires in ${data.expiresInMinutes || 10} minutes. For your security, never share this code with anyone.</p>
-      `,
-      logoSrc: data.logoSrc
-    })
-  }),
+  otp: (data) => {
+    const context = (data.context || 'verify').toLowerCase();
+    const isVerify = context === 'verify';
+    const subject = isVerify ? 'Email Verification via OTP - kGamify' : 'Password Reset OTP - kGamify';
+    const title = isVerify ? 'Email Verification via OTP' : 'Password Reset OTP';
+    const pre = isVerify ? 'Use this OTP to complete your registration' : 'Use this OTP to reset your password';
+    const line = isVerify
+      ? `Use the following OTP to complete your registration. This code will expire in ${data.expiresInMinutes || 10} minutes.`
+      : `Use the following OTP to reset your password. This code will expire in ${data.expiresInMinutes || 10} minutes.`;
+    const helloName = data.companyName || data.contactName || 'User';
+    return ({
+      subject,
+      html: renderEmail({
+        title,
+        preheader: pre,
+        bodyHtml: `
+          <p>Hello, ${helloName}</p>
+          <p>${line}</p>
+          <div style="font-size:28px;font-weight:bold;letter-spacing:4px;padding:12px 20px;background:#fff7ed;border:1px dashed #fdba74;display:inline-block;border-radius:8px;">
+            ${data.code}
+          </div>
+          <div style="margin-top:16px;">
+            <h3 style="margin:0 0 6px 0;font-size:14px;color:#111827;">Disclaimer</h3>
+            <p style="margin:0;color:#6b7280;font-size:13px;">If you are not the intended recipient of this OTP, please ignore this email.</p>
+          </div>
+        `,
+        logoSrc: data.logoSrc
+      })
+    });
+  },
 
   // Company approval notification
   companyApproved: (data) => ({
@@ -242,9 +283,10 @@ const emailTemplates = {
       preheader: 'You can now access your kGamify employer account',
       bodyHtml: `
         <p>Hi ${data.contactName || data.companyName || 'there'},</p>
-        <p>Your company <strong>${data.companyName}</strong> has been approved on kGamify. You can now log in and start posting jobs and managing applications.</p>
+        <p>Your company has been approved on the kGamify Job Portal.</p>
       `,
-      cta: { label: 'Go to Login', url: data.loginUrl || `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/login` },
+      cta: { label: 'Go to Login', url: data.loginUrl || `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/` },
+      footerNote: `If you are not able to log in through the button, use the URL below.<br/><a href="${data.loginUrl || `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/` }" target="_blank" rel="noopener">${data.loginUrl || `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/`}</a>`,
       logoSrc: data.logoSrc
     })
   }),
@@ -265,6 +307,7 @@ const emailTemplates = {
         <p style="font-size:14px;color:#4b5563;">Please log in to reply or view the full conversation.</p>
       `,
       cta: { label: 'View Messages', url: data.messagesUrl },
+      footerNote: data.messagesUrl ? `If the button doesn't work, open this link: <br/><a href="${data.messagesUrl}" target="_blank" rel="noopener">${data.messagesUrl}</a>` : '',
       logoSrc: data.logoSrc
     })
   }),
@@ -281,6 +324,7 @@ const emailTemplates = {
         <p>Please log in to view messages from the admin team for details and next steps.</p>
       `,
       cta: { label: 'Review Messages', url: data.messagesUrl },
+      footerNote: data.messagesUrl ? `If the button doesn't work, open this link: <br/><a href="${data.messagesUrl}" target="_blank" rel="noopener">${data.messagesUrl}</a>` : '',
       logoSrc: data.logoSrc
     })
   }),
@@ -296,6 +340,8 @@ const emailTemplates = {
         <p>Your registration was denied${data.reason ? ` for the following reason: <strong>${String(data.reason).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong>` : ''}.</p>
         <p>You may re-register after addressing the issues noted by our team.</p>
       `,
+      cta: data.messagesUrl ? { label: 'View Messages', url: data.messagesUrl } : undefined,
+      footerNote: data.messagesUrl ? `If the button doesn't work, open this link: <br/><a href="${data.messagesUrl}" target="_blank" rel="noopener">${data.messagesUrl}</a>` : '',
       logoSrc: data.logoSrc
     })
   }),
@@ -412,8 +458,9 @@ const sendVerificationEmail = async (email, verificationToken) => {
         <p>Thank you for registering. Please verify your email address to complete your registration.</p>
       `,
       cta: { label: 'Verify Email Address', url: verificationLink },
+      footerNote: `If the button doesn't work, open this link: <br/><a href="${verificationLink}" target="_blank" rel="noopener">${verificationLink}</a><br/><br/>If you didn't create this account, please ignore this email.`,
       logoSrc,
-      footerNote: 'If you didn\'t create this account, please ignore this email.'
+      
     })
   };
 

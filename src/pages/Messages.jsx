@@ -221,13 +221,16 @@ export default function Messages({ isDarkMode }) {
           <div className="flex gap-3 items-center">
             <label className={`cursor-pointer px-4 py-2 rounded-full border text-sm ${isDarkMode? 'bg-gray-800 border-gray-600':'bg-gray-50 border-gray-300'}`}>
               Attach
-              <input type="file" multiple onChange={e=>setFiles(e.target.files)} className="hidden" accept="image/*,.pdf,.doc,.docx" />
+              <input type="file" multiple onChange={e=>setFiles(e.target.files)} className="hidden" accept="image/*,.jpg,.jpeg,.png,.pdf,.doc,.docx" />
             </label>
             <button disabled={sending || (!input.trim() && (!files || files.length===0))} className={`px-7 py-3 rounded-full font-bold text-lg text-white shadow-lg ${
               sending||(!input.trim() && (!files || files.length===0))? 'bg-gray-400 cursor-not-allowed':'bg-gradient-to-r from-[#ff8200] to-[#ffb347] hover:from-[#e57400] hover:to-[#ffb347]'
             } transition-all duration-200`}>
               {sending? 'Sending…':'Send'}
             </button>
+          </div>
+          <div className={`text-xs mt-1 ${isDarkMode? 'text-gray-400':'text-gray-500'}`}>
+            Supported file types: .pdf, .jpg, .jpeg, .png, .doc, .docx
           </div>
         </form>
       </div>
