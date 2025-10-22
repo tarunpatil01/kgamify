@@ -408,7 +408,7 @@ const sendEmail = async (to, template, data) => {
     const mailOptions = {
       from: {
         name: 'kGamify Job Portal',
-        address: process.env.SMTP_EMAIL || 'natheprasad17@gmail.com'
+        address: process.env.SMTP_EMAIL,
       },
       to,
       subject: emailContent.subject,
