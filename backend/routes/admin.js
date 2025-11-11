@@ -4,6 +4,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const Company = require('../models/Company');
+const Job = require('../models/Job');
 const mongoose = require('mongoose');
 const Admin = require('../models/Admin');
 const { adminAuth } = require('../middleware/auth');
@@ -421,3 +422,71 @@ router.post('/company/:id/messages', adminAuth, upload.array('attachments', 5), 
 });
 
 module.exports = router;
+// --- Admin Job Management Endpoints ---
+// List all jobs for a specific company (by company id)
+router.get('/company/:id/jobs', adminAuth, async (req, res) => {
+  try {
+    const company = await Company.findById(req.params.id);
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+    const jobs = await Job.find({ companyEmail: company.email }).sort({ createdAt: -1 });
+    return res.json({ company: { id: company._id, name: company.companyName, email: company.email }, count: jobs.length, jobs });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Toggle job active status
+router.patch('/job/:jobId/status', adminAuth, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { jobActive } = req.body || {};
+    if (typeof jobActive === 'undefined') {
+      return res.status(400).json({ message: 'jobActive required' });
+    }
+    const job = await Job.findById(jobId);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    const prev = !!job.jobActive;
+    job.jobActive = !!jobActive;
+    await job.save({ validateModifiedOnly: true });
+    // Best-effort adjust company's activeJobCount
+    try {
+      const company = await Company.findOne({ email: job.companyEmail });
+      if (company) {
+        let inc = 0;
+        if (!prev && job.jobActive) inc = 1;
+        if (prev && !job.jobActive) inc = -1;
+        if (inc !== 0) {
+          const next = Math.max(0, (company.activeJobCount || 0) + inc);
+          company.activeJobCount = next;
+          await company.save({ validateModifiedOnly: true });
+        }
+      }
+    } catch { /* ignore */ }
+    return res.json({ message: 'Status updated', job });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete a job (admin)
+router.delete('/job/:jobId', adminAuth, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = await Job.findById(jobId);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+    const wasActive = !!job.jobActive;
+    const companyEmail = job.companyEmail;
+    await job.deleteOne();
+    // Adjust active count
+    try {
+      const company = await Company.findOne({ email: companyEmail });
+      if (company && wasActive) {
+        company.activeJobCount = Math.max(0, (company.activeJobCount || 0) - 1);
+        await company.save({ validateModifiedOnly: true });
+      }
+    } catch { /* ignore */ }
+    return res.json({ message: 'Job deleted' });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});

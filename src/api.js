@@ -102,9 +102,19 @@ export const createJob = async (jobData, options = {}) => {
 };
 
 export const getJobs = async (filters = {}) => {
-  const queryParams = filters?.email ? `?email=${encodeURIComponent(filters.email)}` : '';
-  const requestUrl = `${API_URL}/job${queryParams}`;
-  const response = await axios.get(requestUrl);
+  const qp = new URLSearchParams();
+  if (filters?.email) qp.set('email', filters.email);
+  if (filters?.includeInactive) qp.set('includeInactive', 'true');
+  // Add cache-busting param to avoid 304 + stale empty list issues
+  qp.set('_cb', Date.now().toString());
+  const requestUrl = `${API_URL}/job${qp.toString() ? `?${qp.toString()}` : ''}`;
+  const response = await axios.get(requestUrl, {
+    // Explicitly disable caching layers where possible
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    }
+  });
   return response.data;
 };
 
@@ -137,7 +147,7 @@ export const getCompanyInfo = async (email) => {
 // Company messaging (chat-like)
 export const getCompanyMessages = async (email, page = null, limit = null) => {
   if (!email) throw new Error('Email required');
-  const token = localStorage.getItem('companyToken');
+  const token = sessionStorage.getItem('companyToken') || localStorage.getItem('companyToken');
   const headers = {};
   if (token) headers['company-auth'] = token;
   
@@ -152,7 +162,7 @@ export const getCompanyMessages = async (email, page = null, limit = null) => {
 
 export const sendCompanyMessage = async (email, message, files = []) => {
   if (!email) throw new Error('Email required');
-  const token = localStorage.getItem('companyToken');
+  const token = sessionStorage.getItem('companyToken') || localStorage.getItem('companyToken');
   const headers = {};
   if (token) headers['company-auth'] = token;
   // Build multipart if files exist
@@ -202,6 +212,30 @@ export const editJob = async (jobId, jobData) => {
 export const deleteJob = async (jobId) => {
   const response = await axios.delete(`${API_URL}/job/${jobId}`);
   return response.data;
+};
+
+export const toggleJobActive = async (jobId, jobActive, email) => {
+  const response = await axios.patch(`${API_URL}/job/${jobId}/toggle-active`, { jobActive, email }, { headers: { 'Content-Type': 'application/json' } });
+  return response.data;
+};
+
+// --- Admin Job Management ---
+export const adminListCompanyJobs = async (companyId) => {
+  const token = localStorage.getItem('adminToken');
+  const res = await axios.get(`${API_URL}/admin/company/${companyId}/jobs`, { headers: token ? { 'x-auth-token': token } : undefined });
+  return res.data;
+};
+
+export const adminToggleJobStatus = async (jobId, jobActive) => {
+  const token = localStorage.getItem('adminToken');
+  const res = await axios.patch(`${API_URL}/admin/job/${jobId}/status`, { jobActive }, { headers: token ? { 'x-auth-token': token } : undefined });
+  return res.data;
+};
+
+export const adminDeleteJob = async (jobId) => {
+  const token = localStorage.getItem('adminToken');
+  const res = await axios.delete(`${API_URL}/admin/job/${jobId}`, { headers: token ? { 'x-auth-token': token } : undefined });
+  return res.data;
 };
 
 export const getPendingCompanies = async () => {
@@ -536,4 +570,40 @@ export async function markAllNotificationsRead(email) {
   } catch {
     return { success: false };
   }
+}
+
+// ---------------- Payments (Razorpay) ----------------
+export async function getPaymentConfig() {
+  const res = await fetch(`${API_URL}/payments/config`);
+  if (!res.ok) throw new Error('Failed to load payment config');
+  return res.json();
+}
+
+export async function createPaymentOrder(email, plan) {
+  const res = await fetch(`${API_URL}/payments/order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, plan })
+  });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Failed to create order');
+  return j; // { orderId, amount, currency, keyId }
+}
+
+export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature, email, plan }) {
+  const res = await fetch(`${API_URL}/payments/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ razorpay_order_id, razorpay_payment_id, razorpay_signature, email, plan })
+  });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Payment verification failed');
+  return j;
+}
+
+export async function getSubscriptionHistory(email) {
+  const res = await fetch(`${API_URL}/companies/subscription/history?email=${encodeURIComponent(email)}`);
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Failed to load subscription history');
+  return j;
 }

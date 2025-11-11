@@ -97,4 +97,4 @@ export default function AdminApplicants({ isDarkMode }) {
   );
 }
 
-AdminApplicants.propTypes = { isDarkMode: PropTypes.bool };
+AdminApplicants.propTypes = { isDarkMode: PropTypes.bool, $isDarkMode: PropTypes.bool };

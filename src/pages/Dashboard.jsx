@@ -23,6 +23,7 @@ import {
   selectJobsError
 } from "../store/slices/jobsSlice";
 import { getJobsCached } from "../services/jobsCache";
+import { toggleJobActive } from "../api";
 
 // Helper kept outside component to avoid creating functions within render that might differ across hot reloads
 // (Removed unused loadCompanyData helper)
@@ -87,7 +88,7 @@ StatCard.propTypes = {
   helper: PropTypes.string
 };
 
-const JobCard = ({ job, isDarkMode, navigate }) => (
+const JobCard = ({ job, isDarkMode, navigate, onToggle }) => (
   <article
     key={`job-${job._id}`}
     className={`rounded-2xl shadow border transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer p-6 flex flex-col ${
@@ -123,7 +124,7 @@ const JobCard = ({ job, isDarkMode, navigate }) => (
       <div className="flex items-center"><FaUsers className="h-4 w-4 mr-1.5 text-gray-500 dark:text-gray-400" /> {job.applicants?.length || 0} apps</div>
       <div className="flex items-center"><FaCalendarAlt className="h-4 w-4 mr-1.5 text-gray-500 dark:text-gray-400" /> {new Date(job.createdAt || job.datePosted).toLocaleDateString()}</div>
     </div>
-    <div className="mt-4">
+    <div className="mt-4 grid grid-cols-2 gap-2">
       <button
         onClick={(e) => { e.stopPropagation(); navigate(`/job/${job._id}`); }}
         className="w-full px-4 py-2.5 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white rounded-lg font-semibold shadow hover:from-[#e57400] hover:to-[#ffb347] flex items-center justify-center gap-2 text-sm"
@@ -131,13 +132,21 @@ const JobCard = ({ job, isDarkMode, navigate }) => (
       >
         <FaEye className="h-4 w-4" /> View
       </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggle?.(job); }}
+        className={`w-full px-4 py-2.5 rounded-lg font-semibold shadow flex items-center justify-center gap-2 text-sm ${job.jobActive ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+        aria-label={`${job.jobActive ? 'Deactivate' : 'Activate'} job ${job.jobTitle}`}
+      >
+        {job.jobActive ? 'Deactivate' : 'Activate'}
+      </button>
     </div>
   </article>
 );
 JobCard.propTypes = {
   job: PropTypes.object.isRequired,
   isDarkMode: PropTypes.bool,
-  navigate: PropTypes.func.isRequired
+  navigate: PropTypes.func.isRequired,
+  onToggle: PropTypes.func
 };
 
 const Pagination = ({ currentPage, totalPages, onPageChange, start, end, total }) => {
@@ -207,15 +216,15 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [showInactive, setShowInactive] = useState(false); // toggle to include inactive jobs
 
   useEffect(() => {
-    // Fetch jobs when component mounts
-    // If viewing a company dashboard, fetch only that company's jobs with a smaller limit for faster response
+    // Fetch jobs when component mounts or when inactive toggle changes
     const params = email
-      ? { page: 1, limit: 12, filters: { email } }
-      : { page: 1, limit: 50 };
+      ? { page: 1, limit: 12, filters: { email }, includeInactive: showInactive }
+      : { page: 1, limit: 50, includeInactive: showInactive };
     dispatch(fetchJobs(params));
-  }, [dispatch, email]);
+  }, [dispatch, email, showInactive]);
 
   // So the UI doesn't stay blocked by a slow request (new companies may have 0 jobs),
   // stop showing the initial full-screen loader after a short grace period
@@ -229,7 +238,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
     let cancelled = false;
     const h = setTimeout(async () => {
       try {
-        const response = await getJobsCached(email ? { email } : {});
+        const response = await getJobsCached(email ? { email, includeInactive: showInactive } : { includeInactive: showInactive });
         if (cancelled) return;
         const normalized = Array.isArray(response?.jobs)
           ? response.jobs
@@ -238,9 +247,20 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
             : [];
         setDirectAPIJobs(normalized);
       } catch { /* ignore */ }
-    }, 150); // small debounce
+    }, 150);
     return () => { cancelled = true; clearTimeout(h); };
-  }, [email]);
+  }, [email, showInactive]);
+
+  // Auto-retry: if first active-only fetch yields no jobs, enable inactive view.
+  useEffect(() => {
+    try {
+      const hasDisplayJobs = Array.isArray(jobs) && jobs.length > 0 || Array.isArray(directAPIJobs) && directAPIJobs.length > 0;
+      if (!showInactive && !loading && initialWaitOver && !hasDisplayJobs) {
+        setShowInactive(true);
+      }
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, initialWaitOver, showInactive, jobs, directAPIJobs]);
 
   // Normalize & unify job source with memoization
   const displayJobs = useMemo(() => {
@@ -251,15 +271,15 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
     // Normalize a consistent company email accessor
     const norm = source.map(j => ({
       ...j,
-      __companyEmail: j.companyEmail || j.company?.email || j.createdBy || ''
+      __companyEmail: j.companyEmail || j.company?.email || j.createdBy || '',
+      status: j.status || (j.jobActive ? 'active' : 'inactive')
     }));
 
-    // Optional filter by company email if viewing company dashboard
-    const filtered = email ? norm.filter(j => j.__companyEmail === email) : norm;
-
+    // If email provided we already filtered at API layer; skip strict client-side filter to avoid mismatches
+    const base = norm;
     // Deduplicate by _id (direct API + Redux might overlap)
     const dedupMap = new Map();
-    for (const job of filtered) {
+    for (const job of base) {
       const key = job._id || job.id;
       if (!dedupMap.has(key)) dedupMap.set(key, job);
     }
@@ -272,9 +292,24 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
       return bDate - aDate;
     });
     return deduped;
-  }, [jobs, directAPIJobs, email]);
+  }, [jobs, directAPIJobs]);
   
   const totalJobs = displayJobs.length;
+
+  const handleToggle = useCallback(async (job) => {
+    try {
+      const next = !job.jobActive;
+      await toggleJobActive(job._id, next, email || job.__companyEmail);
+      // Optimistic UI
+      setDirectAPIJobs(list => list.map(j => j._id === job._id ? { ...j, jobActive: next, status: next ? 'active' : 'inactive' } : j));
+    } catch (e) {
+      // Optionally implement toast later
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.log('Failed to toggle job', e?.response?.data || e?.message);
+      }
+    }
+  }, [email]);
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -339,10 +374,14 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
   // Quick action handler to refresh jobs manually
   const handleRefresh = useCallback(() => {
     const params = email
-      ? { page: 1, limit: 12, filters: { email } }
-      : { page: 1, limit: 50 };
+      ? { page: 1, limit: 12, filters: { email }, includeInactive: showInactive }
+      : { page: 1, limit: 50, includeInactive: showInactive };
     dispatch(fetchJobs(params));
-  }, [dispatch, email]);
+  }, [dispatch, email, showInactive]);
+
+  const handleToggleInactive = useCallback(() => {
+    setShowInactive(v => !v);
+  }, []);
   const cleanDescription = userCompany?.description
     ? String(userCompany.description).replace(/<[^>]+>/g, '')
     : '';
@@ -382,7 +421,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
                 </>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-center flex-wrap">
               <button
                 onClick={handleRefresh}
                 disabled={loading}
@@ -391,6 +430,16 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
               >
                 <FaSyncAlt className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> {loading ? 'Refreshing' : 'Refresh'}
               </button>
+              {email && (
+                <button
+                  onClick={handleToggleInactive}
+                  className={`flex items-center gap-2 px-4 h-11 rounded-lg text-sm font-medium shadow transition ${showInactive ? 'bg-[#ff8200] text-white' : (isDarkMode ? 'bg-gray-800 hover:bg-gray-700 text-white' : 'bg-white hover:bg-gray-100 border border-gray-200')}`}
+                  aria-pressed={showInactive}
+                  aria-label={showInactive ? 'Hide inactive jobs' : 'Show inactive jobs'}
+                >
+                  {showInactive ? 'Hide Inactive' : 'Show Inactive'}
+                </button>
+              )}
             </div>
         </div>
       </section>
@@ -429,8 +478,13 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
         </div>
         {/* Results Summary */}
         {!showSkeletons && (
-          <div className="mb-6 text-base font-semibold">
-            Showing {currentJobs.length} of {displayJobs.length} jobs
+          <div className="mb-6 text-base font-semibold flex flex-col gap-2">
+            <span>Showing {currentJobs.length} of {displayJobs.length} jobs</span>
+            {showInactive && email && (
+              <span className="text-xs font-normal opacity-75">
+                Inactive jobs are visible. You can reactivate an inactive job if your subscription is active.
+              </span>
+            )}
           </div>
         )}
         {error && !showSkeletons && (
@@ -487,7 +541,7 @@ const Dashboard = ({ isDarkMode, email = null, userCompany = null }) => {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {currentJobs.map(job => (
-                <JobCard key={job._id} job={job} isDarkMode={isDarkMode} navigate={navigate} />
+                <JobCard key={job._id} job={job} isDarkMode={isDarkMode} navigate={navigate} onToggle={handleToggle} />
               ))}
             </div>
             <Pagination

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { chooseSubscription } from '../api';
+import { chooseSubscription, getPaymentConfig, createPaymentOrder, verifyPayment, getSubscriptionHistory } from '../api';
 import { FaRocket, FaStar, FaUserTie, FaDatabase } from "react-icons/fa";
 
 // Updated plan descriptions and features
@@ -57,6 +57,7 @@ export default function Plans({ isDarkMode = false }) {
   const [loadingPlan, setLoadingPlan] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [history, setHistory] = useState({ company: null, history: [] });
 
   useEffect(() => {
     try {
@@ -65,23 +66,118 @@ export default function Plans({ isDarkMode = false }) {
     } catch { /* ignore */ }
   }, []);
 
+  // Load history when company available
+  useEffect(() => {
+    (async () => {
+      try {
+        if (company?.email) {
+          const h = await getSubscriptionHistory(company.email);
+          setHistory({ company: h.company, history: Array.isArray(h.history) ? h.history : [] });
+        }
+      } catch { /* ignore */ }
+    })();
+  }, [company?.email]);
+
+  // Dynamically load Razorpay if needed
+  function ensureRazorpayLoaded() {
+    return new Promise((resolve, reject) => {
+      if (window.Razorpay) return resolve();
+      const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve());
+        existing.addEventListener('error', () => reject(new Error('Failed to load Razorpay')));
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('Failed to load Razorpay'));
+      document.body.appendChild(s);
+    });
+  }
+
   async function handleChoose(plan){
     setError(''); setSuccess('');
     if (!company?.email){ setError('Please login to choose a plan.'); return; }
+    // Free & resume addon keep existing flow for now (no payment integration implemented for resume yet)
+    const paidCorePlans = ['standard','premium']; // map to backend plan keys silver/gold maybe later
+    const planMapping = { standard: 'silver', premium: 'gold', free: 'free' };
+    const backendPlan = planMapping[plan] || plan;
     try {
       setLoadingPlan(plan);
-      const res = await chooseSubscription(company.email, plan);
-      if (res?.company) {
-        const updated = { ...company, ...res.company };
-        localStorage.setItem('companyData', JSON.stringify(updated));
-        setCompany(updated);
+      if (plan === 'free') {
+        const res = await chooseSubscription(company.email, backendPlan);
+        if (res?.company) {
+          const updated = { ...company, ...res.company };
+          localStorage.setItem('companyData', JSON.stringify(updated));
+          setCompany(updated);
+        }
+        setSuccess('Free plan activated');
+        return;
       }
-      const baseMsg = `${PLAN_DESCRIPTIONS[plan].title} plan activated`;
-      const limitMsg = res?.planLimits ? ` • Limit: ${res.planLimits} active jobs` : '';
-      setSuccess(baseMsg + limitMsg);
-    } catch(err){
-      setError(err.message||'Failed to choose plan');
-    } finally { setLoadingPlan(''); }
+      if (paidCorePlans.includes(plan)) {
+        // 1. Get keyId
+        const cfg = await getPaymentConfig();
+        // 2. Create order
+        const order = await createPaymentOrder(company.email, backendPlan);
+        // 3. Open Razorpay checkout
+        try { await ensureRazorpayLoaded(); } catch { setError('Failed to load payment SDK'); return; }
+        await new Promise((resolve, reject) => {
+          const rzp = new window.Razorpay({
+            key: cfg.keyId,
+            amount: order.amount,
+            currency: order.currency,
+            name: 'kGamify',
+            description: `${PLAN_DESCRIPTIONS[plan].title} Subscription`,
+            order_id: order.orderId,
+            notes: { email: company.email, plan: backendPlan },
+            prefill: { email: company.email, name: company.companyName || company.email },
+            theme: { color: '#ff8200' },
+            handler: async (resp) => {
+                try {
+                await verifyPayment({
+                  razorpay_order_id: resp.razorpay_order_id,
+                  razorpay_payment_id: resp.razorpay_payment_id,
+                  razorpay_signature: resp.razorpay_signature,
+                  email: company.email,
+                  plan: backendPlan
+                });
+                // Refresh history & company snapshot
+                try {
+                  const hist = await getSubscriptionHistory(company.email);
+                  if (hist?.company) {
+                    const updated = { ...company, subscriptionPlan: hist.company.plan, subscriptionStatus: hist.company.status, subscriptionActivatedAt: hist.company.activatedAt, subscriptionExpiresAt: hist.company.expiresAt };
+                    localStorage.setItem('companyData', JSON.stringify(updated));
+                    setCompany(updated);
+                      setHistory({ company: hist.company, history: Array.isArray(hist.history) ? hist.history : [] });
+                  }
+                } catch { /* ignore */ }
+                setSuccess(`${PLAN_DESCRIPTIONS[plan].title} activated successfully`);
+                resolve();
+              } catch (e) {
+                setError(e.message || 'Payment verification failed');
+                reject(e);
+              }
+            },
+            modal: {
+              ondismiss: () => {
+                setError('Payment cancelled');
+                reject(new Error('cancelled'));
+              }
+            }
+          });
+          rzp.open();
+        });
+        return;
+      }
+      // Resume addon placeholder
+      setError('Resume addon payment integration coming soon');
+    } catch (err) {
+      setError(err.message || 'Failed to process subscription');
+    } finally {
+      setLoadingPlan('');
+    }
   }
 
   // Updated cards array for new plans
@@ -153,7 +249,7 @@ export default function Plans({ isDarkMode = false }) {
                       : p.key==='free'
                         ? 'Activate Free'
                         : p.key==='resume'
-                          ? 'Subscribe Now'
+                          ? 'Add-On Soon'
                           : 'Pay & Activate'
                     }
                   </button>
@@ -166,7 +262,64 @@ export default function Plans({ isDarkMode = false }) {
           })}
         </div>
         {/* ...footer or any content below cards... */}
-        {/* Add your footer or next section here */}
+        {/* Subscription history */}
+        {company?.email && (
+          <div className={`mt-4 rounded-xl border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} p-5`}>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-lg font-semibold">Subscription Snapshot</h4>
+              {history.company?.plan && (
+                <span className="text-sm opacity-80">Plan: <strong>{history.company.plan}</strong> • Status: <strong className={`${history.company.status==='active' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{history.company.status || 'inactive'}</strong></span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                <div className="opacity-70">Activated</div>
+                <div className="font-medium">{history.company?.activatedAt ? new Date(history.company.activatedAt).toLocaleString() : '—'}</div>
+              </div>
+              <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                <div className="opacity-70">Expires</div>
+                <div className="font-medium">{history.company?.expiresAt ? new Date(history.company.expiresAt).toLocaleString() : '—'}</div>
+              </div>
+              <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                <div className="opacity-70">Active jobs</div>
+                <div className="font-medium">{history.company?.activeJobCount ?? 0} / {history.company?.planLimit ?? 0}</div>
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="text-sm font-semibold mb-2">Billing History</div>
+              {Array.isArray(history.history) && history.history.length ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        <th className="text-left py-2 pr-4">Invoice</th>
+                        <th className="text-left py-2 pr-4">Plan</th>
+                        <th className="text-left py-2 pr-4">Start</th>
+                        <th className="text-left py-2 pr-4">End</th>
+                        <th className="text-left py-2 pr-4">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {history.history.map((h) => (
+                        <tr key={h.invoiceId || h.startAt} className={isDarkMode ? 'border-t border-gray-700' : 'border-t border-gray-200'}>
+                          <td className="py-2 pr-4 font-mono">{h.invoiceId || '—'}</td>
+                          <td className="py-2 pr-4">{h.plan}</td>
+                          <td className="py-2 pr-4">{h.startAt ? new Date(h.startAt).toLocaleString() : '—'}</td>
+                          <td className="py-2 pr-4">{h.endAt ? new Date(h.endAt).toLocaleString() : '—'}</td>
+                          <td className="py-2 pr-4">
+                            <span className={`px-2 py-0.5 rounded text-xs ${h.status==='active' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'}`}>{h.status}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>No history yet.</div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -46,13 +46,23 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'x-auth-token', 'company-email', 'company-auth', 'x-request-id', 'X-Request-ID', 'X-Client-Version', 'X-Client-Platform', 'x-api-key']
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization', 'x-auth-token', 'company-email', 'company-auth', 'x-request-id', 'X-Request-ID', 'X-Client-Version', 'X-Client-Platform', 'x-api-key', 'Cache-Control', 'Pragma']
 }));
 
 // Handle preflight requests explicitly
 app.options('*', cors());
 
 // Increase JSON payload size limit
+// Razorpay webhook requires raw body for signature verification; mount raw parser for its path first
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  try {
+    const payments = require('./routes/payments');
+    return payments.webhook(req, res);
+  } catch (e) {
+    return res.status(500).json({ error: 'Webhook internal error' });
+  }
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -83,6 +93,7 @@ app.use('/api/application', require('./routes/application'));
 app.use('/api/job', require('./routes/job'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/external', require('./routes/external'));
+app.use('/api/payments', require('./routes/payments'));
 
 // Admin routes
 app.use('/api/admin', require('./routes/admin'));

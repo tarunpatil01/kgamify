@@ -12,7 +12,8 @@ export const fetchJobs = createAsyncThunk(
         search = '', 
         filters = {},
         sortBy = 'createdAt',
-        sortOrder = 'desc'
+        sortOrder = 'desc',
+        includeInactive = false
       } = params;
 
       // Check cache first
@@ -24,15 +25,35 @@ export const fetchJobs = createAsyncThunk(
         return cached.data;
       }
 
+      // Backend currently expects 'email' not nested under filters. Pull out email if present.
+      const { email, ...restFilters } = filters || {};
       const response = await apiClient.get('/job', {
-        params: { page, limit, search, ...filters, sortBy, sortOrder }
+        params: { page, limit, search, sortBy, sortOrder, includeInactive, email, ...restFilters, _cb: Date.now() },
+        // Bypass client cache in our apiClient and any intermediaries
+        cache: false,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       });
 
+      // Backend currently returns a raw array (no pagination object). Support both shapes.
+      const raw = response.data;
+      if (Array.isArray(raw)) {
+        return {
+          jobs: raw,
+          total: raw.length,
+          currentPage: page,
+          totalPages: 1,
+          cacheKey,
+          timestamp: Date.now()
+        };
+      }
       return {
-        jobs: response.data.jobs,
-        total: response.data.total,
-        currentPage: response.data.currentPage,
-        totalPages: response.data.totalPages,
+        jobs: raw.jobs || [],
+        total: raw.total || (Array.isArray(raw.jobs) ? raw.jobs.length : 0),
+        currentPage: raw.currentPage || page,
+        totalPages: raw.totalPages || 1,
         cacheKey,
         timestamp: Date.now()
       };

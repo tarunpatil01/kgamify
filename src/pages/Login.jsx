@@ -10,9 +10,11 @@ import { quickEmail, quickPassword } from '../utils/validation';
 const Login = ({ setLoggedInEmail }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    identifier: localStorage.getItem("rememberedIdentifier") || "",
+    // Load identifier from persistent rememberMe (localStorage) first, else session for this tab
+    identifier: localStorage.getItem("rememberedIdentifier") || sessionStorage.getItem('loginIdentifier') || "",
     password: "",
   });
+  // rememberMe: persistent across browser restarts
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem("rememberedEmail"));
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -48,6 +50,10 @@ const Login = ({ setLoggedInEmail }) => {
       ...prevDetails,
       [name]: value,
     }));
+    // For identifier field, always store the in-progress value in sessionStorage so a refresh keeps it (even if not yet logged in)
+    if (name === 'identifier') {
+      try { sessionStorage.setItem('loginIdentifier', value); } catch { /* ignore quota errors */ }
+    }
     
     // Clear error message when user starts typing
     if (errorMessage) setErrorMessage("");
@@ -68,7 +74,16 @@ const Login = ({ setLoggedInEmail }) => {
   };
 
   const handleRememberMeChange = (event) => {
-    setRememberMe(event.target.checked);
+    const checked = event.target.checked;
+    setRememberMe(checked);
+    // If user just enabled rememberMe and has typed an identifier, persist it immediately
+    if (checked && formData.identifier) {
+      try { localStorage.setItem('rememberedIdentifier', formData.identifier); } catch { /* ignore */ }
+    } else if (!checked) {
+      // User disabled rememberMe: remove persistent identifier/email, keep session copy
+      localStorage.removeItem('rememberedIdentifier');
+      localStorage.removeItem('rememberedEmail');
+    }
   };
 
   const togglePasswordVisibility = () => {
@@ -123,17 +138,29 @@ const Login = ({ setLoggedInEmail }) => {
           localStorage.removeItem('pendingVerifyEmail');
         }
         if (rememberMe) {
-          localStorage.setItem("rememberedIdentifier", formData.identifier);
+          // Persistent storage (long-lived)
+          try { localStorage.setItem("rememberedIdentifier", formData.identifier); } catch { /* ignore */ }
           if (response.company?.email) {
-            localStorage.setItem("rememberedEmail", response.company.email);
+            try { localStorage.setItem("rememberedEmail", response.company.email); } catch { /* ignore */ }
           }
         } else {
+          // Session-only: keep identifier/email in sessionStorage for refresh within this tab
+          try { sessionStorage.setItem('loginIdentifier', formData.identifier); } catch { /* ignore */ }
+          if (response.company?.email) {
+            try { sessionStorage.setItem('sessionEmail', response.company.email); } catch { /* ignore */ }
+          }
           localStorage.removeItem("rememberedIdentifier");
+          localStorage.removeItem("rememberedEmail");
         }
         setLoggedInEmail(response.company?.email || "");
         localStorage.setItem('companyType', response.type);
         if (response.token) {
-          localStorage.setItem('companyToken', response.token);
+          if (rememberMe) {
+            localStorage.setItem('companyToken', response.token);
+          } else {
+            // Store token only for current session
+            try { sessionStorage.setItem('companyToken', response.token); } catch { /* ignore */ }
+          }
         }
         navigate("/dashboard");
       }

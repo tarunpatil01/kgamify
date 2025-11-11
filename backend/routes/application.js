@@ -32,6 +32,28 @@ const checkCompany = async (req, res, next) => {
   }
 };
 
+// Enforce subscription active for resume/app access
+const checkCompanySubscriptionActive = async (req, res, next) => {
+  try {
+    const email = req.query.email || req.body.email || req.headers['company-email'];
+    if (!email) return res.status(400).json({ error: 'Company email is required' });
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(401).json({ error: 'Unauthorized - company not found' });
+    const now = new Date();
+    const expired = company.subscriptionStatus === 'expired' || (company.subscriptionExpiresAt && now > new Date(company.subscriptionExpiresAt));
+    if (expired) {
+      if (company.subscriptionStatus !== 'expired') {
+        company.subscriptionStatus = 'expired';
+        await company.save({ validateModifiedOnly: true }).catch(()=>{});
+      }
+      return res.status(403).json({ error: 'Subscription expired. Access to applications and resumes is restricted until renewal.' });
+    }
+    return next();
+  } catch {
+    return res.status(500).json({ error: 'Subscription check failed' });
+  }
+};
+
 // Create a new application with resume upload
 router.post('/', upload.single('resume'), async (req, res) => {
   try {
@@ -102,7 +124,7 @@ router.post('/', upload.single('resume'), async (req, res) => {
 });
 
 // Get all applications for a company by email (aggregated, most recent first)
-router.get('/company', async (req, res) => {
+router.get('/company', checkCompanySubscriptionActive, async (req, res) => {
   try {
     const email = req.query.email || req.headers['company-email'];
     if (!email) {
@@ -136,7 +158,7 @@ router.get('/company', async (req, res) => {
 });
 
 // Get applications by job ID
-router.get('/job/:jobId', checkCompany, async (req, res) => {
+router.get('/job/:jobId', checkCompany, checkCompanySubscriptionActive, async (req, res) => {
   try {
     const { jobId } = req.params;
     
@@ -217,7 +239,7 @@ router.get('/job/:jobId', checkCompany, async (req, res) => {
 });
 
 // Get a specific application with resume URL
-router.get('/:id', checkCompany, async (req, res) => {
+router.get('/:id', checkCompany, checkCompanySubscriptionActive, async (req, res) => {
   try {
     const application = await Application.findOne({
       _id: req.params.id,

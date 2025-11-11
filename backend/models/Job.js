@@ -24,6 +24,8 @@ const jobSchema = new mongoose.Schema({
   // Array of JD file URLs (PDF/DOC/DOCX); supersedes jdPdfUrl for multiple files
   jdFiles: [{ type: String }],
   status: { type: String, default: 'active' },
+  // Flag marking if job should be accessible/applicable (turned off after subscription expiry)
+  jobActive: { type: Boolean, default: true },
   numberOfPositions: { type: String },
   category: { type: String },
   tags: { type: String },

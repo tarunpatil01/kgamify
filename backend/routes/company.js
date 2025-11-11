@@ -8,6 +8,8 @@ const { getDocumentUrl, getDocumentDownloadUrl } = require('../utils/documentHel
 const { sendEmail } = require('../utils/emailService');
 // Plan limits (can be adjusted later or moved to config)
 const PLAN_LIMITS = { free: 1, silver: 5, gold: 20 };
+// Simple pricing map (amounts in INR) - adjust as needed
+const PLAN_PRICING = { free: 0, silver: 999, gold: 2999 };
 // Messaging additions
 
 // Middleware to authenticate company
@@ -631,6 +633,190 @@ router.post('/subscription/choose', async (req, res) => {
   }
 });
 
+// Purchase (or activate) a subscription plan and generate invoice + history entry
+// Expected body: { email, plan, amount? (override), currency? }
+router.post('/subscription/purchase', async (req, res) => {
+  try {
+    const { email, plan, amount, currency } = req.body || {};
+    if (!email || !plan) return res.status(400).json({ error: 'email and plan required' });
+    if (!['free', 'silver', 'gold'].includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+
+    // Determine pricing (allow override for future coupon/discount logic)
+    const finalAmount = typeof amount === 'number' ? amount : PLAN_PRICING[plan];
+    const finalCurrency = currency || 'INR';
+
+    // Generate start/end (free has no expiry)
+    const startAt = new Date();
+    let endAt = undefined;
+    if (plan !== 'free') {
+      endAt = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)); // 30 days
+    }
+
+    // Expire previously active subscription history items (if any)
+    if (Array.isArray(company.subscriptionHistory)) {
+      company.subscriptionHistory.forEach(h => {
+        if (h.status === 'active' && !h.endAt) {
+          h.status = 'expired';
+          h.endAt = new Date();
+        }
+      });
+    }
+
+    // Generate invoice id
+    const invoiceId = `INV-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+
+    // Push new history record
+    company.subscriptionHistory = company.subscriptionHistory || [];
+    company.subscriptionHistory.push({
+      plan,
+      status: 'active',
+      startAt,
+      endAt,
+      invoiceId,
+      amount: finalAmount,
+      currency: finalCurrency
+    });
+
+    // Update current subscription snapshot fields
+    company.subscriptionPlan = plan;
+    company.subscriptionStatus = 'active';
+    company.subscriptionActivatedAt = startAt;
+    company.subscriptionExpiresAt = endAt; // undefined for free
+
+    await company.save({ validateModifiedOnly: true });
+
+    // Prepare formatted amount for email
+    const amountFormatted = finalAmount === 0 ? 'FREE' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: finalCurrency }).format(finalAmount);
+    // Send invoice email (fire and forget)
+    sendEmail(company.email, 'subscriptionInvoice', {
+      invoiceId,
+      plan,
+      startAt,
+      endAt: endAt || startAt,
+      companyName: company.companyName,
+      companyEmail: company.email,
+      amountFormatted
+    }).catch(e => { if (process.env.NODE_ENV !== 'production') console.error('Invoice email error:', e); });
+
+    return res.json({
+      message: 'Subscription purchased',
+      invoiceId,
+      plan,
+      startAt,
+      endAt,
+      amount: finalAmount,
+      currency: finalCurrency,
+      amountFormatted,
+      historyCount: company.subscriptionHistory.length
+    });
+  } catch (err) {
+    console.error('subscription purchase error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Repeat (renew same plan) - must be same as current plan; starts immediately after current expiry (or now if expired)
+router.post('/subscription/repeat', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+    const currentPlan = company.subscriptionPlan || 'free';
+    if (currentPlan === 'free') return res.status(400).json({ error: 'Free plan does not require renewal' });
+    const now = new Date();
+    const baseStart = (company.subscriptionExpiresAt && now < new Date(company.subscriptionExpiresAt)) ? new Date(company.subscriptionExpiresAt) : now;
+    const startAt = baseStart;
+    const endAt = new Date(startAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const invoiceId = `INV-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+    const amount = PLAN_PRICING[currentPlan];
+    const currency = 'INR';
+    // Expire any active history item whose endAt matches old expiry
+    if (Array.isArray(company.subscriptionHistory)) {
+      company.subscriptionHistory.forEach(h => {
+        if (h.status === 'active' && (!h.endAt || h.endAt <= startAt)) {
+          h.status = 'expired';
+          h.endAt = h.endAt || startAt;
+        }
+      });
+    }
+    company.subscriptionHistory.push({ plan: currentPlan, status: 'active', startAt, endAt, invoiceId, amount, currency });
+    company.subscriptionStatus = 'active';
+    company.subscriptionActivatedAt = startAt;
+    company.subscriptionExpiresAt = endAt;
+    await company.save({ validateModifiedOnly: true });
+    const amountFormatted = new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(amount);
+    sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan: currentPlan, startAt, endAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
+    return res.json({ message: 'Subscription renewed', plan: currentPlan, invoiceId, startAt, endAt, amount, currency, amountFormatted });
+  } catch (err) {
+    console.error('subscription repeat error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Upgrade to higher plan immediately (no proration logic yet; starts now)
+router.post('/subscription/upgrade', async (req, res) => {
+  try {
+    const { email, plan } = req.body || {};
+    if (!email || !plan) return res.status(400).json({ error: 'email and plan required' });
+    if (!['silver', 'gold'].includes(plan)) return res.status(400).json({ error: 'Upgrade target must be silver or gold' });
+    const company = await Company.findOne({ email });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+    const currentPlan = company.subscriptionPlan || 'free';
+    const rank = { free: 0, silver: 1, gold: 2 };
+    if (rank[plan] <= rank[currentPlan]) return res.status(400).json({ error: 'Target plan must be higher than current plan' });
+    // Expire existing active history item
+    if (Array.isArray(company.subscriptionHistory)) {
+      company.subscriptionHistory.forEach(h => { if (h.status === 'active' && !h.endAt) { h.status = 'expired'; h.endAt = new Date(); } });
+    }
+    const startAt = new Date();
+    const endAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const invoiceId = `INV-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+    const amount = PLAN_PRICING[plan];
+    const currency = 'INR';
+    company.subscriptionHistory.push({ plan, status: 'active', startAt, endAt, invoiceId, amount, currency });
+    company.subscriptionPlan = plan;
+    company.subscriptionStatus = 'active';
+    company.subscriptionActivatedAt = startAt;
+    company.subscriptionExpiresAt = endAt;
+    await company.save({ validateModifiedOnly: true });
+    const amountFormatted = new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(amount);
+    sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan, startAt, endAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
+    return res.json({ message: 'Subscription upgraded', plan, invoiceId, startAt, endAt, amount, currency, amountFormatted });
+  } catch (err) {
+    console.error('subscription upgrade error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get subscription history and current snapshot for a company
+router.get('/subscription/history', async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: 'email required' });
+    const company = await Company.findOne({ email }, { subscriptionHistory: 1, subscriptionPlan: 1, subscriptionStatus: 1, subscriptionActivatedAt: 1, subscriptionExpiresAt: 1, activeJobCount: 1, companyName: 1 });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+    return res.json({
+      company: {
+        name: company.companyName,
+        email,
+        plan: company.subscriptionPlan,
+        status: company.subscriptionStatus,
+        activatedAt: company.subscriptionActivatedAt,
+        expiresAt: company.subscriptionExpiresAt,
+        activeJobCount: company.activeJobCount,
+        planLimit: PLAN_LIMITS[company.subscriptionPlan || 'free'] || 0
+      },
+      history: Array.isArray(company.subscriptionHistory) ? company.subscriptionHistory.slice().reverse() : []
+    });
+  } catch (err) {
+    console.error('subscription history error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Update profile completion details (calculates completion %)
 router.post('/profile/complete', upload.fields([
   { name: 'logo', maxCount: 1 },
@@ -694,6 +880,17 @@ async function enforceJobPostingRules(req, res, next) {
     if (!company.emailVerified) return res.status(403).json({ error: 'Verify your email first' });
     if (!company.profileCompleted) return res.status(403).json({ error: 'Complete profile before posting jobs' });
     if (!company.approved) return res.status(403).json({ error: 'Company not approved by admin yet' });
+    // Subscription expiry/enforcement
+    const now = new Date();
+    if (company.subscriptionStatus === 'expired') {
+      return res.status(403).json({ error: 'Subscription expired. Please renew to post jobs.' });
+    }
+    // If there is an expiry date and it's past, mark expired and block
+    if (company.subscriptionExpiresAt && now > new Date(company.subscriptionExpiresAt)) {
+      company.subscriptionStatus = 'expired';
+      await company.save({ validateModifiedOnly: true }).catch(()=>{});
+      return res.status(403).json({ error: 'Subscription expired. Please renew to post jobs.' });
+    }
     const plan = company.subscriptionPlan || 'free';
     const limit = PLAN_LIMITS[plan] || 0;
     if (company.activeJobCount >= limit) {
@@ -708,6 +905,29 @@ async function enforceJobPostingRules(req, res, next) {
 }
 
 module.exports.enforceJobPostingRules = enforceJobPostingRules;
+// Helper exported for payment activation flows (Razorpay) - creates subscription via purchase endpoint logic
+module.exports.activateSubscription = async function activateSubscription({ email, plan, amount, currency = 'INR', origin = 'api', paymentId, orderId }) {
+  if (!email || !plan) return { success: false, error: 'email and plan required' };
+  if (!['free','silver','gold'].includes(plan)) return { success: false, error: 'Invalid plan' };
+  const company = await Company.findOne({ email });
+  if (!company) return { success: false, error: 'Company not found' };
+  // Expire previous active entries
+  if (Array.isArray(company.subscriptionHistory)) {
+    company.subscriptionHistory.forEach(h => { if (h.status === 'active' && !h.endAt) { h.status = 'expired'; h.endAt = new Date(); } });
+  }
+  const startAt = new Date();
+  const endAt = plan === 'free' ? undefined : new Date(Date.now() + 30*24*60*60*1000);
+  const invoiceId = `INV-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+  company.subscriptionHistory.push({ plan, status: 'active', startAt, endAt, invoiceId, amount, currency });
+  company.subscriptionPlan = plan;
+  company.subscriptionStatus = 'active';
+  company.subscriptionActivatedAt = startAt;
+  company.subscriptionExpiresAt = endAt;
+  await company.save({ validateModifiedOnly: true });
+  const amountFormatted = amount === 0 ? 'FREE' : new Intl.NumberFormat('en-IN',{ style:'currency', currency }).format(amount);
+  sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan, startAt, endAt: endAt || startAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
+  return { success: true, invoiceId, plan, startAt, endAt, origin, paymentId, orderId };
+};
 // Chat-style messaging endpoints appended below for company/admin conversation
 // Simple company token auth middleware
 function companyAuth(req, res, next) {

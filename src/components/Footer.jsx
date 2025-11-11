@@ -45,7 +45,7 @@ function Footer({ isDarkMode, $isDarkMode }) {
             <div className={sectionTitle}>Support</div>
             <ul className="space-y-2">
               <li><a className={linkCls} href="/help">Help Center</a></li>
-              <li><a className={linkCls} href="/contact">Contact Us</a></li>
+              <li><a className={linkCls} href="/support">Contact Support</a></li>
               <li><a className={linkCls} href="/privacy-policy">Privacy Policy</a></li>
               <li><a className={linkCls} href="/terms-of-service?from=login">Terms of Service</a></li>
               <li><a className={linkCls} href="/cookies?from=login">Cookie Policy</a></li>
@@ -61,6 +61,8 @@ function Footer({ isDarkMode, $isDarkMode }) {
             <a className={linkCls} href="/terms-of-service?from=login">Terms of Service</a>
             <span className="opacity-30">|</span>
             <a className={linkCls} href="/cookies?from=login">Cookie Policy</a>
+            <span className="opacity-30">|</span>
+            <a className={linkCls} href="/support">Support</a>
           </div>
         </div>
       </div>

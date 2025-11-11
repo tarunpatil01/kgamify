@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 
 // SMTP Configuration
 const createTransporter = () => {
@@ -56,17 +57,19 @@ const renderEmail = ({
   const frontend = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
   const logoUrl = logoSrc || process.env.BRAND_LOGO_URL || `${frontend}/KLOGO.png`;
 
+  const socialRow = `
+    <div style="margin:24px 0 4px 0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:flex-start;">
+      <a href="https://www.linkedin.com/company/kgamify" target="_blank" rel="noopener" aria-label="LinkedIn" style="display:inline-block;width:32px;height:32px;border-radius:8px;background:#0a66c2;color:#fff;text-align:center;line-height:32px;font-size:14px;font-weight:600;text-decoration:none;">in</a>
+      <a href="https://www.instagram.com" target="_blank" rel="noopener" aria-label="Instagram" style="display:inline-block;width:32px;height:32px;border-radius:8px;background:#e1306c;color:#fff;text-align:center;line-height:32px;font-size:13px;font-weight:600;text-decoration:none;">IG</a>
+      <a href="https://www.facebook.com" target="_blank" rel="noopener" aria-label="Facebook" style="display:inline-block;width:32px;height:32px;border-radius:8px;background:#1877f2;color:#fff;text-align:center;line-height:32px;font-size:15px;font-weight:600;text-decoration:none;">f</a>
+      <a href="https://twitter.com" target="_blank" rel="noopener" aria-label="X" style="display:inline-block;width:32px;height:32px;border-radius:8px;background:#111827;color:#fff;text-align:center;line-height:32px;font-size:14px;font-weight:600;text-decoration:none;">X</a>
+      <a href="https://www.kgamify.in" target="_blank" rel="noopener" style="margin-left:4px;font-size:14px;color:#ff8200;text-decoration:none;font-weight:600;">www.kgamify.in</a>
+    </div>`;
+
   const signatureBlock = `
     <div style="margin-top:22px;color:#111827;">
       <p style="margin:0 0 10px 0;">Regards,<br/><strong>kGamify Team</strong></p>
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
-        <a href="https://www.kgamify.in" target="_blank" rel="noopener" style="text-decoration:none;color:#ff8200;font-weight:600;">www.kgamify.in</a>
-        <span style="color:#d1d5db;">|</span>
-        <a href="https://www.linkedin.com/company/kgamify" target="_blank" rel="noopener" style="display:inline-block;width:24px;height:24px;border-radius:999px;background:#0a66c2;color:#fff;text-align:center;line-height:24px;font-size:12px;text-decoration:none;">in</a>
-        <a href="https://www.instagram.com" target="_blank" rel="noopener" style="display:inline-block;width:24px;height:24px;border-radius:999px;background:#e1306c;color:#fff;text-align:center;line-height:24px;font-size:12px;text-decoration:none;">IG</a>
-        <a href="https://www.facebook.com" target="_blank" rel="noopener" style="display:inline-block;width:24px;height:24px;border-radius:999px;background:#1877f2;color:#fff;text-align:center;line-height:24px;font-size:12px;text-decoration:none;">f</a>
-        <a href="https://twitter.com" target="_blank" rel="noopener" style="display:inline-block;width:24px;height:24px;border-radius:999px;background:#111827;color:#fff;text-align:center;line-height:24px;font-size:12px;text-decoration:none;">X</a>
-      </div>
+      ${socialRow}
     </div>
   `;
 
@@ -139,15 +142,43 @@ const renderEmail = ({
 };
 
 // Resolve logo strategy (cid or absolute url)
-const resolveLogo = () => {
+const resolveLogo = async () => {
   const frontend = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
-  const brandLogoUrl = process.env.BRAND_LOGO_URL;
-  const shouldEmbed = String(process.env.EMAIL_EMBED_LOGO || (!brandLogoUrl)).toLowerCase() === 'true';
+  const brandLogoUrl = process.env.BRAND_LOGO_URL || `${frontend}/KLOGO.png`;
+  const strategy = (process.env.EMAIL_LOGO_STRATEGY || '').toLowerCase();
+  const embedFlag = String(process.env.EMAIL_EMBED_LOGO || '').toLowerCase() === 'true';
 
-  if (shouldEmbed) {
-    return { logoSrc: 'cid:brandlogo@kgamify', embed: true, frontend };
+  // Explicit strategies: 'cid' (attachment), 'inline' (base64), default remote URL
+  if (strategy === 'cid' || embedFlag) {
+    return { logoSrc: 'cid:brandlogo@kgamify', embed: true, inline: false, frontend };
   }
-  return { logoSrc: brandLogoUrl || `${frontend}/KLOGO.png`, embed: false, frontend };
+  if (strategy === 'inline') {
+    // Try local file first, else remote fetch
+    const localCandidates = [
+      path.resolve(__dirname, '../../src/assets/KLOGO.png'),
+      path.resolve(__dirname, '../../public/KLOGO.png')
+    ];
+    for (const p of localCandidates) {
+      try {
+        if (fs.existsSync(p)) {
+          const buf = fs.readFileSync(p);
+          const b64 = buf.toString('base64');
+          return { logoSrc: `data:image/png;base64,${b64}`, embed: false, inline: true, frontend };
+        }
+      } catch { /* ignore */ }
+    }
+    try {
+      const resp = await axios.get(brandLogoUrl, { responseType: 'arraybuffer', timeout: 5000 });
+      const mime = resp.headers['content-type'] || 'image/png';
+      const b64 = Buffer.from(resp.data).toString('base64');
+      return { logoSrc: `data:${mime};base64,${b64}`, embed: false, inline: true, frontend };
+    } catch {
+      // Fall back to remote URL
+      return { logoSrc: brandLogoUrl, embed: false, inline: false, frontend };
+    }
+  }
+  // Default: use CID-embedded image for widest email client compatibility (e.g., Gmail, Outlook)
+  return { logoSrc: 'cid:brandlogo@kgamify', embed: true, inline: false, frontend };
 };
 
 // Email templates
@@ -192,7 +223,7 @@ const emailTemplates = {
           <p style="margin:0 0 8px 0;"><strong>Location:</strong> ${data.location || 'Not specified'}</p>
           <p style="margin:0 0 8px 0;"><strong>Salary / Project Value:</strong> ${data.salary ? String(data.salary) : 'Not specified'}</p>
           <p style="margin:0;"><strong>Posted On:</strong> ${new Date().toLocaleDateString()}</p>
-        </div>
+         </div>
       `,
       cta: { label: 'View in Dashboard', url: `${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard` },
       footerNote: `If the button doesn't work, open this link: <br/><a href="${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard" target="_blank" rel="noopener">${(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/,'')}/dashboard</a>`,
@@ -212,8 +243,8 @@ const emailTemplates = {
           <p style="margin:0 0 8px 0;"><strong>Job Title:</strong> ${data.jobTitle}</p>
           <p style="margin:0 0 8px 0;"><strong>Company:</strong> ${data.companyName}</p>
           <p style="margin:0;"><strong>Status:</strong> <span style="background:${getStatusColor(data.status)};color:#fff;padding:4px 10px;border-radius:999px;text-transform:capitalize;">${data.status}</span></p>
-        </div>
-        ${data.message ? `
+         </div>
+         ${data.message ? `
           <div style="background:#ffedd5;border-left:4px solid #ff8200;padding:12px 14px;border-radius:6px;margin-top:14px;">
             <p style="margin:0 0 6px 0;color:#065f46;"><strong>Message from employer:</strong></p>
             <p style="margin:0;color:#065f46;white-space:pre-wrap;">${String(data.message).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
@@ -350,7 +381,29 @@ const emailTemplates = {
   custom: (data) => ({
     subject: data.subject,
     html: data.html,
-  })
+  }),
+  subscriptionInvoice: (data) => ({
+    subject: `Invoice ${data.invoiceId} - ${data.plan} Plan Activation`,
+    html: renderEmail({
+      title: 'Subscription Activated',
+      preheader: `Your ${data.plan} plan is now active`,
+      bodyHtml: `
+        <p>Hi ${data.companyName || data.companyEmail || 'there'},</p>
+        <p>Your <strong>${data.plan.toUpperCase()}</strong> subscription has started.</p>
+        <p><strong>Start:</strong> ${new Date(data.startAt).toLocaleString()}<br/>
+        <strong>End:</strong> ${new Date(data.endAt).toLocaleString()}</p>
+        <p style="margin-top:10px;">Invoice ID: <strong>${data.invoiceId}</strong></p>
+        <p style="margin-top:14px;">Amount: <strong>${data.amountFormatted}</strong></p>
+        <div style="margin-top:16px;background:#fff7ed;border:1px solid #fdba74;padding:12px;border-radius:8px;font-size:12px;color:#9a3412;line-height:1.5;">
+          <strong>Important:</strong><br/>
+          • This subscription is <strong>non-refundable</strong>.<br/>
+          • Funds are not returned after activation.<br/>
+          • The subscription is <strong>non-transferable</strong> between companies.<br/>
+        </div>
+      `,
+      logoSrc: data.logoSrc
+    })
+  }),
 };
 
 // Helper function for status colors
@@ -374,15 +427,15 @@ const sendEmail = async (to, template, data) => {
       throw new Error(`Unknown email template: ${template}`);
     }
     // Decide logo strategy and optionally embed as CID
-    const attachments = [];
-    const { logoSrc, embed, frontend } = resolveLogo();
+  const attachments = [];
+  const { logoSrc, embed } = await resolveLogo();
     if (embed) {
       // try reading local image file first
       const candidates = [
         path.resolve(__dirname, '../../src/assets/KLOGO.png'),
         path.resolve(__dirname, '../../public/KLOGO.png')
       ];
-      let content = null;
+  let content = null;
       for (const p of candidates) {
         try {
           if (fs.existsSync(p)) {
@@ -396,14 +449,23 @@ const sendEmail = async (to, template, data) => {
         }
       }
       if (content) {
-        attachments.push({ filename: 'logo.png', content, cid: 'brandlogo@kgamify' });
+        // Dev diagnostic (disabled to satisfy lint rules)
+        // if (process.env.NODE_ENV !== 'production') {
+        //   console.info('[emailService] Embedding logo via CID from path:', chosen);
+        // }
+        attachments.push({ filename: 'KLOGO.png', content, cid: 'brandlogo@kgamify', contentType: 'image/png', contentDisposition: 'inline' });
       } else {
         // fallback: let nodemailer fetch and embed from a URL
-        attachments.push({ filename: 'logo.png', path: `${frontend}/KLOGO.png`, cid: 'brandlogo@kgamify' });
+        const fallbackFrontend = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+        // Dev diagnostic (disabled to satisfy lint rules)
+        // if (process.env.NODE_ENV !== 'production') {
+        //   console.info('[emailService] Embedding logo via remote URL fallback:', `${fallbackFrontend}/KLOGO.png`);
+        // }
+        attachments.push({ filename: 'KLOGO.png', path: `${fallbackFrontend}/KLOGO.png`, cid: 'brandlogo@kgamify', contentType: 'image/png', contentDisposition: 'inline' });
       }
     }
 
-    const emailContent = emailTemplates[template]({ ...data, logoSrc });
+  const emailContent = emailTemplates[template]({ ...data, logoSrc });
 
     const mailOptions = {
       from: {
@@ -446,7 +508,8 @@ const sendBulkEmails = async (recipients, template, data) => {
 const sendVerificationEmail = async (email, verificationToken) => {
   const base = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
   const verificationLink = `${base}/verify-email?token=${verificationToken}`;
-  const { logoSrc } = resolveLogo();
+  // IMPORTANT: await resolveLogo (bug fix – was missing await causing undefined logo)
+  const { logoSrc } = await resolveLogo();
 
   const emailContent = {
     subject: 'Verify Your Email - kGamify',

@@ -173,7 +173,7 @@ export default function AdminMessages({ isDarkMode }) {
   );
 }
 
-AdminMessages.propTypes = { isDarkMode: PropTypes.bool };
+AdminMessages.propTypes = { isDarkMode: PropTypes.bool, $isDarkMode: PropTypes.bool };
 
 function AttachmentPreview({ a, dark }) {
   const isImage = (a?.type || '').startsWith('image/');

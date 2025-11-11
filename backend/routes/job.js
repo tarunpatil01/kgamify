@@ -7,15 +7,58 @@ const { upload } = require('../config/cloudinary');
 // Get all jobs (public endpoint without authentication)
 router.get('/', async (req, res) => {
   try {
+    // Set no-store headers to prevent client/proxy caching and 304 responses
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store'
+    });
     // If company email is provided, filter by it
-    const { email } = req.query;
-    
+  const { email, includeInactive } = req.query;
+  let safeEmail = null;
+
     let query = {};
     if (email) {
-      query = { companyEmail: email };
+      // Case-insensitive match for legacy mixed-case emails
+      safeEmail = String(email).trim();
+      query = { companyEmail: { $regex: `^${safeEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } };
+      // Lazy enforce subscription expiry by deactivating jobs if needed
+      try {
+        const company = await Company.findOne({ email });
+        if (company) {
+          const now = new Date();
+          const expired = company.subscriptionStatus === 'expired' || (company.subscriptionExpiresAt && now > new Date(company.subscriptionExpiresAt));
+          if (expired) {
+            // Mark company expired (best effort) and deactivate all jobs
+            if (company.subscriptionStatus !== 'expired') {
+              company.subscriptionStatus = 'expired';
+              await company.save({ validateModifiedOnly: true }).catch(()=>{});
+            }
+            await Job.updateMany({ companyEmail: email, jobActive: true }, { $set: { jobActive: false } }).catch(()=>{});
+          }
+        }
+      } catch { /* ignore */ }
+      // Unless explicitly requested, only include active jobs for company queries too
+      if (String(includeInactive).toLowerCase() !== 'true') {
+        query.jobActive = true;
+      }
+    } else {
+      // Public listing: only show active jobs
+      query.jobActive = true;
     }
-    
-    const jobs = await Job.find(query);
+
+    let jobs = await Job.find(query).sort({ createdAt: -1 });
+    // Fallback: if no jobs found and email provided, attempt direct equality (may differ if regex failed)
+    if (email && jobs.length === 0 && safeEmail) {
+      jobs = await Job.find({ companyEmail: safeEmail }).sort({ createdAt: -1 });
+    }
+
+    // Development debug logging
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log('[GET /job] query:', query, 'includeInactive:', includeInactive, 'returned:', jobs.length);
+    }
 
     res.status(200).json(jobs);
   } catch (err) {
@@ -153,3 +196,47 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+// Toggle jobActive (company self-service) - requires company email to match
+router.patch('/:id/toggle-active', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, companyEmail, jobActive } = req.body || {};
+    const actorEmail = companyEmail || email;
+    if (!actorEmail) return res.status(400).json({ error: 'Company email required' });
+    if (typeof jobActive === 'undefined') return res.status(400).json({ error: 'jobActive boolean required' });
+    const job = await Job.findById(id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (String(job.companyEmail).toLowerCase() !== String(actorEmail).toLowerCase()) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const company = await Company.findOne({ email: actorEmail });
+    if (!company) return res.status(404).json({ error: 'Company not found' });
+    // Enforce subscription still active when activating
+    if (jobActive) {
+      const now = new Date();
+      const expired = company.subscriptionStatus === 'expired' || (company.subscriptionExpiresAt && now > new Date(company.subscriptionExpiresAt));
+      if (expired) return res.status(403).json({ error: 'Subscription expired. Cannot activate job.' });
+    }
+    const previous = !!job.jobActive;
+    job.jobActive = !!jobActive;
+  // Keep string status in sync for legacy consumers
+  job.status = job.jobActive ? 'active' : 'inactive';
+    await job.save({ validateModifiedOnly: true });
+    // Adjust active job count safely
+    try {
+      if (previous !== job.jobActive) {
+        if (job.jobActive) company.activeJobCount = (company.activeJobCount || 0) + 1;
+        else company.activeJobCount = Math.max(0, (company.activeJobCount || 0) - 1);
+        await company.save({ validateModifiedOnly: true });
+      }
+    } catch { /* ignore */ }
+    return res.json({ success: true, jobActive: job.jobActive });
+  } catch (err) {
+    // Return a safe message but keep original for diagnostics if NODE_ENV=development
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.error('Toggle job status error:', err);
+    }
+    return res.status(500).json({ error: 'Failed to toggle job status' });
+  }
+});

@@ -97,6 +97,21 @@ const companySchema = new mongoose.Schema({
   // Track how many active job postings (for plan limits)
   activeJobCount: { type: Number, default: 0 },
 
+  // Subscription history for billing records and upgrades/downgrades
+  subscriptionHistory: {
+    type: [new mongoose.Schema({
+      plan: { type: String, enum: ['free', 'silver', 'gold'], required: true },
+      status: { type: String, enum: ['active', 'expired', 'cancelled'], default: 'active' },
+      startAt: { type: Date, required: true },
+      endAt: { type: Date },
+      invoiceId: { type: String },
+      amount: { type: Number },
+      currency: { type: String, default: 'INR' },
+      createdAt: { type: Date, default: Date.now }
+    }, { _id: false })],
+    default: []
+  },
+
   // Profile completion tracking (percentage cached for quick UI display)
   profileCompletion: { type: Number, default: 0 },
   profileFieldsCompleted: { type: [String], default: [] },

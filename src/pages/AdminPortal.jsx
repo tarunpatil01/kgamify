@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import PropTypes from "prop-types";
 import { 
   FaCheck, FaTimes, FaBuilding, FaCalendarAlt, FaEnvelope, 
   FaPhone, FaGlobeAmericas, FaUserCircle, FaKey, FaLock,
-  FaSignOutAlt, FaClock, FaCheckCircle, FaUser, FaUsers,
-  FaChevronLeft, FaChevronRight, FaMoon, FaSun
+  FaClock, FaCheckCircle, FaUsers,
+  FaChevronLeft, FaChevronRight
 } from "react-icons/fa";
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
@@ -17,8 +17,7 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import { grantSensitiveEdit, revokeSensitiveEdit, changeAdminPassword, denyCompanyWithReason, holdCompanyWithReason, revokeCompanyAccess } from '../api';
-import Footer from "../components/Footer";
-import logoUrl from "../assets/KLOGO.png";
+// Sidebar, header, and footer provided by AdminLayout wrapper
 
 function GrantSensitiveEditButton({ company, $isDarkMode, onNotify }) {
   const [loading, setLoading] = React.useState(false);
@@ -140,10 +139,11 @@ HighlightedText.propTypes = {
   $isDarkMode: PropTypes.bool,
 };
 
-const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
+const AdminPortal = ({ $isDarkMode }) => {
   const [pendingCompanies, setPendingCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
-  const [activeTab, setActiveTab] = useState("pending"); // "pending", "approved", "denied", or "profile"
+  const [activeTab, setActiveTab] = useState("pending"); // company list internal tabs
+  // Drawer handled by AdminLayout
   const [notification, setNotification] = useState({ show: false, message: "", type: "" });
   const [isLoading, setIsLoading] = useState(false);
   // Removed embedded login state; AdminLogin page handles auth UI
@@ -156,6 +156,7 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const notify = (type, message) => {
     setNotification({ show: true, message, type });
     setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
@@ -173,26 +174,22 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
   const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
 
   // Theme toggle handler: prefer parent-provided, fallback to direct document/localStorage update
-  const toggleTheme = () => {
-    if (typeof onThemeToggle === 'function') {
-      onThemeToggle();
-      return;
-    }
-    try {
-      const currentlyDark = document.documentElement.classList.contains('dark') || localStorage.getItem('theme') === 'dark';
-      if (currentlyDark) {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-      } else {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-      }
-    } catch {
-      // no-op: accessing document/localStorage may fail in non-browser contexts
-    }
-  };
+  // Theme handled by AdminLayout
 
   // (Optional) Filters & sorting could be added here if needed
+
+  // Sync activeTab with ?tab= in URL; URL is the single source of truth to avoid refresh loops
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    let t = (params.get('tab') || '').toLowerCase();
+    const allowed = ['pending', 'approved', 'hold', 'denied'];
+    if (!allowed.includes(t)) {
+      t = 'pending';
+      params.set('tab', t);
+      navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
+    }
+    if (t !== activeTab) setActiveTab(t);
+  }, [location.search, location.pathname, navigate]);
 
   // Initial load: auth + admin data + initial fetches
   useEffect(() => {
@@ -570,71 +567,8 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
 
   return (
   <div className={`flex flex-col min-h-screen ${$isDarkMode ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-800"}`}>
-      {/* Custom Admin Header/Navbar */}
-  <header className={`${$isDarkMode ? "bg-gray-800" : "bg-white"} shadow-md sticky top-0 z-50`}>
-        <div className="container mx-auto px-4 md:px-6 lg:px-8 py-3">
-          <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-              <div className=" p-1.5 mr-3">
-                <img 
-                  src={logoUrl} 
-                  alt="kGamify Logo" 
-                  className="h-10 w-10" 
-                />
-              </div>
-              <div>
-                <div className="flex items-center">
-                  <h1 className="text-xl font-bold text-[#ff8200]">kGamify</h1>
-                  <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                    Admin
-                  </span>
-                </div>
-                <p className={`text-xs ${$isDarkMode ? "text-gray-400" : "text-gray-600"}`}>Admin Control Panel</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              {/* Dark mode toggle */}
-              <button
-                onClick={toggleTheme}
-                className="px-3.5 py-2 rounded-full border text-base flex items-center bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors shadow-sm"
-                aria-label={$isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-                title={$isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {$isDarkMode ? (
-                  <FaSun className="text-yellow-400 text-xl" />
-                ) : (
-                  <FaMoon className="text-blue-500 text-xl" />
-                )}
-                <span className="hidden md:inline ml-2">{$isDarkMode ? 'Light' : 'Dark'}</span>
-              </button>
-              {admin && (
-                <div className="hidden md:flex items-center mr-2 bg-gray-100 dark:bg-gray-700 rounded-full pl-1 pr-3 py-1">
-                  <div className="w-7 h-7 rounded-full bg-[#ff8200] flex items-center justify-center mr-2">
-                    <FaUserCircle className="text-lg text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{admin.firstName || admin.email}</p>
-                    <p className="text-xs text-[#ff8200]">
-                      {admin?.role === 'super_admin' ? 'Super Admin' : admin?.role === 'moderator' ? 'Moderator' : 'Admin'}
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              <button 
-                onClick={handleLogout}
-                className="px-3.5 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors flex items-center text-sm"
-              >
-                <FaSignOutAlt className="mr-1.5 text-lg" /> 
-                <span className="hidden md:inline">Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-      
     {/* Main Content */}
-  <div className="flex-1 container mx-auto px-4 md:px-6 lg:px-8 py-8">
+    <div className="flex-1 w-full container mx-auto px-4 md:px-6 lg:px-8 py-8">
         <div className="my-6">
           <h1 className="text-3xl font-bold">Admin Portal</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Manage company registrations and account settings</p>
@@ -656,66 +590,57 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
         </Alert>
       </Snackbar>
       
-      {/* Tabs for switching between pending, approved companies, and profile */}
-      <nav className="admin-tabs mt-2 mb-6">
-        <div className="flex gap-6 border-b border-gray-200 dark:border-gray-700">
-          <button
-            type="button"
-            onClick={() => setActiveTab('pending')}
-            className={`admin-tab ${activeTab === 'pending' ? 'admin-tab--active' : ''}`}
-          >
-            <FaClock className="mr-2" />
-            <span>New Companies</span>
-            <span className={`admin-tab__badge ${activeTab === 'pending' ? 'admin-tab__badge--active' : ''}`}>
-              {Array.isArray(pendingCompanies) ? pendingCompanies.filter(c => (c.status || 'pending') === 'pending').length : 0}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('approved')}
-            className={`admin-tab ${activeTab === 'approved' ? 'admin-tab--active' : ''}`}
-          >
-            <FaCheckCircle className="mr-2" />
-            <span>Approved Companies</span>
-            <span className={`admin-tab__badge ${activeTab === 'approved' ? 'admin-tab__badge--active' : ''}`}>
-              {approvedCompanies?.length ?? 0}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('hold')}
-            className={`admin-tab ${activeTab === 'hold' ? 'admin-tab--active' : ''}`}
-          >
-            <FaClock className="mr-2" />
-            <span>On Hold</span>
-            <span className={`admin-tab__badge ${activeTab === 'hold' ? 'admin-tab__badge--active' : ''}`}>
-              {holdCompanies?.length ?? 0}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('denied')}
-            className={`admin-tab ${activeTab === 'denied' ? 'admin-tab--active' : ''}`}
-          >
-            <FaTimes className="mr-2" />
-            <span>Denied Companies</span>
-            <span className={`admin-tab__badge ${activeTab === 'denied' ? 'admin-tab__badge--active' : ''}`}>
-              {deniedCompanies?.length ?? 0}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('profile')}
-            className={`admin-tab ${activeTab === 'profile' ? 'admin-tab--active' : ''}`}
-          >
-            <FaUser className="mr-2" />
-            <span>My Profile</span>
-          </button>
+      {/* Content layout: full-width body; nav via hamburger drawer */}
+      <div className="flex gap-6">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setActiveTab('pending')}
+              className={`admin-tab ${activeTab === 'pending' ? 'admin-tab--active' : ''}`}
+            >
+              <FaClock className="mr-2" />
+              <span>New</span>
+              <span className={`admin-tab__badge ${activeTab === 'pending' ? 'admin-tab__badge--active' : ''}`}>
+                {Array.isArray(pendingCompanies) ? pendingCompanies.filter(c => (c.status || 'pending') === 'pending').length : 0}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('approved')}
+              className={`admin-tab ${activeTab === 'approved' ? 'admin-tab--active' : ''}`}
+            >
+              <FaCheckCircle className="mr-2" />
+              <span>Approved</span>
+              <span className={`admin-tab__badge ${activeTab === 'approved' ? 'admin-tab__badge--active' : ''}`}>
+                {approvedCompanies?.length ?? 0}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('hold')}
+              className={`admin-tab ${activeTab === 'hold' ? 'admin-tab--active' : ''}`}
+            >
+              <FaClock className="mr-2" />
+              <span>On Hold</span>
+              <span className={`admin-tab__badge ${activeTab === 'hold' ? 'admin-tab__badge--active' : ''}`}>
+                {holdCompanies?.length ?? 0}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('denied')}
+              className={`admin-tab ${activeTab === 'denied' ? 'admin-tab--active' : ''}`}
+            >
+              <FaTimes className="mr-2" />
+              <span>Denied</span>
+              <span className={`admin-tab__badge ${activeTab === 'denied' ? 'admin-tab__badge--active' : ''}`}>
+                {deniedCompanies?.length ?? 0}
+              </span>
+            </button>
+          </div>
         </div>
-      </nav>
+      </div>
       
       <h2 className="text-2xl font-semibold mb-6 text-[#ff8200]">
         {activeTab === "pending" 
@@ -724,9 +649,7 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
             ? "Approved Companies" 
             : activeTab === "hold" 
               ? "On Hold" 
-              : activeTab === "denied" 
-                ? "Denied Companies" 
-                : "My Profile"}
+              : "Denied Companies"}
       </h2>
 
   {(activeTab === 'hold' || activeTab === 'denied' || activeTab === 'pending' || activeTab === 'approved') && (
@@ -1056,6 +979,12 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                           <FaTimes className="mr-2" /> Deny Access
                         </button>
                         <button
+                          onClick={()=> navigate(`/admin/jobs/${company._id}`)}
+                          className="flex items-center px-4 py-2 bg-orange-primary text-white rounded hover:bg-purple-700 transition-colors shadow-sm"
+                        >
+                          <FaBuilding className="mr-2" /> Jobs
+                        </button>
+                        <button
                           onClick={()=> navigate(`/admin/messages/${company._id}`)}
                           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm"
                         >
@@ -1323,6 +1252,12 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                           <FaCheck className="mr-2" /> Approve
                         </button>
                         <button
+                          onClick={()=> navigate(`/admin/jobs/${company._id}`)}
+                          className="flex items-center px-4 py-2 bg-orange-primary text-white rounded hover:bg-purple-700 transition-colors text-sm shadow-sm"
+                        >
+                          <FaBuilding className="mr-2" /> Jobs
+                        </button>
+                        <button
                           onClick={()=> navigate(`/admin/messages/${company._id}`)}
                           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm shadow-sm"
                         >
@@ -1564,6 +1499,12 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
                           className="flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm shadow-sm"
                         >
                           <FaTimes className="mr-2" /> Deny
+                        </button>
+                        <button
+                          onClick={()=> navigate(`/admin/jobs/${company._id}`)}
+                          className="flex items-center px-4 py-2 bg-orange-primary text-white rounded hover:bg-purple-700 transition-colors text-sm shadow-sm"
+                        >
+                          <FaBuilding className="mr-2" /> Jobs
                         </button>
                         <button
                           onClick={()=> navigate(`/admin/messages/${company._id}`)}
@@ -1880,6 +1821,7 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
           </div>
         </div>
       )}
+      {/* Jobs tab removed: use sidebar navigation to dedicated Jobs route */}
 
           {/* Reason Modal */}
           {reasonModal.open && (
@@ -1964,8 +1906,6 @@ const AdminPortal = ({ $isDarkMode, onThemeToggle }) => {
           )}
       </div>
       
-      {/* Global site footer reused in Admin */}
-      <Footer isDarkMode={$isDarkMode} $isDarkMode={$isDarkMode} />
     </div>
   );
 };

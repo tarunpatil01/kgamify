@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import "./App.css";
 import Navbar from "./components/Navbar";
+import RequireCompanyAuth from './components/RequireCompanyAuth';
 import Sidebar from "./components/Sidebar";
 import Footer from "./components/Footer";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -26,8 +27,11 @@ const AdminPortal = lazy(() => import("./pages/AdminPortal"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminMessages = lazy(() => import("./pages/AdminMessages"));
 const AdminApplicants = lazy(() => import("./pages/AdminApplicants"));
+const AdminJobs = lazy(() => import("./pages/AdminJobs"));
+const AdminProfile = lazy(() => import("./pages/AdminProfile"));
 const EditJob = lazy(() => import("./pages/EditJob"));
 const Job = lazy(() => import("./JobApplications/Job.jsx"));
+import AdminLayout from "./components/AdminLayout";
 const JobApplication = lazy(() => import("./pages/JobApplication"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Applications = lazy(() => import("./pages/Applications"));
@@ -37,10 +41,11 @@ const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const Support = lazy(() => import("./pages/Support"));
 
 function AppContent() {
   const location = useLocation();
-  const isLoginPage = ["/","/register","/forgot-password","/reset-password","/admin-login","/verify-email","/terms-of-service","/cookies","/privacy-policy"].includes(location.pathname);
+  const isLoginPage = ["/","/register","/forgot-password","/reset-password","/admin-login","/verify-email","/terms-of-service","/cookies","/privacy-policy","/support"].includes(location.pathname);
   
   const isAdminPage = location.pathname.startsWith('/admin');
   
@@ -52,7 +57,8 @@ function AppContent() {
     return localStorage.getItem("theme") === "dark";
   });
   const [loggedInEmail, setLoggedInEmail] = useState(() => {
-    return localStorage.getItem("rememberedEmail") || "";
+    // Prefer session email (non-remembered), else persistent remembered email
+    return sessionStorage.getItem('sessionEmail') || localStorage.getItem("rememberedEmail") || "";
   });
   const [loggedInCompany, setLoggedInCompany] = useState(null);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
@@ -154,6 +160,7 @@ function AppContent() {
                 <Route path="/terms-of-service" element={<TermsOfService $isDarkMode={isDarkMode} isDarkMode={isDarkMode} />} />
                 <Route path="/cookies" element={<CookiePolicy $isDarkMode={isDarkMode} isDarkMode={isDarkMode} />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy $isDarkMode={isDarkMode} isDarkMode={isDarkMode} />} />
+                <Route path="/support" element={<Support $isDarkMode={isDarkMode} isDarkMode={isDarkMode} />} />
               </Routes>
             </Suspense>
           </div>
@@ -233,100 +240,112 @@ function AppContent() {
                     <Route
                       path="/dashboard"
                       element={
-                        <>
-                          {/* Top banners: email verification & hold/pending status & plan upsell */}
-                          {localStorage.getItem('companyNeedsEmailVerification') === 'true' && (
-                            <div className="mx-4 mt-4 mb-2 p-3 rounded-lg border bg-amber-50 border-amber-200 text-amber-800 text-sm flex flex-wrap items-center gap-3">
-                              <span className="font-semibold">Email not verified.</span>
-                              <span className="hidden sm:inline">Please verify to unlock full features.</span>
-                              <a href={`/verify-email?email=${encodeURIComponent(loggedInEmail||'')}`} className="text-[#ff8200] font-semibold underline">Verify now</a>
-                              <button onClick={()=>{localStorage.setItem('companyNeedsEmailVerification','');}} className="ml-auto text-xs text-amber-600 hover:text-amber-800">Dismiss</button>
-                            </div>
-                          )}
-                          <LimitedAccessBanner company={loggedInCompany} isDarkMode={isDarkMode} className="mx-4 mt-2 mb-2" />
-                          {/* Subscription upsell banner removed from dashboard. Use /plans page instead. */}
-                          { (localStorage.getItem('companyLimitedAccess') === 'true') ? (
-                            <div className={`min-h-[40vh] p-4 pt-0 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                              <div className="max-w-5xl mx-auto">
-                                <Dashboard 
-                                  isDarkMode={isDarkMode} 
-                                  email={loggedInEmail}
-                                  userCompany={loggedInCompany}
-                                  limited
-                                />
+                        <RequireCompanyAuth>
+                          <>
+                            {localStorage.getItem('companyNeedsEmailVerification') === 'true' && (
+                              <div className="mx-4 mt-4 mb-2 p-3 rounded-lg border bg-amber-50 border-amber-200 text-amber-800 text-sm flex flex-wrap items-center gap-3">
+                                <span className="font-semibold">Email not verified.</span>
+                                <span className="hidden sm:inline">Please verify to unlock full features.</span>
+                                <a href={`/verify-email?email=${encodeURIComponent(loggedInEmail||'')}`} className="text-[#ff8200] font-semibold underline">Verify now</a>
+                                <button onClick={()=>{localStorage.setItem('companyNeedsEmailVerification','');}} className="ml-auto text-xs text-amber-600 hover:text-amber-800">Dismiss</button>
                               </div>
-                            </div>
-                          ) : (
-                                <Dashboard 
-                                  isDarkMode={isDarkMode} 
-                                  $isDarkMode={isDarkMode}
-                              email={loggedInEmail}
-                              userCompany={loggedInCompany}
-                            />
-                          )}
-                        </>
+                            )}
+                            <LimitedAccessBanner company={loggedInCompany} isDarkMode={isDarkMode} className="mx-4 mt-2 mb-2" />
+                            { (localStorage.getItem('companyLimitedAccess') === 'true') ? (
+                              <div className={`min-h-[40vh] p-4 pt-0 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                <div className="max-w-5xl mx-auto">
+                                  <Dashboard 
+                                    isDarkMode={isDarkMode} 
+                                    email={loggedInEmail}
+                                    userCompany={loggedInCompany}
+                                    limited
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                                  <Dashboard 
+                                    isDarkMode={isDarkMode} 
+                                    $isDarkMode={isDarkMode}
+                                email={loggedInEmail}
+                                userCompany={loggedInCompany}
+                              />
+                            )}
+                          </>
+                        </RequireCompanyAuth>
                       }
                     />
                     <Route
                       path="/post-job"
                       element={
-                        localStorage.getItem('companyLimitedAccess') === 'true' ? (
-                          <div className={`min-h-[60vh] p-6 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'} transition-colors`}>
-                            <div className={`max-w-3xl mx-auto p-5 rounded-lg border shadow-sm backdrop-blur-sm ${
-                              loggedInCompany?.status === 'hold'
-                                ? isDarkMode
-                                  ? 'bg-yellow-900/25 border-yellow-700 text-yellow-200'
-                                  : 'bg-yellow-50 border-yellow-200 text-yellow-900'
-                                : isDarkMode
-                                  ? 'bg-blue-900/25 border-blue-800 text-blue-100'
-                                  : 'bg-blue-50 border-blue-200 text-blue-900'
-                            }`}> 
-                              <div className="font-semibold mb-1 tracking-tight">Posting disabled</div>
-                              <div className="text-sm leading-snug">
-                                Your account is <span className="font-medium">{loggedInCompany?.status}</span>. You cannot post jobs. See{' '}
-                                <a
-                                  href="/messages"
-                                  className={`underline font-medium ${isDarkMode ? 'text-[#ffb347] hover:text-[#ff9d33]' : 'text-[#ff8200] hover:text-[#e57400]'}`}
-                                >
-                                  Messages
-                                </a>{' '}for details.
+                        <RequireCompanyAuth>
+                          {localStorage.getItem('companyLimitedAccess') === 'true' ? (
+                            <div className={`min-h-[60vh] p-6 ${isDarkMode ? 'text-gray-200' : 'text-gray-900'} transition-colors`}>
+                              <div className={`max-w-3xl mx-auto p-5 rounded-lg border shadow-sm backdrop-blur-sm ${
+                                loggedInCompany?.status === 'hold'
+                                  ? isDarkMode
+                                    ? 'bg-yellow-900/25 border-yellow-700 text-yellow-200'
+                                    : 'bg-yellow-50 border-yellow-200 text-yellow-900'
+                                  : isDarkMode
+                                    ? 'bg-blue-900/25 border-blue-800 text-blue-100'
+                                    : 'bg-blue-50 border-blue-200 text-blue-900'
+                              }`}> 
+                                <div className="font-semibold mb-1 tracking-tight">Posting disabled</div>
+                                <div className="text-sm leading-snug">
+                                  Your account is <span className="font-medium">{loggedInCompany?.status}</span>. You cannot post jobs. See{' '}
+                                  <a
+                                    href="/messages"
+                                    className={`underline font-medium ${isDarkMode ? 'text-[#ffb347] hover:text-[#ff9d33]' : 'text-[#ff8200] hover:text-[#e57400]'}`}
+                                  >
+                                    Messages
+                                  </a>{' '}for details.
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ) : (
-                          <PostJob isDarkMode={isDarkMode} $isDarkMode={isDarkMode} email={loggedInEmail} userCompany={loggedInCompany} />
-                        )
+                          ) : (
+                            <PostJob isDarkMode={isDarkMode} $isDarkMode={isDarkMode} email={loggedInEmail} userCompany={loggedInCompany} />
+                          )}
+                        </RequireCompanyAuth>
                       }
                     />
                     <Route
                       path="/job-posted"
                       element={
-                        <JobPosted isDarkMode={isDarkMode} $isDarkMode={isDarkMode} email={loggedInEmail} />
+                        <RequireCompanyAuth>
+                          <JobPosted isDarkMode={isDarkMode} $isDarkMode={isDarkMode} email={loggedInEmail} />
+                        </RequireCompanyAuth>
                       }
                     />
                     <Route
                       path="/Edit-Registration"
-                      element={<EditRegistration isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
+                      element={<RequireCompanyAuth><EditRegistration isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></RequireCompanyAuth>}
                     />
                     <Route
                       path="/applications"
-                      element={<Applications isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
+                      element={<RequireCompanyAuth><Applications isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></RequireCompanyAuth>}
                     />
                     <Route
                       path="/messages"
-                      element={<Messages isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
+                      element={<RequireCompanyAuth><Messages isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></RequireCompanyAuth>}
                     />
                     <Route
                       path="/admin"
-                      element={<AdminPortal isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle} />}
+                      element={<AdminLayout isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle}><AdminPortal isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></AdminLayout>}
                     />
                     <Route
                       path="/admin/messages/:companyId"
-                      element={<AdminMessages isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
+                      element={<AdminLayout isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle}><AdminMessages isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></AdminLayout>}
                     />
                     <Route
                       path="/admin/applicants/:companyId"
-                      element={<AdminApplicants isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
+                      element={<AdminLayout isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle}><AdminApplicants isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></AdminLayout>}
+                    />
+                    <Route
+                      path="/admin/jobs/:companyId"
+                      element={<AdminLayout isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle}><AdminJobs isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></AdminLayout>}
+                    />
+                    <Route
+                      path="/admin/profile"
+                      element={<AdminLayout isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle}><AdminProfile isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></AdminLayout>}
                     />
                     <Route
                       path="/edit-job/:jobId"
@@ -340,7 +359,7 @@ function AppContent() {
                       path="/apply/:jobId"
                       element={<JobApplication $isDarkMode={isDarkMode} />}
                     />
-                    <Route path="/plans" element={<Plans isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />} />
+                    <Route path="/plans" element={<RequireCompanyAuth><Plans isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></RequireCompanyAuth>} />
                   </Routes>
                 </Suspense>
               </div>
