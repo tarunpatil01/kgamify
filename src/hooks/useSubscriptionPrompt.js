@@ -17,7 +17,8 @@ export function useSubscriptionPrompt(initialCompanyData) {
 
   useEffect(() => {
     if (!companyData) return;
-    const needsPlan = !companyData.subscriptionPlan || companyData.subscriptionStatus !== 'active';
+    // New logic: prompt when no plan or still on free plan.
+    const needsPlan = !companyData.subscriptionPlan || companyData.subscriptionPlan === 'free';
     if (
       needsPlan &&
       (companyData.emailVerified || companyData.emailVerified === true) &&

@@ -3,20 +3,35 @@ import { getCompanyInfo } from '../api';
 
 // In-memory cache (module scoped)
 const memoryCache = new Map(); // email -> { planMeta, timestamp }
-const PLAN_LIMITS = { free: 1, silver: 5, gold: 20 };
+const PLAN_LIMITS = { free: 3, paid3m: 15, paid6m: 20, paid12m: 30 };
 const TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 function computePlanMeta(company) {
   if (!company) return null;
   const plan = company.subscriptionPlan || 'free';
-  const status = company.subscriptionStatus || 'inactive';
-  const limit = PLAN_LIMITS[plan] ?? 0;
+  const started = company.subscriptionStartedAt ? new Date(company.subscriptionStartedAt) : null;
+  const endsAt = company.subscriptionEndsAt ? new Date(company.subscriptionEndsAt) : null;
+  // Prefer explicit job limit stored on company, fallback to plan mapping.
+  const limit = company.subscriptionJobLimit || PLAN_LIMITS[plan] || PLAN_LIMITS.free;
   const used = company.activeJobCount || 0;
   const remaining = Math.max(0, limit - used);
-  const activated = company.subscriptionActivatedAt ? new Date(company.subscriptionActivatedAt) : null;
-  const expires = company.subscriptionExpiresAt ? new Date(company.subscriptionExpiresAt) : null;
-  const daysRemaining = expires ? Math.max(0, Math.ceil((expires.getTime() - Date.now()) / (1000*60*60*24))) : null;
-  return { plan, status, limit, used, remaining, activated, expires, daysRemaining };
+  const daysRemaining = endsAt ? Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : null;
+  // Flags for feature gating
+  const adsEnabled = plan === 'free';
+  const recommendationsEnabled = plan !== 'free';
+  const paid = plan !== 'free';
+  return {
+    plan,
+    started,
+    endsAt,
+    limit,
+    used,
+    remaining,
+    daysRemaining,
+    adsEnabled,
+    recommendationsEnabled,
+    paid
+  };
 }
 
 export default function usePlanMeta(email, { auto = true } = {}) {
@@ -31,13 +46,11 @@ export default function usePlanMeta(email, { auto = true } = {}) {
     const key = `planMeta::${emailRef.current}`;
     const now = Date.now();
     if (!force) {
-      // Memory cache
       const mem = memoryCache.get(emailRef.current);
       if (mem && (now - mem.timestamp) < TTL_MS) {
         setPlanMeta(mem.planMeta);
         return mem.planMeta;
       }
-      // sessionStorage cache
       try {
         const raw = sessionStorage.getItem(key);
         if (raw) {

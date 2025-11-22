@@ -8,12 +8,13 @@ import applicationsReducer from './slices/applicationsSlice';
 import uiReducer from './slices/uiSlice';
 import searchReducer from './slices/searchSlice';
 import notificationsReducer from './slices/notificationsSlice';
+import subscriptionReducer from './slices/subscriptionSlice';
 
 // Persist configuration
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth', 'ui'], // Only persist auth and UI state
+  whitelist: ['auth', 'ui', 'subscription'], // Persist auth, UI and subscription snapshot
   blacklist: ['applications', 'jobs', 'search', 'notifications'] // Don't persist dynamic data
 };
 
@@ -38,7 +39,8 @@ const rootReducer = combineReducers({
   jobs: jobsReducer,
   ui: persistReducer(uiPersistConfig, uiReducer),
   search: searchReducer,
-  notifications: notificationsReducer
+  notifications: notificationsReducer,
+  subscription: subscriptionReducer
 });
 
 // Create persisted reducer

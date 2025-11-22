@@ -74,6 +74,7 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
     numberOfPositions: "",
     category: "",
     tags: "",
+    validUntil: "", // New Job Validity field (date-only YYYY-MM-DD)
     postedAt: new Date().toISOString(), // Set the real-time date
     companyEmail: email, // Add company email to form data
   });
@@ -92,6 +93,7 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
   const [openSnackbar, setOpenSnackbar] = useState(false); // State for Snackbar
   const [jdFiles, setJdFiles] = useState([]);
   const [jdError, setJdError] = useState("");
+  const [validityError, setValidityError] = useState("");
   const companyEmail = (userCompany && userCompany.email) || email;
   const { planMeta } = usePlanMeta(companyEmail);
 
@@ -120,6 +122,34 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
           }
           if (f.size > 10 * 1024 * 1024) {
             setJdError('Each file must be less than 10MB');
+            return;
+          }
+        }
+      }
+
+      // Validate Job Validity for paid plans (required) & constraints
+      setValidityError("");
+      if (planMeta && planMeta.paid) {
+        if (!formData.validUntil) {
+          setValidityError("Select a Job Validity date (required for paid plan)");
+          return;
+        }
+        const today = new Date();
+        const chosen = new Date(formData.validUntil + 'T00:00:00');
+        if (chosen < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+          setValidityError("Validity date cannot be in the past");
+          return;
+        }
+        if (planMeta.endsAt && chosen > planMeta.endsAt) {
+          setValidityError("Validity cannot exceed subscription end date");
+          return;
+        }
+      } else if (planMeta && !planMeta.paid) {
+        // Free plan: optional; if provided still validate not past
+        if (formData.validUntil) {
+          const chosen = new Date(formData.validUntil + 'T00:00:00');
+          if (chosen < new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())) {
+            setValidityError("Validity date cannot be in the past");
             return;
           }
         }
@@ -618,6 +648,28 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
                   }
                 }}
               />
+            </div>
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Job Validity (Expiry Date){planMeta?.paid ? ' *' : ''}</label>
+              <input
+                type="date"
+                name="validUntil"
+                value={formData.validUntil}
+                onChange={(e) => {
+                  setValidityError('');
+                  setFormData({ ...formData, validUntil: e.target.value });
+                }}
+                min={new Date().toISOString().slice(0,10)}
+                max={planMeta?.endsAt ? new Date(planMeta.endsAt.getTime() - (planMeta.endsAt.getTimezoneOffset()*60000)).toISOString().slice(0,10) : undefined}
+                className={`w-full rounded-md border px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff8200] ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-black'}`}
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                {planMeta?.paid && planMeta?.endsAt && `Must be on or before ${planMeta.endsAt.toISOString().slice(0,10)}`}
+                {!planMeta?.paid && 'Optional for Free plan; leave blank for indefinite.'}
+              </p>
+              {validityError && (
+                <p className="mt-1 text-sm text-red-600">{validityError}</p>
+              )}
             </div>
           </div>
           <button

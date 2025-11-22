@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const Razorpay = require('razorpay');
 const Company = require('../models/Company');
 const { sendEmail } = require('../utils/emailService');
-const { activateSubscription } = require('./company');
+const { plans, getPlan, computeSubscriptionDates } = require('../config/plans');
 
 const router = express.Router();
 
@@ -17,8 +17,8 @@ function getRazorpay() {
   return new Razorpay({ key_id, key_secret });
 }
 
-// Pricing (keep in sync with company.js PLAN_PRICING)
-const PLAN_PRICING = { free: 0, silver: 999, gold: 2999 };
+// Pricing map aligned with new plan ids (INR). Free handled separately.
+const PLAN_PRICING = { free: 0, paid3m: 1499, paid6m: 2799, paid12m: 4999 };
 
 // GET /api/payments/config -> publishable key for frontend
 router.get('/config', (req, res) => {
@@ -31,13 +31,21 @@ router.post('/order', async (req, res) => {
   try {
     const { email, plan } = req.body || {};
     if (!email || !plan) return res.status(400).json({ error: 'email and plan required' });
-    if (!['free','silver','gold'].includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
+    if (!Object.keys(plans).includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
     const company = await Company.findOne({ email }, { email:1, companyName:1 });
     if (!company) return res.status(404).json({ error: 'Company not found' });
-
+    // Free plan does not require payment: activate directly
+    if (plan === 'free') {
+      // Set free plan subscription
+      company.subscriptionPlan = 'free';
+      company.subscriptionStartedAt = new Date();
+      company.subscriptionEndsAt = undefined;
+      company.subscriptionJobLimit = getPlan('free').jobLimit;
+      await company.save({ validateModifiedOnly: true });
+      return res.json({ message: 'Free plan activated', plan: 'free' });
+    }
     const amountInINR = PLAN_PRICING[plan];
     const amountPaise = amountInINR * 100; // Razorpay uses smallest unit
-    // For free plan, we can skip order creation and directly activate, but keep flow consistent
 
     const instance = getRazorpay();
     const order = await instance.orders.create({
@@ -70,9 +78,31 @@ router.post('/verify', async (req, res) => {
 
     if (expected !== razorpay_signature) return res.status(400).json({ error: 'Invalid signature' });
 
-    // Fallback activation if we have email & plan (prefer webhooks)
-    if (email && plan) {
-      await activateSubscription({ email, plan, amount: PLAN_PRICING[plan], currency: 'INR', origin: 'client-verify', paymentId: razorpay_payment_id, orderId: razorpay_order_id });
+    // Activation using new subscription fields if we have email & plan
+    if (email && plan && Object.keys(plans).includes(plan)) {
+      const company = await Company.findOne({ email });
+      if (company) {
+        const { startedAt, endsAt } = computeSubscriptionDates(new Date(), plan);
+        company.subscriptionPlan = plan;
+        company.subscriptionStartedAt = startedAt;
+        company.subscriptionEndsAt = endsAt;
+        company.subscriptionJobLimit = getPlan(plan).jobLimit;
+        await company.save({ validateModifiedOnly: true });
+        const amountFormatted = PLAN_PRICING[plan] === 0 ? 'FREE' : new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(PLAN_PRICING[plan]);
+        // Fire-and-forget confirmation email
+        sendEmail(company.email, 'custom', {
+          subject: 'Subscription Activated',
+          html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+            <h2 style="color:#3b82f6;">Subscription Activated</h2>
+            <p><strong>Plan:</strong> ${getPlan(plan).label}</p>
+            <p><strong>Starts:</strong> ${startedAt.toDateString()}</p>
+            <p><strong>Ends:</strong> ${endsAt ? endsAt.toDateString() : 'No Expiry (Free)'} </p>
+            <p><strong>Job Limit:</strong> ${getPlan(plan).jobLimit}</p>
+            <p><strong>Amount:</strong> ${amountFormatted}</p>
+            <p style="margin-top:16px;font-size:14px;color:#555;">Thank you for upgrading. You now have access to all paid features.</p>
+          </div>`
+        }).catch(()=>{});
+      }
     }
 
     return res.json({ success: true });
@@ -103,9 +133,28 @@ async function webhookHandler(req, res) {
       const notes = (payment && payment.notes) || (order && order.notes) || {};
       const email = notes.email;
       const plan = notes.plan;
-
-      if (email && plan && ['free','silver','gold'].includes(plan)) {
-        await activateSubscription({ email, plan, amount: PLAN_PRICING[plan], currency: 'INR', origin: 'webhook', paymentId: payment?.id, orderId: order?.id });
+      if (email && plan && Object.keys(plans).includes(plan)) {
+        const company = await Company.findOne({ email });
+        if (company) {
+          const { startedAt, endsAt } = computeSubscriptionDates(new Date(), plan);
+          company.subscriptionPlan = plan;
+          company.subscriptionStartedAt = startedAt;
+          company.subscriptionEndsAt = endsAt;
+          company.subscriptionJobLimit = getPlan(plan).jobLimit;
+          await company.save({ validateModifiedOnly: true });
+          const amountFormatted = PLAN_PRICING[plan] === 0 ? 'FREE' : new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(PLAN_PRICING[plan]);
+          sendEmail(company.email, 'custom', {
+            subject: 'Subscription Activated (Webhook)',
+            html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+              <h2 style="color:#3b82f6;">Subscription Activated</h2>
+              <p><strong>Plan:</strong> ${getPlan(plan).label}</p>
+              <p><strong>Starts:</strong> ${startedAt.toDateString()}</p>
+              <p><strong>Ends:</strong> ${endsAt ? endsAt.toDateString() : 'No Expiry (Free)'} </p>
+              <p><strong>Job Limit:</strong> ${getPlan(plan).jobLimit}</p>
+              <p><strong>Amount:</strong> ${amountFormatted}</p>
+            </div>`
+          }).catch(()=>{});
+        }
       }
     }
 

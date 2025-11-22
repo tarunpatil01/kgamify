@@ -90,23 +90,28 @@ const companySchema = new mongoose.Schema({
   emailVerificationExpiry: Date,
 
   // Subscription & plan management
-  subscriptionPlan: { type: String, enum: ['free', 'silver', 'gold'], default: 'free' },
-  subscriptionStatus: { type: String, enum: ['inactive', 'active', 'expired', 'cancelled'], default: 'inactive' },
-  subscriptionActivatedAt: Date,
-  subscriptionExpiresAt: Date,
-  // Track how many active job postings (for plan limits)
+  // Legacy fields (to be deprecated after migration): subscriptionPlan, subscriptionStatus, subscriptionActivatedAt, subscriptionExpiresAt
+  // New unified subscription fields aligned with plan config in config/plans.js
+  subscriptionPlan: { type: String, enum: ['free', 'paid3m', 'paid6m', 'paid12m'], default: 'free' },
+  subscriptionStartedAt: { type: Date },
+  subscriptionEndsAt: { type: Date },
+  subscriptionJobLimit: { type: Number, default: 3 },
+  lastExpiryNoticeSent: { type: Date }, // Track last reminder (7-day or day-of) to prevent duplicates
+  downgradedFromPlan: { type: String }, // When auto-downgraded to free record previous plan id
+  // Derived counter for active job postings (helps enforce job limit quickly)
   activeJobCount: { type: Number, default: 0 },
 
   // Subscription history for billing records and upgrades/downgrades
   subscriptionHistory: {
     type: [new mongoose.Schema({
-      plan: { type: String, enum: ['free', 'silver', 'gold'], required: true },
-      status: { type: String, enum: ['active', 'expired', 'cancelled'], default: 'active' },
+      plan: { type: String, enum: ['free', 'paid3m', 'paid6m', 'paid12m'], required: true },
+      status: { type: String, enum: ['active', 'expired', 'cancelled', 'downgraded'], default: 'active' },
       startAt: { type: Date, required: true },
       endAt: { type: Date },
       invoiceId: { type: String },
       amount: { type: Number },
       currency: { type: String, default: 'INR' },
+      downgradedAt: { type: Date },
       createdAt: { type: Date, default: Date.now }
     }, { _id: false })],
     default: []

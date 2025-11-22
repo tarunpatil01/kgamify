@@ -6,10 +6,10 @@ const { upload, cloudinary } = require('../config/cloudinary');
 const bcrypt = require('bcryptjs');
 const { getDocumentUrl, getDocumentDownloadUrl } = require('../utils/documentHelper');
 const { sendEmail } = require('../utils/emailService');
-// Plan limits (can be adjusted later or moved to config)
-const PLAN_LIMITS = { free: 1, silver: 5, gold: 20 };
-// Simple pricing map (amounts in INR) - adjust as needed
-const PLAN_PRICING = { free: 0, silver: 999, gold: 2999 };
+// New unified plan config (durations & limits) imported from config
+const { plans, getPlan, computeSubscriptionDates } = require('../config/plans');
+const PLAN_LIMITS = { free: plans.free.jobLimit, paid3m: plans.paid3m.jobLimit, paid6m: plans.paid6m.jobLimit, paid12m: plans.paid12m.jobLimit };
+const PLAN_PRICING = { free: 0, paid3m: 1499, paid6m: 2799, paid12m: 4999 }; // INR pricing
 // Messaging additions
 
 // Middleware to authenticate company
@@ -608,27 +608,21 @@ router.get('/document/link/:id', async (req, res) => {
 module.exports = router;
 // Additional endpoints for subscription & profile completion
 
-// Update subscription plan (simple version - activates immediately, no payment integration yet)
-router.post('/subscription/choose', async (req, res) => {
+// Select FREE plan explicitly (no payment)
+router.post('/subscription/select-free', async (req, res) => {
   try {
-    const { email, plan } = req.body;
-    if (!email || !plan) return res.status(400).json({ error: 'email and plan required' });
-    if (!['free', 'silver', 'gold'].includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'email required' });
     const company = await Company.findOne({ email });
     if (!company) return res.status(404).json({ error: 'Company not found' });
-    company.subscriptionPlan = plan;
-    company.subscriptionStatus = 'active';
-    company.subscriptionActivatedAt = new Date();
-    // Set expiry 30 days from now for silver/gold; free = no expiry
-    if (plan === 'free') {
-      company.subscriptionExpiresAt = undefined;
-    } else {
-      company.subscriptionExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    }
+    company.subscriptionPlan = 'free';
+    company.subscriptionStartedAt = new Date();
+    company.subscriptionEndsAt = undefined; // indefinite
+    company.subscriptionJobLimit = PLAN_LIMITS.free;
     await company.save({ validateModifiedOnly: true });
-    return res.json({ message: 'Subscription updated', planLimits: PLAN_LIMITS[plan] });
+    return res.json({ message: 'Free plan activated', plan: 'free', jobLimit: PLAN_LIMITS.free });
   } catch (err) {
-    console.error('subscription choose error:', err);
+    console.error('select-free error:', err);
     return res.status(500).json({ error: 'Server error' });
   }
 });
@@ -639,78 +633,28 @@ router.post('/subscription/purchase', async (req, res) => {
   try {
     const { email, plan, amount, currency } = req.body || {};
     if (!email || !plan) return res.status(400).json({ error: 'email and plan required' });
-    if (!['free', 'silver', 'gold'].includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
+    if (!Object.keys(plans).includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
     const company = await Company.findOne({ email });
     if (!company) return res.status(404).json({ error: 'Company not found' });
-
-    // Determine pricing (allow override for future coupon/discount logic)
+    const cfg = getPlan(plan);
     const finalAmount = typeof amount === 'number' ? amount : PLAN_PRICING[plan];
     const finalCurrency = currency || 'INR';
-
-    // Generate start/end (free has no expiry)
-    const startAt = new Date();
-    let endAt = undefined;
-    if (plan !== 'free') {
-      endAt = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000)); // 30 days
-    }
-
-    // Expire previously active subscription history items (if any)
+    const { startedAt, endsAt } = computeSubscriptionDates(new Date(), plan);
+    // Expire existing active entries
     if (Array.isArray(company.subscriptionHistory)) {
-      company.subscriptionHistory.forEach(h => {
-        if (h.status === 'active' && !h.endAt) {
-          h.status = 'expired';
-          h.endAt = new Date();
-        }
-      });
+      company.subscriptionHistory.forEach(h => { if (h.status === 'active' && !h.endAt) { h.status = 'expired'; h.endAt = new Date(); } });
     }
-
-    // Generate invoice id
     const invoiceId = `INV-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
-
-    // Push new history record
     company.subscriptionHistory = company.subscriptionHistory || [];
-    company.subscriptionHistory.push({
-      plan,
-      status: 'active',
-      startAt,
-      endAt,
-      invoiceId,
-      amount: finalAmount,
-      currency: finalCurrency
-    });
-
-    // Update current subscription snapshot fields
+    company.subscriptionHistory.push({ plan, status: 'active', startAt: startedAt, endAt: endsAt, invoiceId, amount: finalAmount, currency: finalCurrency });
     company.subscriptionPlan = plan;
-    company.subscriptionStatus = 'active';
-    company.subscriptionActivatedAt = startAt;
-    company.subscriptionExpiresAt = endAt; // undefined for free
-
+    company.subscriptionStartedAt = startedAt;
+    company.subscriptionEndsAt = endsAt;
+    company.subscriptionJobLimit = cfg.jobLimit;
     await company.save({ validateModifiedOnly: true });
-
-    // Prepare formatted amount for email
-    const amountFormatted = finalAmount === 0 ? 'FREE' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: finalCurrency }).format(finalAmount);
-    // Send invoice email (fire and forget)
-    sendEmail(company.email, 'subscriptionInvoice', {
-      invoiceId,
-      plan,
-      startAt,
-      endAt: endAt || startAt,
-      companyName: company.companyName,
-      companyEmail: company.email,
-      amountFormatted
-    }).catch(e => { if (process.env.NODE_ENV !== 'production') console.error('Invoice email error:', e); });
-
-    return res.json({
-      message: 'Subscription purchased',
-      invoiceId,
-      plan,
-      startAt,
-      endAt,
-      amount: finalAmount,
-      currency: finalCurrency,
-      amountFormatted,
-      historyCount: company.subscriptionHistory.length
-    });
+    const amountFormatted = finalAmount === 0 ? 'FREE' : new Intl.NumberFormat('en-IN',{ style:'currency', currency: finalCurrency }).format(finalAmount);
+    sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan, startAt: startedAt, endAt: endsAt || startedAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
+    return res.json({ message: 'Subscription purchased', invoiceId, plan, startAt: startedAt, endAt: endsAt, amount: finalAmount, currency: finalCurrency, amountFormatted });
   } catch (err) {
     console.error('subscription purchase error:', err);
     return res.status(500).json({ error: 'Server error' });
@@ -718,6 +662,7 @@ router.post('/subscription/purchase', async (req, res) => {
 });
 
 // Repeat (renew same plan) - must be same as current plan; starts immediately after current expiry (or now if expired)
+// Repeat (renew same plan) - adapted to new durations
 router.post('/subscription/repeat', async (req, res) => {
   try {
     const { email } = req.body || {};
@@ -726,30 +671,25 @@ router.post('/subscription/repeat', async (req, res) => {
     if (!company) return res.status(404).json({ error: 'Company not found' });
     const currentPlan = company.subscriptionPlan || 'free';
     if (currentPlan === 'free') return res.status(400).json({ error: 'Free plan does not require renewal' });
+    const cfg = getPlan(currentPlan);
     const now = new Date();
-    const baseStart = (company.subscriptionExpiresAt && now < new Date(company.subscriptionExpiresAt)) ? new Date(company.subscriptionExpiresAt) : now;
-    const startAt = baseStart;
-    const endAt = new Date(startAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const baseStart = (company.subscriptionEndsAt && now < new Date(company.subscriptionEndsAt)) ? new Date(company.subscriptionEndsAt) : now;
+    const { startedAt, endsAt } = computeSubscriptionDates(baseStart, currentPlan);
     const invoiceId = `INV-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
     const amount = PLAN_PRICING[currentPlan];
     const currency = 'INR';
-    // Expire any active history item whose endAt matches old expiry
+    // Expire previous active
     if (Array.isArray(company.subscriptionHistory)) {
-      company.subscriptionHistory.forEach(h => {
-        if (h.status === 'active' && (!h.endAt || h.endAt <= startAt)) {
-          h.status = 'expired';
-          h.endAt = h.endAt || startAt;
-        }
-      });
+      company.subscriptionHistory.forEach(h => { if (h.status === 'active' && (!h.endAt || h.endAt <= startedAt)) { h.status = 'expired'; h.endAt = h.endAt || startedAt; } });
     }
-    company.subscriptionHistory.push({ plan: currentPlan, status: 'active', startAt, endAt, invoiceId, amount, currency });
-    company.subscriptionStatus = 'active';
-    company.subscriptionActivatedAt = startAt;
-    company.subscriptionExpiresAt = endAt;
+    company.subscriptionHistory.push({ plan: currentPlan, status: 'active', startAt: startedAt, endAt: endsAt, invoiceId, amount, currency });
+    company.subscriptionStartedAt = startedAt;
+    company.subscriptionEndsAt = endsAt;
+    company.subscriptionJobLimit = cfg.jobLimit;
     await company.save({ validateModifiedOnly: true });
-    const amountFormatted = new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(amount);
-    sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan: currentPlan, startAt, endAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
-    return res.json({ message: 'Subscription renewed', plan: currentPlan, invoiceId, startAt, endAt, amount, currency, amountFormatted });
+    const amountFormatted = new Intl.NumberFormat('en-IN',{ style:'currency', currency }).format(amount);
+    sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan: currentPlan, startAt: startedAt, endAt: endsAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
+    return res.json({ message: 'Subscription renewed', plan: currentPlan, invoiceId, startAt: startedAt, endAt: endsAt, amount, currency, amountFormatted });
   } catch (err) {
     console.error('subscription repeat error:', err);
     return res.status(500).json({ error: 'Server error' });
@@ -757,34 +697,35 @@ router.post('/subscription/repeat', async (req, res) => {
 });
 
 // Upgrade to higher plan immediately (no proration logic yet; starts now)
+// Upgrade to a longer duration plan (e.g., paid3m -> paid6m -> paid12m)
 router.post('/subscription/upgrade', async (req, res) => {
   try {
     const { email, plan } = req.body || {};
     if (!email || !plan) return res.status(400).json({ error: 'email and plan required' });
-    if (!['silver', 'gold'].includes(plan)) return res.status(400).json({ error: 'Upgrade target must be silver or gold' });
+    if (!Object.keys(plans).includes(plan) || plan === 'free') return res.status(400).json({ error: 'Invalid upgrade target' });
     const company = await Company.findOne({ email });
     if (!company) return res.status(404).json({ error: 'Company not found' });
-    const currentPlan = company.subscriptionPlan || 'free';
-    const rank = { free: 0, silver: 1, gold: 2 };
-    if (rank[plan] <= rank[currentPlan]) return res.status(400).json({ error: 'Target plan must be higher than current plan' });
+    const order = ['free','paid3m','paid6m','paid12m'];
+    const currentIdx = order.indexOf(company.subscriptionPlan || 'free');
+    const targetIdx = order.indexOf(plan);
+    if (targetIdx <= currentIdx) return res.status(400).json({ error: 'Target plan must be higher' });
     // Expire existing active history item
     if (Array.isArray(company.subscriptionHistory)) {
       company.subscriptionHistory.forEach(h => { if (h.status === 'active' && !h.endAt) { h.status = 'expired'; h.endAt = new Date(); } });
     }
-    const startAt = new Date();
-    const endAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const { startedAt, endsAt } = computeSubscriptionDates(new Date(), plan);
     const invoiceId = `INV-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
     const amount = PLAN_PRICING[plan];
     const currency = 'INR';
-    company.subscriptionHistory.push({ plan, status: 'active', startAt, endAt, invoiceId, amount, currency });
+    company.subscriptionHistory.push({ plan, status: 'active', startAt: startedAt, endAt: endsAt, invoiceId, amount, currency });
     company.subscriptionPlan = plan;
-    company.subscriptionStatus = 'active';
-    company.subscriptionActivatedAt = startAt;
-    company.subscriptionExpiresAt = endAt;
+    company.subscriptionStartedAt = startedAt;
+    company.subscriptionEndsAt = endsAt;
+    company.subscriptionJobLimit = PLAN_LIMITS[plan];
     await company.save({ validateModifiedOnly: true });
-    const amountFormatted = new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(amount);
-    sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan, startAt, endAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
-    return res.json({ message: 'Subscription upgraded', plan, invoiceId, startAt, endAt, amount, currency, amountFormatted });
+    const amountFormatted = new Intl.NumberFormat('en-IN',{ style:'currency', currency }).format(amount);
+    sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan, startAt: startedAt, endAt: endsAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
+    return res.json({ message: 'Subscription upgraded', plan, invoiceId, startAt: startedAt, endAt: endsAt, amount, currency, amountFormatted });
   } catch (err) {
     console.error('subscription upgrade error:', err);
     return res.status(500).json({ error: 'Server error' });
@@ -880,21 +821,23 @@ async function enforceJobPostingRules(req, res, next) {
     if (!company.emailVerified) return res.status(403).json({ error: 'Verify your email first' });
     if (!company.profileCompleted) return res.status(403).json({ error: 'Complete profile before posting jobs' });
     if (!company.approved) return res.status(403).json({ error: 'Company not approved by admin yet' });
-    // Subscription expiry/enforcement
+    // Subscription expiry enforcement using new fields
     const now = new Date();
-    if (company.subscriptionStatus === 'expired') {
-      return res.status(403).json({ error: 'Subscription expired. Please renew to post jobs.' });
-    }
-    // If there is an expiry date and it's past, mark expired and block
-    if (company.subscriptionExpiresAt && now > new Date(company.subscriptionExpiresAt)) {
-      company.subscriptionStatus = 'expired';
-      await company.save({ validateModifiedOnly: true }).catch(()=>{});
-      return res.status(403).json({ error: 'Subscription expired. Please renew to post jobs.' });
+    if (company.subscriptionEndsAt && now > new Date(company.subscriptionEndsAt)) {
+      // Auto downgrade if expired
+      if (company.subscriptionPlan !== 'free') {
+        company.downgradedFromPlan = company.subscriptionPlan;
+        company.subscriptionPlan = 'free';
+        company.subscriptionJobLimit = PLAN_LIMITS.free;
+        company.subscriptionEndsAt = undefined;
+        await company.save({ validateModifiedOnly: true }).catch(()=>{});
+      }
+      return res.status(403).json({ error: 'Subscription expired. Upgrade to post jobs.' });
     }
     const plan = company.subscriptionPlan || 'free';
-    const limit = PLAN_LIMITS[plan] || 0;
+    const limit = company.subscriptionJobLimit || PLAN_LIMITS[plan] || PLAN_LIMITS.free;
     if (company.activeJobCount >= limit) {
-      return res.status(403).json({ error: 'Plan job post limit reached' });
+      return res.status(403).json({ error: `Plan job post limit (${limit}) reached` });
     }
     // Pass company downstream
     req.companyDoc = company;

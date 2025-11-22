@@ -536,3 +536,48 @@ module.exports = {
   sendVerificationEmail,
   emailTemplates
 };
+
+// Additional helper emails for subscription lifecycle (reminders & expiry)
+async function sendSubscriptionReminderEmail(email, { companyName, planLabel, endsAt, daysRemaining }) {
+  const title = daysRemaining === 7 ? 'Subscription Expiry Reminder' : 'Subscription Ending Soon';
+  const pre = `Your ${planLabel} plan expires ${daysRemaining === 7 ? 'in 7 days' : 'soon'}`;
+  const bodyHtml = `
+    <p>Hi ${companyName || 'there'},</p>
+    <p>Your <strong>${planLabel}</strong> subscription will end on <strong>${new Date(endsAt).toDateString()}</strong>.</p>
+    <p>Renew now to keep all paid features (higher job limits, recommendations, and ad-free experience).</p>
+  `;
+  const base = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const emailContent = {
+    subject: `${title} - kGamify`,
+    html: renderEmail({
+      title,
+      preheader: pre,
+      bodyHtml,
+      cta: { label: 'Renew Subscription', url: `${base}/plans` }
+    })
+  };
+  return sendEmail(email, 'custom', emailContent);
+}
+
+async function sendSubscriptionExpiredEmail(email, { companyName, previousPlan }) {
+  const title = 'Subscription Expired';
+  const bodyHtml = `
+    <p>Hi ${companyName || 'there'},</p>
+    <p>Your previous plan <strong>${previousPlan}</strong> has expired and you have been moved to the Free plan.</p>
+    <p>The Free plan grants up to 3 active jobs and shows ads. Upgrade to regain higher limits and recommendations.</p>
+  `;
+  const base = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const emailContent = {
+    subject: 'Subscription Downgraded to Free - kGamify',
+    html: renderEmail({
+      title,
+      preheader: 'Your previous subscription has ended',
+      bodyHtml,
+      cta: { label: 'Upgrade Plan', url: `${base}/plans` }
+    })
+  };
+  return sendEmail(email, 'custom', emailContent);
+}
+
+module.exports.sendSubscriptionReminderEmail = sendSubscriptionReminderEmail;
+module.exports.sendSubscriptionExpiredEmail = sendSubscriptionExpiredEmail;

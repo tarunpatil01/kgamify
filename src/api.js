@@ -607,3 +607,43 @@ export async function getSubscriptionHistory(email) {
   if (!res.ok) throw new Error(j.error || 'Failed to load subscription history');
   return j;
 }
+
+// ---- New subscription helpers for updated plan system ----
+// Activate free plan (no payment)
+export async function selectFreePlan(email) {
+  if (!email) throw new Error('email required');
+  const res = await fetch(`${API_URL}/companies/subscription/select-free`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Failed to activate free plan');
+  return j; // { message, plan, jobLimit }
+}
+
+// Upgrade to a higher duration plan immediately
+export async function upgradeSubscription(email, plan) {
+  if (!email || !plan) throw new Error('email and plan required');
+  const res = await fetch(`${API_URL}/companies/subscription/upgrade`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, plan })
+  });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Upgrade failed');
+  return j; // { message, plan, invoiceId, startAt, endAt }
+}
+
+// Renew the current paid plan (repeat)
+export async function repeatSubscription(email) {
+  if (!email) throw new Error('email required');
+  const res = await fetch(`${API_URL}/companies/subscription/repeat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j.error || 'Renewal failed');
+  return j; // { message, plan, invoiceId, startAt, endAt }
+}

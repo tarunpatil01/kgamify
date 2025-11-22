@@ -28,11 +28,17 @@ router.get('/', async (req, res) => {
         const company = await Company.findOne({ email });
         if (company) {
           const now = new Date();
-          const expired = company.subscriptionStatus === 'expired' || (company.subscriptionExpiresAt && now > new Date(company.subscriptionExpiresAt));
+          // New field usage: subscriptionEndsAt replaces legacy subscriptionExpiresAt / subscriptionStatus
+          const endsAt = company.subscriptionEndsAt || company.subscriptionExpiresAt; // fallback to legacy
+          const expired = endsAt && now > new Date(endsAt);
           if (expired) {
             // Mark company expired (best effort) and deactivate all jobs
-            if (company.subscriptionStatus !== 'expired') {
-              company.subscriptionStatus = 'expired';
+            // Best-effort downgrade (do not block listing)
+            if (!company.downgradedFromPlan && company.subscriptionPlan !== 'free') {
+              company.downgradedFromPlan = company.subscriptionPlan;
+              company.subscriptionPlan = 'free';
+              company.subscriptionJobLimit = 3;
+              company.subscriptionEndsAt = undefined;
               await company.save({ validateModifiedOnly: true }).catch(()=>{});
             }
             await Job.updateMany({ companyEmail: email, jobActive: true }, { $set: { jobActive: false } }).catch(()=>{});
@@ -109,8 +115,35 @@ router.post('/', (req, res, next) => {
     // Collect file URLs from either array or single upload
     const uploadedUrls = Array.isArray(req.files) && req.files.length ? req.files.map(f => f.path) : (req.file?.path ? [req.file.path] : []);
 
-  const newJob = new Job({
+    // Enforce subscription job limit & validity constraints
+    // Use new unified subscription fields if present; fallback to legacy
+    const planId = company.subscriptionPlan || 'free';
+    const jobLimit = company.subscriptionJobLimit || (planId === 'free' ? 3 : undefined);
+    if (typeof jobLimit === 'number') {
+      // Count active jobs for this company (fast path via cached activeJobCount if trustworthy)
+      const activeCount = company.activeJobCount || await Job.countDocuments({ companyEmail: finalEmail, jobActive: true });
+      if (activeCount >= jobLimit) {
+        return res.status(403).json({ error: `Job limit reached for plan (${jobLimit}). Please upgrade or deactivate existing jobs.` });
+      }
+    }
+
+    // Validate requested validUntil (Job Validity) if provided
+    let { validUntil } = req.body;
+    if (validUntil) {
+      const parsed = new Date(validUntil);
+      if (isNaN(parsed.getTime())) {
+        return res.status(400).json({ error: 'Invalid validUntil date' });
+      }
+      // If plan has an expiry, validUntil must be <= subscriptionEndsAt
+      if (company.subscriptionEndsAt && parsed > new Date(company.subscriptionEndsAt)) {
+        return res.status(400).json({ error: 'Job validity exceeds subscription end date' });
+      }
+      validUntil = parsed;
+    }
+
+    const newJob = new Job({
       ...req.body,
+      validUntil,
       // Backward compatibility single URL
       jdPdfUrl: req.file?.path || req.body.jdPdfUrl || undefined,
       // Preferred: array of files
@@ -118,10 +151,10 @@ router.post('/', (req, res, next) => {
       companyName: company.companyName,
       companyEmail: finalEmail // Ensure consistent field usage
     });
-  await newJob.save();
-  // Increment active job count (simple version: consider all jobs as active)
-  await Company.updateOne({ _id: company._id }, { $inc: { activeJobCount: 1 } }).catch(()=>{});
-  res.status(201).json(newJob);
+    await newJob.save();
+    // Increment active job count (simple version: consider all jobs as active)
+    await Company.updateOne({ _id: company._id }, { $inc: { activeJobCount: 1 } }).catch(()=>{});
+    res.status(201).json(newJob);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -214,8 +247,10 @@ router.patch('/:id/toggle-active', async (req, res) => {
     // Enforce subscription still active when activating
     if (jobActive) {
       const now = new Date();
-      const expired = company.subscriptionStatus === 'expired' || (company.subscriptionExpiresAt && now > new Date(company.subscriptionExpiresAt));
-      if (expired) return res.status(403).json({ error: 'Subscription expired. Cannot activate job.' });
+      const endsAt = company.subscriptionEndsAt || company.subscriptionExpiresAt; // legacy fallback
+      if (endsAt && now > new Date(endsAt)) {
+        return res.status(403).json({ error: 'Subscription expired. Cannot activate job.' });
+      }
     }
     const previous = !!job.jobActive;
     job.jobActive = !!jobActive;

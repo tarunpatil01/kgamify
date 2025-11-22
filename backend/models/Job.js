@@ -33,7 +33,9 @@ const jobSchema = new mongoose.Schema({
   applicants: [{ 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Application' 
-  }]
+  }],
+  // Validity date within subscription period; after this date job auto-inactivated
+  validUntil: { type: Date }
 }, { timestamps: true });
 
 const Job = mongoose.model('Job', jobSchema);

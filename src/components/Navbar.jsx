@@ -15,6 +15,7 @@ import {
   FaInbox
 } from "react-icons/fa";
 import { fetchNotifications, markNotificationsRead, markAllNotificationsRead } from '../api';
+import usePlanMeta from '../hooks/usePlanMeta';
 import Klogo from '../assets/KLOGO.png';
 import { colors } from '../config/designSystem';
 
@@ -160,7 +161,10 @@ import { colors } from '../config/designSystem';
   const unreadNotifications = notifications.filter(n => !n.read).length;
   const hasAdminMessages = Array.isArray(userCompany?.adminMessages) && userCompany.adminMessages.length > 0;
 
+  const { planMeta } = usePlanMeta(email || null);
+
   return (
+    <div className="relative">
     <nav className={`sticky top-0 z-30 w-full border-b backdrop-blur-sm transition-colors ${
       dark 
         ? "bg-gray-900/95 border-gray-700" 
@@ -398,6 +402,10 @@ import { colors } from '../config/designSystem';
         </div>
       </div>
     </nav>
+    {planMeta?.adsEnabled && (
+      <div className={`w-full text-center text-xs sm:text-sm py-2 ${dark ? 'bg-gray-800 text-gray-200 border-b border-gray-700' : 'bg-orange-50 text-orange-700 border-b border-orange-200'} font-medium`}>Sponsored: You are on Free plan. Upgrade to remove ads & unlock AI recommendations.</div>
+    )}
+    </div>
   );
 }
 

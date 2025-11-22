@@ -5,6 +5,7 @@ import { FaCheckCircle, FaTimesCircle, FaMapMarkerAlt, FaBriefcase, FaClock, FaM
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import { getJobById, getApplicationsByJobId, getRecommendationsForJob, shortlistApplication, rejectApplication } from "../api";
+import usePlanMeta from '../hooks/usePlanMeta';
 import sanitizeHTML from "../utils/sanitizeHTML";
 import ResumeViewer from "../components/ResumeViewer";
 
@@ -23,6 +24,14 @@ const Job = ({ isDarkMode }) => {
   const [ai, setAi] = useState({ loading: false, error: '', items: [] });
   const [topN, setTopN] = useState(5);
   const [recommendedOnly, setRecommendedOnly] = useState(true);
+
+  // Derive company email (viewer) for plan gating
+  let companyEmail = undefined;
+  try {
+    const cd = JSON.parse(localStorage.getItem('companyData') || 'null');
+    if (cd?.email) companyEmail = cd.email;
+  } catch { /* ignore */ }
+  const { planMeta } = usePlanMeta(companyEmail, { auto: true });
 
   // Cache refs to avoid re-fetching unchanged job/applications data
   const jobCacheRef = useRef({}); // jobId -> job data (in-memory)
@@ -98,9 +107,13 @@ const Job = ({ isDarkMode }) => {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Fetch AI recommendations when job or topN changes (still used for recommendedOnly filtering)
+  // Fetch AI recommendations only if plan allows
   useEffect(() => {
     let cancelled = false;
+    if (!planMeta || !planMeta.recommendationsEnabled) {
+      setAi({ loading: false, error: 'Recommendations available on paid plans', items: [] });
+      return;
+    }
     (async () => {
       try {
         setAi(prev => ({ ...prev, loading: true, error: '', items: [] }));
@@ -113,7 +126,7 @@ const Job = ({ isDarkMode }) => {
       }
     })();
     return () => { cancelled = true; };
-  }, [jobId, topN]);
+  }, [jobId, topN, planMeta]);
 
   if (loading) {
     return (
@@ -474,33 +487,39 @@ const Job = ({ isDarkMode }) => {
             <div>
               <div className="text-xl font-semibold">Applicants</div>
               <div className="mt-2 flex items-center gap-3 text-sm">
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4"
-                    checked={recommendedOnly}
-                    onChange={(e)=>setRecommendedOnly(e.target.checked)}
-                  />
-                  <span>Show only AI-recommended</span>
-                </label>
-                <label className="inline-flex items-center gap-2">
-                  <span>Top N:</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={topN}
-                    onChange={(e)=> setTopN(() => {
-                      const v = parseInt(e.target.value||'5',10);
-                      if (Number.isNaN(v)) return 5;
-                      return Math.min(50, Math.max(1, v));
-                    })}
-                    className={`w-20 px-2 py-1 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                  />
-                </label>
-                {ai.loading && <span className="text-xs opacity-70">Updating…</span>}
-                {!ai.loading && ai.error && (
-                  <span className="text-xs text-red-500">AI error: {ai.error}</span>
+                {planMeta?.recommendationsEnabled ? (
+                  <>
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={recommendedOnly}
+                        onChange={(e)=>setRecommendedOnly(e.target.checked)}
+                      />
+                      <span>Show only AI-recommended</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      <span>Top N:</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={topN}
+                        onChange={(e)=> setTopN(() => {
+                          const v = parseInt(e.target.value||'5',10);
+                          if (Number.isNaN(v)) return 5;
+                          return Math.min(50, Math.max(1, v));
+                        })}
+                        className={`w-20 px-2 py-1 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                      />
+                    </label>
+                    {ai.loading && <span className="text-xs opacity-70">Updating…</span>}
+                    {!ai.loading && ai.error && (
+                      <span className="text-xs text-red-500">AI error: {ai.error}</span>
+                    )}
+                  </>
+                ) : (
+                  <div className={`px-3 py-2 rounded text-xs font-medium ${isDarkMode ? 'bg-gray-800 text-gray-300 border border-gray-700' : 'bg-white text-gray-600 border border-gray-300'}`}>AI recommendations available on paid plans</div>
                 )}
               </div>
             </div>
@@ -535,9 +554,9 @@ const Job = ({ isDarkMode }) => {
                 const resumeKey = String(a.resume||'').trim();
                 return (nameKey && recNames.has(nameKey)) || (emailKey && recEmails.has(emailKey)) || (resumeKey && recResumes.has(resumeKey));
               };
-              const visibleApps = recommendedOnly ? applications.filter(isRec) : applications;
+              const visibleApps = planMeta?.recommendationsEnabled && recommendedOnly ? applications.filter(isRec) : applications;
 
-              if (recommendedOnly && !ai.loading && (ai.items||[]).length === 0) {
+              if (planMeta?.recommendationsEnabled && recommendedOnly && !ai.loading && (ai.items||[]).length === 0) {
                 return (
                   <div className={`p-4 mb-3 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-white border-gray-200 text-gray-700'}`}>
                     No AI recommendations found for this job. Try adjusting Top N.

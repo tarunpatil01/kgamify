@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { setSubscription } from '../store/slices/subscriptionSlice';
+import extractSubscriptionSnapshot from '../utils/subscriptionSnapshot';
 import { useNavigate, Link } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaSpinner, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import Klogo from '../assets/KLOGO.png';
@@ -9,6 +12,7 @@ import { quickEmail, quickPassword } from '../utils/validation';
 
 const Login = ({ setLoggedInEmail }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
     // Load identifier from persistent rememberMe (localStorage) first, else session for this tab
     identifier: localStorage.getItem("rememberedIdentifier") || sessionStorage.getItem('loginIdentifier') || "",
@@ -161,6 +165,15 @@ const Login = ({ setLoggedInEmail }) => {
             // Store token only for current session
             try { sessionStorage.setItem('companyToken', response.token); } catch { /* ignore */ }
           }
+        }
+        // Capture subscription snapshot (if provided by backend company object)
+        if (response.company) {
+          try { dispatch(setSubscription(extractSubscriptionSnapshot(response.company))); } catch { /* ignore dispatch errors */ }
+          try {
+            const existing = JSON.parse(localStorage.getItem('companyData') || 'null');
+            const merged = { ...(existing||{}), ...response.company };
+            localStorage.setItem('companyData', JSON.stringify(merged));
+          } catch { /* ignore */ }
         }
         navigate("/dashboard");
       }
