@@ -6,7 +6,7 @@ import {
   FaCheck, FaTimes, FaBuilding, FaCalendarAlt, FaEnvelope, 
   FaPhone, FaGlobeAmericas, FaUserCircle, FaKey, FaLock,
   FaClock, FaCheckCircle, FaUsers,
-  FaChevronLeft, FaChevronRight
+  FaChevronLeft, FaChevronRight, FaCog
 } from "react-icons/fa";
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
@@ -175,6 +175,12 @@ const AdminPortal = ({ $isDarkMode }) => {
   const [expanded, setExpanded] = useState({});
   const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
 
+  // GST Settings
+  const [gstRate, setGstRate] = useState(18);
+  const [gstLoading, setGstLoading] = useState(false);
+  const [gstEditing, setGstEditing] = useState(false);
+  const [gstTemp, setGstTemp] = useState(18);
+
   // Theme toggle handler: prefer parent-provided, fallback to direct document/localStorage update
   // Theme handled by AdminLayout
 
@@ -282,6 +288,54 @@ const AdminPortal = ({ $isDarkMode }) => {
     const paramsDenied = new URLSearchParams({ status: 'denied', q: filters.q || '', sort: filters.sort || 'updatedAt', order: filters.order || 'desc' }).toString();
     axios.get(`${baseUrl}/api/admin/companies?${paramsDenied}`, { headers }).then(r => setDeniedCompanies(r.data)).catch(()=>{});
   }, [filters, isAuthenticated]);
+
+  // Fetch GST settings
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const token = localStorage.getItem('adminToken');
+    const headers = { 'x-auth-token': token };
+    const baseUrl = getBaseUrl();
+    axios
+      .get(`${baseUrl}/api/admin/settings/gst`, { headers })
+      .then(r => {
+        if (r.data?.gstRate !== undefined) {
+          setGstRate(r.data.gstRate);
+          setGstTemp(r.data.gstRate);
+        }
+      })
+      .catch(() => {
+        // Default GST rate if fetch fails
+        setGstRate(18);
+        setGstTemp(18);
+      });
+  }, []);
+
+  // Handle GST update
+  const handleGstUpdate = async () => {
+    if (gstTemp < 0 || gstTemp > 100) {
+      notify('error', 'GST rate must be between 0 and 100');
+      return;
+    }
+
+    setGstLoading(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const headers = { 'x-auth-token': token };
+      const baseUrl = getBaseUrl();
+      await axios.post(
+        `${baseUrl}/api/admin/settings/gst`,
+        { gstRate: parseFloat(gstTemp) },
+        { headers }
+      );
+      setGstRate(parseFloat(gstTemp));
+      setGstEditing(false);
+      notify('success', `GST rate updated to ${gstTemp}%`);
+    } catch (error) {
+      notify('error', 'Failed to update GST rate');
+    } finally {
+      setGstLoading(false);
+    }
+  };
 
   // Embedded login handler removed; dedicated AdminLogin page handles this
 
@@ -632,6 +686,14 @@ const AdminPortal = ({ $isDarkMode }) => {
               <span className={`admin-tab__badge ${activeTab === 'denied' ? 'admin-tab__badge--active' : ''}`}>
                 {deniedCompanies?.length ?? 0}
               </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className={`admin-tab ${activeTab === 'settings' ? 'admin-tab--active' : ''}`}
+            >
+              <FaCog className="mr-2" />
+              <span>Settings</span>
             </button>
           </div>
         </div>
@@ -1660,6 +1722,77 @@ const AdminPortal = ({ $isDarkMode }) => {
             </div>
           )}
         </>
+      )}
+      {/* Settings Tab Content */}
+      {activeTab === "settings" && (
+        <div className="space-y-6">
+          {/* GST Settings Card */}
+          <div className={`p-8 rounded-lg shadow-sm ${$isDarkMode ? "bg-gray-800" : "bg-white"}`}>
+            <h3 className="text-2xl font-bold mb-6 flex items-center">
+              <FaCog className="mr-3 text-[#ff8200]" /> Invoice Settings
+            </h3>
+            
+            {/* GST Rate Setting */}
+            <div className="max-w-2xl">
+              <div className="mb-6 p-4 rounded-lg border border-[#ff8200]/30">
+                <label className="block text-sm font-semibold mb-2">GST Rate (%)</label>
+                <p className={`text-xs mb-3 ${$isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+                  Current GST rate applied to all invoices
+                </p>
+                
+                {!gstEditing ? (
+                  <div className="flex items-center gap-3">
+                    <div className={`text-3xl font-bold text-[#ff8200]`}>{gstRate}%</div>
+                    <button
+                      onClick={() => {
+                        setGstEditing(true);
+                        setGstTemp(gstRate);
+                      }}
+                      className="px-4 py-2 rounded bg-[#ff8200] text-white hover:bg-[#e57400] transition text-sm font-medium"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      value={gstTemp}
+                      onChange={(e) => setGstTemp(parseFloat(e.target.value) || 0)}
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      className={`px-3 py-2 rounded border text-sm font-medium w-24 ${$isDarkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-900"}`}
+                    />
+                    <span className="text-sm font-medium">%</span>
+                    <button
+                      onClick={handleGstUpdate}
+                      disabled={gstLoading}
+                      className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition text-sm font-medium disabled:opacity-50"
+                    >
+                      {gstLoading ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setGstEditing(false);
+                        setGstTemp(gstRate);
+                      }}
+                      className={`px-4 py-2 rounded border text-sm font-medium ${$isDarkMode ? "border-gray-600 text-gray-300 hover:bg-gray-700" : "border-gray-300 text-gray-700 hover:bg-gray-100"}`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              <div className={`p-4 rounded-lg ${$isDarkMode ? "bg-gray-700/50" : "bg-blue-50"} border border-blue-200`}>
+                <p className={`text-sm ${$isDarkMode ? "text-gray-300" : "text-blue-900"}`}>
+                  <strong>Note:</strong> Changes to GST rate will apply to all new invoices generated. This setting is currently set to apply IGST (Integrated GST) on all billing items.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
       {/* Profile Tab Content */}
       {activeTab === "profile" && (

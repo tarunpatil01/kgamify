@@ -421,7 +421,6 @@ router.post('/company/:id/messages', adminAuth, upload.array('attachments', 5), 
   }
 });
 
-module.exports = router;
 // --- Admin Job Management Endpoints ---
 // List all jobs across companies (with applicants)
 router.get('/jobs', adminAuth, async (req, res) => {
@@ -514,3 +513,53 @@ router.delete('/job/:jobId', adminAuth, async (req, res) => {
     return res.status(500).json({ message: 'Server error' });
   }
 });
+
+// Get GST settings
+router.get('/settings/gst', adminAuth, async (req, res) => {
+  try {
+    const Settings = require('../models/Settings');
+    const gstSetting = await Settings.findOne({ key: 'gst_rate' });
+    const gstRate = gstSetting ? parseFloat(gstSetting.value) : 18;
+    res.json({ gstRate });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch GST settings' });
+  }
+});
+
+// Update GST settings
+router.post('/settings/gst', adminAuth, async (req, res) => {
+  try {
+    const { gstRate } = req.body;
+    
+    if (typeof gstRate !== 'number' || gstRate < 0 || gstRate > 100) {
+      return res.status(400).json({ message: 'GST rate must be a number between 0 and 100' });
+    }
+
+    const Settings = require('../models/Settings');
+    await Settings.findOneAndUpdate(
+      { key: 'gst_rate' },
+      { 
+        key: 'gst_rate',
+        value: gstRate,
+        description: 'Current GST rate for invoices',
+        updatedAt: new Date()
+      },
+      { upsert: true, new: true }
+    );
+
+    // Log audit
+    const auditLog = require('../models/AuditLog');
+    await auditLog.create({
+      action: 'UPDATE_GST_RATE',
+      admin: req.user?.email || 'admin',
+      details: { newGstRate: gstRate },
+      timestamp: new Date()
+    });
+
+    res.json({ message: 'GST rate updated successfully', gstRate });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update GST settings' });
+  }
+});
+
+module.exports = router;

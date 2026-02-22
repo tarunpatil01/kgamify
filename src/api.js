@@ -8,7 +8,7 @@ const AI_API_URL = config.AI_API_URL;
 // Create a custom axios instance with default settings
 const apiClient = axios.create({
   baseURL: API_URL,
-  timeout: 30000, // 30 seconds timeout
+  timeout: 60000, // 60 seconds timeout (increased for mobile networks)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -56,25 +56,38 @@ export const loginCompany = async (loginData) => {
     
     return response.data;
   } catch (error) {
+    let errorMessage = 'An error occurred during login. Please try again.';
+    
+    // Handle timeout errors (common on mobile networks)
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      errorMessage = 'Request timed out. Check your internet connection and try again.';
+    }
     // Handle network errors
-    if (error.code === 'ERR_NETWORK') {
-      throw { error: 'Network error. Please check your connection and try again.' };
+    else if (error.code === 'ERR_NETWORK') {
+      errorMessage = 'Network error. Please check your connection and try again.';
+    }
+    // Handle CORS errors (mobile-specific issue)
+    else if (error.message?.includes('CORS') || error.response?.status === 0) {
+      errorMessage = 'Connection error. If testing on mobile, ensure you are using the correct server address. Please check your internet connection.';
+    }
+    // Handle specific HTTP status codes
+    else if (error.response?.status === 403) {
+      errorMessage = error.response.data?.error || 'Your email is not verified';
+    } else if (error.response?.status === 401) {
+      errorMessage = 'Invalid email or password';
+    } else if (error.response?.status === 404) {
+      errorMessage = 'Company not found. Please register first.';
+    } else if (error.response?.status === 400) {
+      errorMessage = error.response.data?.error || 'Invalid request';
+    } else if (error.response?.status >= 500) {
+      errorMessage = 'Server error. Please try again later.';
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.message) {
+      errorMessage = error.message;
     }
     
-    // Handle specific HTTP status codes
-    if (error.response?.status === 403) {
-      throw error.response.data || { error: 'Your email is not verified' };
-    } else if (error.response?.status === 401) {
-      throw { error: 'Invalid email or password' };
-    } else if (error.response?.status === 404) {
-      throw { error: 'Company not found. Please register first.' };
-    } else if (error.response?.status === 400) {
-      throw error.response.data || { error: 'Invalid request' };
-    } else if (error.response?.status >= 500) {
-      throw { error: 'Server error. Please try again later.' };
-    } else {
-      throw error.response?.data || { error: 'An error occurred during login' };
-    }
+    throw { error: errorMessage };
   }
 };
 
