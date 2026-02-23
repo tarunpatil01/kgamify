@@ -14,6 +14,7 @@ import LimitedAccessBanner from './components/LimitedAccessBanner';
 import { useState, useEffect, Suspense, lazy } from "react";
 import { getCompanyInfo } from "./api";
 import { PageLoadingFallback } from "./utils/lazyLoading";
+import FloatingChatbot from "./components/FloatingChatbot";
 
 // Lazy load all pages for better performance
 const Login = lazy(() => import("./pages/Login"));
@@ -392,6 +393,7 @@ function AppContent() {
               <Footer isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />
             </div>
           )}
+          <FloatingChatbot />
           </>
         )}
       </div>
