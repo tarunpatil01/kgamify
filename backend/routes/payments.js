@@ -127,6 +127,7 @@ router.post('/verify', async (req, res) => {
         const amountFormatted = amount === 0 ? 'FREE' : new Intl.NumberFormat('en-IN',{style:'currency',currency}).format(amount);
         sendEmail(company.email, 'subscriptionInvoice', {
           invoiceId,
+          companyId: company._id.toString(),
           plan,
           planLabel: getPlan(plan).label,
           startAt: startedAt,
@@ -200,6 +201,7 @@ async function webhookHandler(req, res) {
           const amountFormatted = amount === 0 ? 'FREE' : new Intl.NumberFormat('en-IN',{style:'currency',currency}).format(amount);
           sendEmail(company.email, 'subscriptionInvoice', {
             invoiceId,
+            companyId: company._id.toString(),
             plan,
             planLabel: getPlan(plan).label,
             startAt: startedAt,

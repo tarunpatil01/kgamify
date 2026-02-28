@@ -129,7 +129,13 @@ export default function AdminAllJobs({ isDarkMode }) {
                     <div className={`mt-4 rounded border p-4 text-sm ${isDarkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
                       <div className="font-semibold mb-2">Job Details</div>
                       <div className="space-y-2">
-                        <div><span className="opacity-70">Description:</span> {job.jobDescription || '—'}</div>
+                        <div>
+                          <span className="opacity-70">Description:</span>
+                          <div 
+                            className="mt-1 [&_p]:mb-2 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
+                            dangerouslySetInnerHTML={{ __html: job.jobDescription || '<p>—</p>' }}
+                          />
+                        </div>
                         <div><span className="opacity-70">Experience:</span> {job.experienceLevel || '—'}</div>
                         <div><span className="opacity-70">Remote/Onsite:</span> {job.remoteOrOnsite || '—'}</div>
                         <div><span className="opacity-70">Skills:</span> {job.skills || '—'}</div>

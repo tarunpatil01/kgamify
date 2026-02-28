@@ -666,6 +666,7 @@ router.post('/subscription/purchase', async (req, res) => {
     const amountFormatted = finalAmount === 0 ? 'FREE' : new Intl.NumberFormat('en-IN',{ style:'currency', currency: finalCurrency }).format(finalAmount);
     sendEmail(company.email, 'subscriptionInvoice', {
       invoiceId,
+      companyId: company._id.toString(),
       plan,
       planLabel: cfg.label,
       startAt: startedAt,
@@ -720,6 +721,7 @@ router.post('/subscription/repeat', async (req, res) => {
     const amountFormatted = new Intl.NumberFormat('en-IN',{ style:'currency', currency }).format(amount);
     sendEmail(company.email, 'subscriptionInvoice', {
       invoiceId,
+      companyId: company._id.toString(),
       plan: currentPlan,
       planLabel: cfg.label,
       startAt: startedAt,
@@ -775,6 +777,7 @@ router.post('/subscription/upgrade', async (req, res) => {
     const amountFormatted = new Intl.NumberFormat('en-IN',{ style:'currency', currency }).format(amount);
     sendEmail(company.email, 'subscriptionInvoice', {
       invoiceId,
+      companyId: company._id.toString(),
       plan,
       planLabel: getPlan(plan).label,
       startAt: startedAt,
@@ -951,6 +954,7 @@ module.exports.activateSubscription = async function activateSubscription({ emai
   const amountFormatted = amount === 0 ? 'FREE' : new Intl.NumberFormat('en-IN',{ style:'currency', currency }).format(amount);
   sendEmail(company.email, 'subscriptionInvoice', {
     invoiceId,
+    companyId: company._id.toString(),
     plan,
     planLabel: getPlan(plan).label,
     startAt,

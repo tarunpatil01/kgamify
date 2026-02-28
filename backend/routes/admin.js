@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const Company = require('../models/Company');
 const Job = require('../models/Job');
+const Application = require('../models/Application');
 const mongoose = require('mongoose');
 const Admin = require('../models/Admin');
 const { adminAuth } = require('../middleware/auth');
@@ -446,13 +447,36 @@ router.get('/jobs', adminAuth, async (req, res) => {
   }
 });
 
-// List all jobs for a specific company (by company id)
+// List all jobs for a specific company (by company id) with applicants
 router.get('/company/:id/jobs', adminAuth, async (req, res) => {
   try {
     const company = await Company.findById(req.params.id);
     if (!company) return res.status(404).json({ message: 'Company not found' });
-    const jobs = await Job.find({ companyEmail: company.email }).sort({ createdAt: -1 });
-    return res.json({ company: { id: company._id, name: company.companyName, email: company.email }, count: jobs.length, jobs });
+    const jobs = await Job.find({ companyEmail: company.email }).sort({ createdAt: -1 }).lean();
+    
+    // Fetch applicants for each job
+    const jobIds = jobs.map(j => j._id);
+    const applications = await Application.find({ jobId: { $in: jobIds } }).lean();
+    
+    // Map applicants to jobs
+    const jobsWithApplicants = jobs.map(job => ({
+      ...job,
+      applicants: applications.filter(app => String(app.jobId) === String(job._id))
+    }));
+    
+    return res.json({ 
+      company: { 
+        id: company._id, 
+        name: company.companyName, 
+        email: company.email,
+        phone: company.phone,
+        address: company.address,
+        subscriptionPlan: company.subscriptionPlan,
+        subscriptionEndsAt: company.subscriptionEndsAt
+      }, 
+      count: jobs.length, 
+      jobs: jobsWithApplicants 
+    });
   } catch (err) {
     return res.status(500).json({ message: 'Server error' });
   }

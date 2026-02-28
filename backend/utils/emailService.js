@@ -3,7 +3,7 @@ const https = require('https');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const { generateInvoiceHtml, generateInvoicePdfBuffer } = require('./invoiceGenerator');
+const { generateInvoicePdfBuffer } = require('./invoiceGenerator');
 
 // SendGrid Configuration
 const createSendGridClient = () => {
@@ -542,18 +542,72 @@ const sendEmail = async (to, template, data) => {
 
     if (template === 'subscriptionInvoice') {
       try {
+        // Import models for professional invoice generation
+        const Company = require('../models/Company.js');
+        const Settings = require('../models/Settings.js');
+
+        // Fetch company address and GSTIN
+        let companyAddress = '';
+        let companyGSTIN = '';
+        try {
+          if (data.companyId) {
+            const company = await Company.findById(data.companyId).select('address gstNumber');
+            companyAddress = company?.address || '';
+            companyGSTIN = company?.gstNumber || '';
+          }
+        } catch (err) {
+          console.warn('[emailService] Failed to fetch company details:', err.message);
+        }
+
+        // Fetch current GST rate
+        let gstRate = 18;
+        try {
+          const gstSetting = await Settings.findOne({ key: 'gst_rate' });
+          if (gstSetting && typeof gstSetting.value === 'number') {
+            gstRate = gstSetting.value;
+          }
+        } catch (err) {
+          console.warn('[emailService] Failed to fetch GST rate, using default 18%:', err.message);
+        }
+
+        // Calculate amounts
+        const subtotal = typeof data.amount === 'number' ? data.amount : 0;
+        const gstAmount = (subtotal * gstRate) / 100;
+        const total = subtotal + gstAmount;
+
+        // Construct billing items array
+        const billingItems = [];
+        if (data.plan) {
+          billingItems.push({
+            description: `${data.plan} Plan Subscription`,
+            units: 1,
+            unitPrice: subtotal
+          });
+        }
+
+        // Generate professional invoice
         const invoiceBuffer = await generateInvoicePdfBuffer({
           invoiceId: data.invoiceId,
-          brand: 'kGamify',
+          sellerName: 'kGamify',
+          sellerAddress: 'Electronic City, Bangalore',
+          sellerGSTIN: '',
+          sellerHSN: '',
           companyName: data.companyName,
           companyEmail: data.companyEmail,
-          plan: data.plan,
-          amount: typeof data.amount === 'number' ? data.amount : undefined,
+          companyAddress,
+          companyGSTIN,
+          billingItems,
+          subtotal,
+          gstRate,
+          gstAmount,
+          total,
           currency: data.currency || 'INR',
-          startAt: data.startAt,
-          endAt: data.endAt,
+          billingStartDate: data.startAt,
+          billingEndDate: data.endAt,
+          nextBillingDate: data.nextBillingDate || data.endAt,
           issuedAt: new Date()
         });
+
         msg.attachments = [
           ...(msg.attachments || []),
           {
