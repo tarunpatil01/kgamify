@@ -1,0 +1,36 @@
+# render.yaml - Deploy to Render with multiple services
+# This file must be in repo root
+
+services:
+  # Node.js Backend
+  - type: web
+    name: kgamify-backend
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ML_SERVER_URL
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+
+  # Python AI Service (All-in-one: Chatbot + Recommendations + ML)
+  - type: web
+    name: kgamify-ai
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: AI
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"

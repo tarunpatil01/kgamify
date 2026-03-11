@@ -1,7 +1,7 @@
 import requests
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "mistral"
+MODEL_NAME = "phi3"
 
 SYSTEM_PROMPT = """
 You are KGamify AI Assistant.
