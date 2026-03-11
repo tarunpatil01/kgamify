@@ -63,7 +63,7 @@ const whitePaper = { PaperProps: { sx: { backgroundColor: 'white' } } };
 export default function PostJob({ isDarkMode, email, userCompany }) {
   const navigate = useNavigate();
   const [submitError, setSubmitError] = useState('');
-  const [generateModalOpen, setGenerateModalOpen] = useState(false);
+  const [generateModalOpen, setGenerateModalOpen] = useState(false); // ← controls modal from Job Title row
   const [formData, setFormData] = useState({
     jobTitle: "",
     jobDescription: "",
@@ -122,13 +122,8 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // ── Strip HTML helper — removes Quill's empty paragraph <p><br></p> too ──
-  const stripHtml = (html) =>
-    (html || '')
-      .replace(/<p><br><\/p>/gi, '')
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+  // Strip HTML helper for plain-text fields
+  const stripHtml = (html) => (html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
   // Handle AI-generated sections filling all fields at once
   const handleSectionsGenerated = (sections) => {
@@ -144,11 +139,9 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
     }));
   };
 
-  // ── Verify JD — strips HTML first, validates on plain text ──
+  // Verify JD
   const handleVerifyJD = async () => {
-    const plainDescription = stripHtml(formData.jobDescription);
-
-    if (!formData.jobTitle || !plainDescription) {
+    if (!formData.jobTitle || !formData.jobDescription) {
       alert("Job title and description are required for verification");
       return;
     }
@@ -161,7 +154,7 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
         credentials: "include",
         body: JSON.stringify({
           jobTitle:         formData.jobTitle,
-          description:      plainDescription,
+          description:      stripHtml(formData.jobDescription),
           requirements:     stripHtml(formData.skills),
           responsibilities: stripHtml(formData.responsibilities),
           location:         formData.location || '',
