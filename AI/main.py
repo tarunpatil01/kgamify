@@ -1,16 +1,18 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
-from recommendation import recommend_resumes
+from pydantic import BaseModel
 
-app = FastAPI(title="Resume Recommender API")
+from recommendation import recommend_resumes
+from chatbot import chat_with_ollama
+
+app = FastAPI(title="KGamify AI Services")
 
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
 ]
 
-# NOTE: Avoid using '*' together with allow_credentials=True; browsers will reject.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -19,21 +21,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# -------------------------------
+# Resume Recommendation API
+# -------------------------------
 @app.get("/recommend", summary="Get top N resumes for a job")
 def recommend(job_id: str = Query(...), top_n: Optional[int] = 5):
     try:
         results = recommend_resumes(job_id, top_n)
         return {"job_id": job_id, "recommendations": results}
-    except HTTPException:
-        raise
     except Exception as e:
-        # Surface server error with proper status code so frontend can distinguish
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/health", summary="Health check")
+# -------------------------------
+# Chatbot API (🔥 FIXES 404)
+# -------------------------------
+class ChatRequest(BaseModel):
+    message: str
+
+@app.post("/chat")
+def chat(req: ChatRequest):
+    if not req.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    reply = chat_with_ollama(req.message)
+    return {"reply": reply}
+
+# -------------------------------
+# Health
+# -------------------------------
+@app.get("/health")
 def health():
     return {"status": "ok"}
 
 @app.get("/")
 def root():
-    return {"service": "resume-recommender", "endpoints": ["/recommend", "/health"]}
+    return {
+        "service": "kgamify-ai",
+        "endpoints": ["/recommend", "/chat", "/health"]
+    }

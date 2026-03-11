@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const Company = require('../models/Company');
 const Job = require('../models/Job');
+const Application = require('../models/Application');
 const mongoose = require('mongoose');
 const Admin = require('../models/Admin');
 const { adminAuth } = require('../middleware/auth');
@@ -421,15 +422,61 @@ router.post('/company/:id/messages', adminAuth, upload.array('attachments', 5), 
   }
 });
 
-module.exports = router;
 // --- Admin Job Management Endpoints ---
-// List all jobs for a specific company (by company id)
+// List all jobs across companies (with applicants)
+router.get('/jobs', adminAuth, async (req, res) => {
+  try {
+    const { q, companyEmail, status } = req.query || {};
+    const filter = {};
+    if (companyEmail) filter.companyEmail = companyEmail;
+    if (status) filter.status = status;
+    if (q) {
+      filter.$or = [
+        { jobTitle: { $regex: new RegExp(q, 'i') } },
+        { companyName: { $regex: new RegExp(q, 'i') } },
+        { companyEmail: { $regex: new RegExp(q, 'i') } },
+        { location: { $regex: new RegExp(q, 'i') } }
+      ];
+    }
+    const jobs = await Job.find(filter)
+      .sort({ createdAt: -1 })
+      .populate('applicants', 'applicantName applicantEmail appName resume status createdAt');
+    return res.json({ count: jobs.length, jobs });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// List all jobs for a specific company (by company id) with applicants
 router.get('/company/:id/jobs', adminAuth, async (req, res) => {
   try {
     const company = await Company.findById(req.params.id);
     if (!company) return res.status(404).json({ message: 'Company not found' });
-    const jobs = await Job.find({ companyEmail: company.email }).sort({ createdAt: -1 });
-    return res.json({ company: { id: company._id, name: company.companyName, email: company.email }, count: jobs.length, jobs });
+    const jobs = await Job.find({ companyEmail: company.email }).sort({ createdAt: -1 }).lean();
+    
+    // Fetch applicants for each job
+    const jobIds = jobs.map(j => j._id);
+    const applications = await Application.find({ jobId: { $in: jobIds } }).lean();
+    
+    // Map applicants to jobs
+    const jobsWithApplicants = jobs.map(job => ({
+      ...job,
+      applicants: applications.filter(app => String(app.jobId) === String(job._id))
+    }));
+    
+    return res.json({ 
+      company: { 
+        id: company._id, 
+        name: company.companyName, 
+        email: company.email,
+        phone: company.phone,
+        address: company.address,
+        subscriptionPlan: company.subscriptionPlan,
+        subscriptionEndsAt: company.subscriptionEndsAt
+      }, 
+      count: jobs.length, 
+      jobs: jobsWithApplicants 
+    });
   } catch (err) {
     return res.status(500).json({ message: 'Server error' });
   }
@@ -490,3 +537,53 @@ router.delete('/job/:jobId', adminAuth, async (req, res) => {
     return res.status(500).json({ message: 'Server error' });
   }
 });
+
+// Get GST settings
+router.get('/settings/gst', adminAuth, async (req, res) => {
+  try {
+    const Settings = require('../models/Settings');
+    const gstSetting = await Settings.findOne({ key: 'gst_rate' });
+    const gstRate = gstSetting ? parseFloat(gstSetting.value) : 18;
+    res.json({ gstRate });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch GST settings' });
+  }
+});
+
+// Update GST settings
+router.post('/settings/gst', adminAuth, async (req, res) => {
+  try {
+    const { gstRate } = req.body;
+    
+    if (typeof gstRate !== 'number' || gstRate < 0 || gstRate > 100) {
+      return res.status(400).json({ message: 'GST rate must be a number between 0 and 100' });
+    }
+
+    const Settings = require('../models/Settings');
+    await Settings.findOneAndUpdate(
+      { key: 'gst_rate' },
+      { 
+        key: 'gst_rate',
+        value: gstRate,
+        description: 'Current GST rate for invoices',
+        updatedAt: new Date()
+      },
+      { upsert: true, new: true }
+    );
+
+    // Log audit
+    const auditLog = require('../models/AuditLog');
+    await auditLog.create({
+      action: 'UPDATE_GST_RATE',
+      admin: req.user?.email || 'admin',
+      details: { newGstRate: gstRate },
+      timestamp: new Date()
+    });
+
+    res.json({ message: 'GST rate updated successfully', gstRate });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update GST settings' });
+  }
+});
+
+module.exports = router;
