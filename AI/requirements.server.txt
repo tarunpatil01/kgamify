@@ -1,0 +1,17 @@
+# Production ML Requirements with Flask Server
+
+# Core ML Framework
+torch>=2.0.0
+transformers>=4.30.0
+
+# NLP Tools
+textblob>=0.17.1
+nltk>=3.8.1
+
+# Flask Server
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Optional but recommended
+sentencepiece>=0.1.99
+protobuf>=4.23.0
