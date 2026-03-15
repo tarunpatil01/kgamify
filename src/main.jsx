@@ -1,4 +1,3 @@
-import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
@@ -33,19 +32,17 @@ if (import.meta.env.PROD) {
 }
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <Provider store={store}>
-      <PersistGate 
-        loading={<LoadingSpinner fullScreen text="Loading application..." />} 
-        persistor={persistor}
-      >
-        <ServiceIntegration />
-        <div className="flex flex-col min-h-screen">
-          <div className="flex-grow">
-            <App />
-          </div>
+  <Provider store={store}>
+    <PersistGate 
+      loading={<LoadingSpinner fullScreen text="Loading application..." />} 
+      persistor={persistor}
+    >
+      <ServiceIntegration />
+      <div className="flex flex-col min-h-screen">
+        <div className="flex-grow">
+          <App />
         </div>
-      </PersistGate>
-    </Provider>
-  </StrictMode>,
+      </div>
+    </PersistGate>
+  </Provider>,
 )

@@ -10,6 +10,11 @@ const { getSuggestionsML, testPythonML } = require(path.join(__dirname, '../../A
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const ML_SERVER_URL = process.env.ML_SERVER_URL || 'http://localhost:5001';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+
+if (!GEMINI_API_KEY) {
+  console.warn('⚠️ GEMINI_API_KEY is missing. Gemini features will fall back to non-Gemini logic.');
+}
 
 // Test ML availability on startup
 let mlAvailable = false;
@@ -60,7 +65,7 @@ router.post('/verify-jd', async (req, res) => {
 
     // ── Use Gemini for verification ──
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
       const prompt = `You are a professional HR consultant reviewing a job description.
@@ -214,7 +219,7 @@ Fix the following job description text:
 Text to fix:
 ${text}`;
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const result    = await model.generateContent(prompt);
@@ -353,7 +358,7 @@ STRICT RULES:
 - Do NOT use placeholder text like [Company Name] or [Country]
 - Return ONLY the raw JSON, no markdown, no code fences`;
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const result  = await model.generateContent(finalPrompt);
