@@ -10,6 +10,9 @@ const { Server } = require('socket.io');
 
 const app = express();
 
+// Render runs behind a reverse proxy. Trust first proxy so req.ip is client IP.
+app.set('trust proxy', 1);
+
 // Minimal internal logger
 function devLog(...args) {
   if (process.env.NODE_ENV !== 'production') console.log(...args);

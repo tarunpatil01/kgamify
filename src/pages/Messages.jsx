@@ -132,7 +132,7 @@ export default function Messages({ isDarkMode }) {
           {(lower.includes('auth') || lower.includes('token') || lower.includes('login')) && (
             <div className="text-sm opacity-80">Please sign in again and try opening Messages.
               <div className="mt-3">
-                <a href="/" className="inline-block px-4 py-2 rounded bg-[#ff8200] text-white text-sm hover:bg-[#e57400]">Go to Login</a>
+                <a href="/login" className="inline-block px-4 py-2 rounded bg-[#ff8200] text-white text-sm hover:bg-[#e57400]">Go to Login</a>
               </div>
             </div>
           )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { adminLogin } from "../api";
 import backgroundImage from "../assets/dashboard.png"; // Updated background image
@@ -9,6 +9,8 @@ const AdminLogin = () => {
   const [email, setEmail] = useState(""); // Changed to email state
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [retryAfterSeconds, setRetryAfterSeconds] = useState(0); // For rate limit countdown
+  const [isCountingDown, setIsCountingDown] = useState(false);
 
   const handleEmailChange = (event) => {
     setEmail(event.target.value);
@@ -17,6 +19,23 @@ const AdminLogin = () => {
   const handlePasswordChange = (event) => {
     setPassword(event.target.value);
   };
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!isCountingDown || retryAfterSeconds <= 0) return;
+
+    const timer = setTimeout(() => {
+      setRetryAfterSeconds((prev) => {
+        const newValue = prev - 1;
+        if (newValue <= 0) {
+          setIsCountingDown(false);
+        }
+        return newValue;
+      });
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [isCountingDown, retryAfterSeconds]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -42,9 +61,21 @@ const AdminLogin = () => {
         setErrorMessage("Invalid admin credentials");
       }
   } catch (error) {
-      setErrorMessage(
-        error.message || "Invalid admin credentials. Please try again."
-      );
+      // Check if 429 (rate limit) response
+      if (error.response?.status === 429) {
+        const retrySeconds = error.response?.data?.retryAfterSeconds;
+        if (retrySeconds && retrySeconds > 0) {
+          setRetryAfterSeconds(retrySeconds);
+          setIsCountingDown(true);
+          setErrorMessage(`Too many login attempts. Please try again in ${retrySeconds} seconds.`);
+        } else {
+          setErrorMessage("Too many login attempts. Please try again later.");
+        }
+      } else {
+        setErrorMessage(
+          error.message || "Invalid admin credentials. Please try again."
+        );
+      }
     }
   };
 
@@ -151,15 +182,27 @@ const AdminLogin = () => {
             </div>
           </div>
           {errorMessage && (
-            <div className="border rounded-lg p-3 bg-red-50/90 border-red-200" role="alert">
-              <p className="text-sm font-medium text-red-600 text-center">{errorMessage}</p>
+            <div className={`border rounded-lg p-4 ${isCountingDown ? 'bg-yellow-50/90 border-yellow-300' : 'bg-red-50/90 border-red-200'}`} role="alert">
+              <p className={`text-sm font-medium text-center ${isCountingDown ? 'text-yellow-700' : 'text-red-600'}`}>
+                {errorMessage}
+              </p>
+              {isCountingDown && (
+                <p className="text-xs text-yellow-600 text-center mt-2 font-semibold">
+                  Retry countdown: {retryAfterSeconds} second{retryAfterSeconds !== 1 ? 's' : ''}
+                </p>
+              )}
             </div>
           )}
           <button
             type="submit"
-            className="w-full py-3 rounded-xl font-bold text-lg shadow-lg transition duration-300 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] flex items-center justify-center"
+            disabled={isCountingDown}
+            className={`w-full py-3 rounded-xl font-bold text-lg shadow-lg transition duration-300 flex items-center justify-center ${
+              isCountingDown
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-60'
+                : 'bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347]'
+            }`}
           >
-            Login
+            {isCountingDown ? `Login (retry in ${retryAfterSeconds}s)` : 'Login'}
           </button>
         </form>
       </div>

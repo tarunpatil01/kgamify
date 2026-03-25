@@ -14,11 +14,23 @@ const { auditLogger } = require('../middleware/auditLogger');
 
 // Rate limiting for login attempts
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
+  windowMs: Number(process.env.ADMIN_LOGIN_WINDOW_MS || 10 * 60 * 1000), // default 10 minutes
+  max: Number(process.env.ADMIN_LOGIN_MAX_ATTEMPTS || 10), // default 10 attempts per window
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `${req.ip}:${(req.body?.email || '').toLowerCase()}`,
   message: { message: 'Too many login attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    const retrySeconds = Math.ceil((req.rateLimit?.resetTime?.getTime?.() - Date.now()) / 1000);
+    if (Number.isFinite(retrySeconds) && retrySeconds > 0) {
+      res.set('Retry-After', String(retrySeconds));
+    }
+    return res.status(429).json({
+      message: 'Too many login attempts, please try again later',
+      retryAfterSeconds: Number.isFinite(retrySeconds) && retrySeconds > 0 ? retrySeconds : undefined,
+    });
+  },
 });
 
 // Get pending companies (protected)

@@ -18,6 +18,7 @@ import FloatingChatbot from "./components/FloatingChatbot";
 
 // Lazy load all pages for better performance
 const Login = lazy(() => import("./pages/Login"));
+const HomeInfo = lazy(() => import("./pages/HomeInfo"));
 const Register = lazy(() => import("./pages/Register"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PostJob = lazy(() => import("./pages/PostJob"));
@@ -50,7 +51,7 @@ const AdminAPI = lazy(() => import("./pages/AdminAPI"));
 
 function AppContent() {
   const location = useLocation();
-  const isLoginPage = ["/","/register","/forgot-password","/reset-password","/admin-login","/verify-email","/terms-of-service","/cookies","/privacy-policy","/support","/cancellations-refunds"].includes(location.pathname);
+  const isLoginPage = ["/","/login","/register","/forgot-password","/reset-password","/admin-login","/verify-email","/terms-of-service","/cookies","/privacy-policy","/support","/cancellations-refunds"].includes(location.pathname);
   
   const isAdminPage = location.pathname.startsWith('/admin');
   
@@ -146,6 +147,10 @@ function AppContent() {
               <Routes>
                 <Route
                   path="/"
+                  element={<HomeInfo isDarkMode={isDarkMode} />}
+                />
+                <Route
+                  path="/login"
                   element={<Login setLoggedInEmail={setLoggedInEmail} />}
                 />
                 <Route

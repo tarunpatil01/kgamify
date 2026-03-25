@@ -132,12 +132,17 @@ function generateInvoicePdfBuffer({
       }
 
       // Line under table
-      doc.moveTo(leftMargin, yPos + 5).lineTo(rightMargin, yPos + 5).strokeColor('#ddd').lineWidth(0.5).stroke();
+      doc.moveTo(leftMargin, yPos + 5).lineTo(rightMargin, yPos + 5).strokeColor('#ff8200').lineWidth(1).stroke();
       yPos += 18;
 
       // Totals Section (right aligned)
       const totalsLabelX = 380;
       const totalsValueX = 480;
+      
+      // Totals background box
+      const totalsBoxY = yPos - 5;
+      const totalsBoxHeight = 80;
+      doc.rect(totalsLabelX - 5, totalsBoxY, rightMargin - totalsLabelX + 5, totalsBoxHeight).fill('#f9f5f0');
 
       doc.fontSize(10).font('Helvetica').fillColor('#555');
       doc.text('Sub Total:', totalsLabelX, yPos, { width: 90, align: 'right' });
@@ -155,7 +160,7 @@ function generateInvoicePdfBuffer({
       doc.fontSize(11).font('Helvetica-Bold').fillColor('#ff8200');
       doc.text('TOTAL:', totalsLabelX, yPos, { width: 90, align: 'right' });
       doc.text(formatAmount(total, currency), totalsValueX, yPos, { width: 55, align: 'right' });
-      yPos += 30;
+      yPos += 35;
 
       // Amount Paid Box (centered) - with green checkmark styling
       const boxWidth = 200;
@@ -165,19 +170,34 @@ function generateInvoicePdfBuffer({
       doc.fontSize(18).font('Helvetica-Bold').fillColor('#28a745').text(formatAmount(total, currency), boxX, yPos + 24, { width: boxWidth, align: 'center' });
       yPos += 70;
 
-      // Terms & Conditions
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#333').text('Terms & Conditions:', leftMargin, yPos);
+      // Thank you section with border
+      yPos += 25;
+      doc.rect(leftMargin, yPos, rightMargin - leftMargin, 40).stroke('#ff8200');
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#ff8200').text('Thank You for Your Business!', leftMargin + 10, yPos + 6, { width: rightMargin - leftMargin - 20 });
+      doc.fontSize(9).font('Helvetica').fillColor('#333').text('We appreciate your continued partnership.', leftMargin + 10, yPos + 20, { width: rightMargin - leftMargin - 20 });
+      yPos += 50;
+      
+      // Orange divider line
+      doc.moveTo(leftMargin, yPos).lineTo(rightMargin, yPos).strokeColor('#ff8200').lineWidth(1.5).stroke();
+      yPos += 15;
+      
+      // Terms & Conditions Section
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#333').text('TERMS & CONDITIONS', leftMargin, yPos);
       yPos += 14;
       doc.fontSize(8).font('Helvetica').fillColor('#666');
       doc.text('1) This subscription is non-refundable once activated.', leftMargin, yPos);
-      yPos += 12;
+      yPos += 11;
       doc.text('2) Money refund is generally not possible; exceptions may apply only if required by law.', leftMargin, yPos);
-      yPos += 12;
+      yPos += 11;
       doc.text('3) Subscriptions are non-transferable between companies.', leftMargin, yPos);
-      yPos += 20;
-
-      // Footer contact
-      doc.fontSize(8).fillColor('#888').text('For support: support@kgamify.in | www.kgamify.in', leftMargin, yPos);
+      yPos += 18;
+      
+      // Contact Information Footer with border
+      doc.rect(leftMargin, yPos, rightMargin - leftMargin, 35).stroke('#ddd');
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#ff8200').text('SUPPORT & CONTACT', leftMargin + 8, yPos + 5);
+      doc.fontSize(8).font('Helvetica').fillColor('#333');
+      doc.text('Email: support@kgamify.in', leftMargin + 8, yPos + 16);
+      doc.text('Website: https://kgamify-job.onrender.com/', leftMargin + 8, yPos + 24);
 
       doc.end();
     } catch (error) {
