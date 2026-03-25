@@ -1,3 +1,6 @@
+import os
+print("Starting AI service...")
+print("PORT from env:", os.getenv("PORT"))
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, Dict
