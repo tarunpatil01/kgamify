@@ -7,7 +7,7 @@ import App from './App.jsx'
 import { store, persistor } from './store'
 import LoadingSpinner from './components/LoadingSpinner'
 import ServiceIntegration from './components/ServiceIntegration'
-import { registerServiceWorker, unregisterServiceWorkers } from './utils/serviceWorker.js'
+import { unregisterServiceWorkers } from './utils/serviceWorker.js'
 import { injectCriticalCSS } from './utils/criticalCSS.js'
 import { initializePrefetching, preloadCriticalResources } from './utils/prefetching.js'
 
@@ -22,14 +22,9 @@ if (import.meta.env.PROD) {
   initializePrefetching();
 }
 
-// Register service worker for caching and offline functionality
-// Only in production to avoid development conflicts
-if (import.meta.env.PROD) {
-  registerServiceWorker();
-} else {
-  // In development mode, unregister any existing service workers to prevent conflicts
-  unregisterServiceWorkers();
-}
+// Disable service worker registration for now to avoid stale cached deployments.
+// Always unregister existing workers so route changes (like '/' landing page) apply immediately.
+unregisterServiceWorkers();
 
 createRoot(document.getElementById('root')).render(
   <Provider store={store}>

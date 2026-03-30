@@ -9,9 +9,6 @@ import re
 import os
 import threading
 
-from recommendation import recommend_resumes
-from chatbot import chat_with_ollama
-
 app = FastAPI(title="KGamify AI Services")
 
 ALLOWED_ORIGINS = [
@@ -37,6 +34,25 @@ models = {
     'device': 'cpu',
     'loaded': False
 }
+
+_recommend_resumes_fn = None
+_chat_with_ollama_fn = None
+
+
+def _get_recommend_resumes_fn():
+    global _recommend_resumes_fn
+    if _recommend_resumes_fn is None:
+        from recommendation import recommend_resumes as _recommend
+        _recommend_resumes_fn = _recommend
+    return _recommend_resumes_fn
+
+
+def _get_chat_with_ollama_fn():
+    global _chat_with_ollama_fn
+    if _chat_with_ollama_fn is None:
+        from chatbot import chat_with_ollama as _chat
+        _chat_with_ollama_fn = _chat
+    return _chat_with_ollama_fn
 
 def load_ml_models():
     """Try to load ML models, gracefully fail if not available"""
@@ -146,6 +162,7 @@ class TextRequest(BaseModel):
 @app.get("/recommend", summary="Get top N resumes for a job")
 def recommend(job_id: str = Query(...), top_n: Optional[int] = 5):
     try:
+        recommend_resumes = _get_recommend_resumes_fn()
         results = recommend_resumes(job_id, top_n)
         return {"job_id": job_id, "recommendations": results}
     except Exception as e:
@@ -158,6 +175,7 @@ def recommend(job_id: str = Query(...), top_n: Optional[int] = 5):
 def chat(req: ChatRequest):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
+    chat_with_ollama = _get_chat_with_ollama_fn()
     reply = chat_with_ollama(req.message)
     return {"reply": reply}
 
