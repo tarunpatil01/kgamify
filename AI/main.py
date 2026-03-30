@@ -7,6 +7,7 @@ from typing import Optional, Dict
 from pydantic import BaseModel
 import re
 import os
+import threading
 
 from recommendation import recommend_resumes
 from chatbot import chat_with_ollama
@@ -63,11 +64,20 @@ def load_ml_models():
         print(f"⚠️ ML models not available: {e}")
         print("Using rule-based fallback")
 
-# Try loading models at startup (non-blocking)
-try:
-    load_ml_models()
-except:
-    pass
+def start_model_loader_in_background():
+    """Load heavy ML models in a daemon thread so HTTP port can bind quickly."""
+    def _loader():
+        try:
+            load_ml_models()
+        except Exception as e:
+            print(f"⚠️ Background model loader failed: {e}")
+
+    threading.Thread(target=_loader, daemon=True).start()
+
+@app.on_event("startup")
+def on_startup():
+    print("FastAPI startup complete. Starting background model loader...")
+    start_model_loader_in_background()
 
 # ==================== Tech Term Corrections ====================
 TECH_CORRECTIONS = {

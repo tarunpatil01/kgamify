@@ -15,10 +15,10 @@ import { useState, useEffect, Suspense, lazy } from "react";
 import { getCompanyInfo } from "./api";
 import { PageLoadingFallback } from "./utils/lazyLoading";
 import FloatingChatbot from "./components/FloatingChatbot";
+import HomeInfo from "./pages/HomeInfo";
 
 // Lazy load all pages for better performance
 const Login = lazy(() => import("./pages/Login"));
-const HomeInfo = lazy(() => import("./pages/HomeInfo"));
 const Register = lazy(() => import("./pages/Register"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PostJob = lazy(() => import("./pages/PostJob"));
@@ -387,7 +387,7 @@ function AppContent() {
             </div>
           </div>
           {/* Footer should shift with content when sidebar opens */}
-          {!isAdminPage && (
+          {!isAdminPage && location.pathname !== '/' && (
             <div
               className={`transform transition-transform duration-300 ${
                 isMobileView && isSidebarOpen ? 'translate-x-64' : 'translate-x-0'
