@@ -1,6 +1,6 @@
 import axios from "axios";
-import { API_URL } from "../config/env";
+import { config } from "../config/env";
 
 export const sendMessage = (message) => {
-  return axios.post(`${API_URL}/ai/chat`, { message });
+  return axios.post(`${config.API_URL}/ai/chat`, { message });
 };
