@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft, FaRedo, FaBrain, FaChartBar, FaFileAlt, FaUserCheck, FaExclamationTriangle } from 'react-icons/fa';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
@@ -9,6 +9,7 @@ import ResumeViewer from '../components/ResumeViewer';
 
 const JobRecommendationInsights = ({ isDarkMode }) => {
   const { jobId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [data, setData] = useState(null);
@@ -18,6 +19,7 @@ const JobRecommendationInsights = ({ isDarkMode }) => {
   const [topN, setTopN] = useState(10);
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
   const [processingIds, setProcessingIds] = useState(new Set());
+  const [selectedApplicant, setSelectedApplicant] = useState(null);
 
   const loadData = async ({ silent = false } = {}) => {
     try {
@@ -44,6 +46,21 @@ const JobRecommendationInsights = ({ isDarkMode }) => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, topN]);
+
+  useEffect(() => {
+    if (!data || !location.search) return;
+    const applicantId = new URLSearchParams(location.search).get('applicant');
+    if (!applicantId) return;
+
+    const match = (data.recommendations || []).find((candidate) => {
+      const candidateId = candidate.application_id || candidate._id;
+      return String(candidateId) === String(applicantId);
+    });
+
+    if (match) {
+      setSelectedApplicant(match);
+    }
+  }, [data, location.search]);
 
   const handleAction = async (applicationId, action) => {
     try {
@@ -309,6 +326,13 @@ const JobRecommendationInsights = ({ isDarkMode }) => {
                       {candidate.resume_url ? (
                         <ResumeViewer resumeUrl={candidate.resume_url} applicantName={candidate.applicantName} variant="inline" />
                       ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedApplicant(candidate)}
+                        className={`px-4 py-2 rounded-lg font-semibold border ${isDarkMode ? 'border-gray-600 bg-gray-800 text-white hover:bg-gray-700' : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-50'}`}
+                      >
+                        View Applicant
+                      </button>
                       {candidate.application_id ? (
                         <>
                           <button
@@ -336,6 +360,122 @@ const JobRecommendationInsights = ({ isDarkMode }) => {
                   </article>
                 );
               })}
+
+              {selectedApplicant ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
+                  <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border shadow-2xl ${isDarkMode ? 'bg-gray-900 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
+                    <div className="flex items-start justify-between gap-4 p-6 border-b border-gray-200/30">
+                      <div>
+                        <div className="text-xs uppercase tracking-widest opacity-60">Applicant profile</div>
+                        <h2 className="text-2xl font-bold mt-1">{selectedApplicant.applicantName || selectedApplicant.name || 'Unknown'}</h2>
+                        <div className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{selectedApplicant.applicantEmail || selectedApplicant.email || 'No email'}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedApplicant(null)}
+                        className={`px-3 py-2 rounded-lg border ${isDarkMode ? 'border-gray-700 bg-gray-800 text-white' : 'border-gray-300 bg-white text-gray-800'}`}
+                      >
+                        Close
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-6">
+                      <div className="xl:col-span-2 space-y-5">
+                        <div className={`rounded-2xl p-4 border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <div className="font-semibold">Vector summary</div>
+                            <div className={`px-3 py-1 rounded-xl font-bold ${isDarkMode ? 'bg-orange-900/40 text-orange-300' : 'bg-orange-100 text-orange-700'}`}>
+                              {Number(selectedApplicant.score || 0).toFixed(1)}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div className={`rounded-xl p-3 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
+                              <div className="opacity-60 text-xs">Skill</div>
+                              <div className="font-semibold mt-1">{Number(selectedApplicant.vectorData?.signals?.skill_score ?? 0).toFixed(2)}</div>
+                            </div>
+                            <div className={`rounded-xl p-3 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
+                              <div className="opacity-60 text-xs">Experience</div>
+                              <div className="font-semibold mt-1">{Number(selectedApplicant.vectorData?.signals?.experience_score ?? 0).toFixed(2)}</div>
+                            </div>
+                            <div className={`rounded-xl p-3 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
+                              <div className="opacity-60 text-xs">Projects</div>
+                              <div className="font-semibold mt-1">{Number(selectedApplicant.vectorData?.signals?.project_score ?? 0).toFixed(2)}</div>
+                            </div>
+                            <div className={`rounded-xl p-3 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
+                              <div className="opacity-60 text-xs">Academic</div>
+                              <div className="font-semibold mt-1">{Number(selectedApplicant.vectorData?.signals?.academic_score ?? selectedApplicant.academic_score ?? 0).toFixed(2)}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={`rounded-2xl p-4 border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                          <div className="font-semibold mb-3">Matched skills</div>
+                          <div className="flex flex-wrap gap-2">
+                            {(selectedApplicant.matched_skills || selectedApplicant.matchedSkills || []).map((skill) => (
+                              <span key={skill} className={`px-2 py-1 rounded-full text-xs ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-orange-50 text-orange-700'}`}>{skill}</span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className={`rounded-2xl p-4 border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                          <div className="font-semibold mb-3">Profile summary</div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <div className="opacity-60 text-xs mb-1">Experience</div>
+                              <div>{selectedApplicant.experience || 'Not detected'}</div>
+                            </div>
+                            <div>
+                              <div className="opacity-60 text-xs mb-1">Projects</div>
+                              <div>{selectedApplicant.projects || 'Not detected'}</div>
+                            </div>
+                            <div>
+                              <div className="opacity-60 text-xs mb-1">Education</div>
+                              <div>{selectedApplicant.education || 'Not detected'}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className={`rounded-2xl p-4 border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="font-semibold mb-3">Resume</div>
+                          {selectedApplicant.resume_url ? (
+                            <ResumeViewer resumeUrl={selectedApplicant.resume_url} applicantName={selectedApplicant.applicantName} variant="inline" />
+                          ) : (
+                            <div className="text-sm opacity-70">No resume provided</div>
+                          )}
+                        </div>
+
+                        <div className={`rounded-2xl p-4 border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                          <div className="font-semibold mb-3">Actions</div>
+                          <div className="flex flex-col gap-3">
+                            {selectedApplicant.application_id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={processingIds.has(selectedApplicant.application_id)}
+                                  onClick={() => handleAction(selectedApplicant.application_id, 'shortlist')}
+                                  className={`px-4 py-2 rounded-lg font-semibold text-white ${processingIds.has(selectedApplicant.application_id) ? 'opacity-60 cursor-not-allowed' : 'bg-green-600 hover:bg-green-500'}`}
+                                >
+                                  Shortlist
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={processingIds.has(selectedApplicant.application_id)}
+                                  onClick={() => handleAction(selectedApplicant.application_id, 'reject')}
+                                  className={`px-4 py-2 rounded-lg font-semibold text-white ${processingIds.has(selectedApplicant.application_id) ? 'opacity-60 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500'}`}
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
         </section>

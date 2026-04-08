@@ -676,7 +676,14 @@ const Job = ({ isDarkMode }) => {
                                 )}
                               </td>
                               <td className="py-2 px-3 text-right whitespace-nowrap">
-                                <div className="inline-flex items-center gap-2">
+                                <div className="inline-flex items-center gap-2 flex-wrap justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate(`/job/${jobId}/recommendations?applicant=${applicant._id}`)}
+                                    className="px-2 py-1 rounded text-xs font-medium transition-colors border border-[#ff8200] text-[#ff8200] bg-white hover:bg-orange-50"
+                                  >
+                                    View Applicant
+                                  </button>
                                   <button
                                     type="button"
                                     disabled={updatingIds.has(applicant._id) || applicant.status === 'shortlisted'}
@@ -762,7 +769,14 @@ const Job = ({ isDarkMode }) => {
                           </div>
 
                           {/* Actions */}
-                          <div className="mt-2 flex items-center gap-2">
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/job/${jobId}/recommendations?applicant=${applicant._id}`)}
+                              className="px-3 py-1 rounded text-xs font-medium transition-colors border border-[#ff8200] text-[#ff8200] bg-white hover:bg-orange-50"
+                            >
+                              View Applicant
+                            </button>
                             <button
                               type="button"
                               disabled={updatingIds.has(applicant._id) || applicant.status === 'shortlisted'}

@@ -16,6 +16,7 @@ import { getCompanyInfo } from "./api";
 import { PageLoadingFallback } from "./utils/lazyLoading";
 import FloatingChatbot from "./components/FloatingChatbot";
 import HomeInfo from "./pages/HomeInfo";
+const AdminLayout = lazy(() => import("./components/AdminLayout"));
 
 // Lazy load all pages for better performance
 const Login = lazy(() => import("./pages/Login"));
@@ -35,7 +36,6 @@ const AdminProfile = lazy(() => import("./pages/AdminProfile"));
 const EditJob = lazy(() => import("./pages/EditJob"));
 const Job = lazy(() => import("./JobApplications/Job.jsx"));
 const JobRecommendationInsights = lazy(() => import("./pages/JobRecommendationInsights"));
-import AdminLayout from "./components/AdminLayout";
 const JobApplication = lazy(() => import("./pages/JobApplication"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Applications = lazy(() => import("./pages/Applications"));
