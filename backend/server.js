@@ -102,6 +102,7 @@ app.use('/api/application', require('./routes/application'));
 app.use('/api/job', require('./routes/job'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/support', require('./routes/support'));
 
 // ✅ AI ROUTES (NEW)
 app.use('/api/ai', require('./routes/ai'));

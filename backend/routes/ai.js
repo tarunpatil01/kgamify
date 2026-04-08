@@ -82,13 +82,31 @@ function cleanGeminiJsonText(rawText) {
 
 async function getDetailedRecommendationPayload(jobId, topN) {
   const normalizedTopN = Math.max(1, Math.min(50, Number.parseInt(topN, 10) || 5));
+  const job = await Job.findById(jobId).lean();
+  if (!job) {
+    const notFoundError = new Error('Job not found');
+    notFoundError.statusCode = 404;
+    notFoundError.jobId = jobId;
+    throw notFoundError;
+  }
+
+  const jobContext = {
+    jobTitle: job.jobTitle || '',
+    jobDescription: job.jobDescription || '',
+    responsibilities: job.responsibilities || '',
+    eligibility: job.eligibility || '',
+    skills: job.skills || '',
+    experienceLevel: job.experienceLevel || '',
+    location: job.location || '',
+    tags: job.tags || ''
+  };
 
   try {
-    const response = await axios.get(`${AI_SERVICE_URL}/recommend-detailed`, {
-      params: {
-        job_id: jobId,
-        top_n: normalizedTopN
-      },
+    const response = await axios.post(`${AI_SERVICE_URL}/recommend-detailed`, {
+      job_id: jobId,
+      top_n: normalizedTopN,
+      job_context: jobContext
+    }, {
       timeout: 45000
     });
 
@@ -108,7 +126,7 @@ async function getDetailedRecommendationPayload(jobId, topN) {
 
     return {
       job_id: payload.job_id || jobId,
-      job: payload.job || null,
+      job: payload.job || jobContext,
       vectorData: payload.vectorData || {},
       recommendations: normalizedRecommendations.slice(0, normalizedTopN),
       count: normalizedRecommendations.slice(0, normalizedTopN).length,
@@ -120,11 +138,11 @@ async function getDetailedRecommendationPayload(jobId, topN) {
   }
 
   try {
-    const response = await axios.get(`${AI_SERVICE_URL}/recommend`, {
-      params: {
-        job_id: jobId,
-        top_n: normalizedTopN
-      },
+    const response = await axios.post(`${AI_SERVICE_URL}/recommend`, {
+      job_id: jobId,
+      top_n: normalizedTopN,
+      job_context: jobContext
+    }, {
       timeout: 30000
     });
 
@@ -146,7 +164,7 @@ async function getDetailedRecommendationPayload(jobId, topN) {
 
     return {
       job_id: jobId,
-      job: null,
+      job: jobContext,
       vectorData: {},
       recommendations: normalized,
       count: normalized.length,
@@ -155,14 +173,6 @@ async function getDetailedRecommendationPayload(jobId, topN) {
     };
   } catch (error) {
     console.error('❌ Basic AI recommendation fetch failed:', error.message);
-  }
-
-  const job = await Job.findById(jobId).lean();
-  if (!job) {
-    const notFoundError = new Error('Job not found');
-    notFoundError.statusCode = 404;
-    notFoundError.jobId = jobId;
-    throw notFoundError;
   }
 
   const applications = await Application.find({ jobId }).lean();
@@ -186,7 +196,7 @@ async function getDetailedRecommendationPayload(jobId, topN) {
         vectorData: {
           featureVector: [
             scoring.score / 100,
-            scoring.matchedSkills.length,
+            scoring.matchedSkills,
             scoring.totalJobSkills,
             app.resume ? 1 : 0,
           ],

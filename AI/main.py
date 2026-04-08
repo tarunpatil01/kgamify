@@ -3,7 +3,7 @@ print("Starting AI service...")
 print("PORT from env:", os.getenv("PORT"))
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from pydantic import BaseModel
 import re
 import os
@@ -165,6 +165,12 @@ class ChatRequest(BaseModel):
 class TextRequest(BaseModel):
     text: str
 
+
+class RecommendationRequest(BaseModel):
+    job_id: str
+    top_n: Optional[int] = 5
+    job_context: Optional[Dict[str, Any]] = None
+
 # -------------------------------
 # Resume Recommendation API
 # -------------------------------
@@ -178,11 +184,30 @@ def recommend(job_id: str = Query(...), top_n: Optional[int] = 5):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/recommend", summary="Get top N resumes for a job with explicit JD context")
+def recommend_post(req: RecommendationRequest):
+    try:
+        recommend_resumes = _get_recommend_resumes_fn()
+        results = recommend_resumes(req.job_id, req.top_n, job_context=req.job_context)
+        return {"job_id": req.job_id, "recommendations": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/recommend-detailed", summary="Get detailed vector-based recommendations and summary data")
 def recommend_detailed(job_id: str = Query(...), top_n: Optional[int] = 5):
     try:
         recommend_resumes_detailed = _get_recommend_resumes_detailed_fn()
         return recommend_resumes_detailed(job_id, top_n)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/recommend-detailed", summary="Get detailed recommendations with explicit JD context")
+def recommend_detailed_post(req: RecommendationRequest):
+    try:
+        recommend_resumes_detailed = _get_recommend_resumes_detailed_fn()
+        return recommend_resumes_detailed(req.job_id, req.top_n, job_context=req.job_context)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -1,7 +1,5 @@
 import pymongo
-import math
 import re
-from sentence_transformers import SentenceTransformer
 from bson import ObjectId
 from utils import (
     extract_text_from_pdf,
@@ -24,6 +22,23 @@ APPLICATIONS_COLLECTION = "applications"
 
 _mongo_client = None
 _model = None
+USE_EMBEDDINGS = os.getenv("RECOMMENDER_USE_EMBEDDINGS", "false").lower() == "true"
+
+COMMON_STOPWORDS = {
+    "the", "and", "for", "with", "that", "this", "will", "from", "into", "your",
+    "you", "our", "their", "have", "has", "are", "job", "role", "years", "year",
+    "experience", "required", "requirements", "responsibilities", "ability", "strong",
+    "good", "knowledge", "work", "team", "candidate", "must", "one", "more", "such",
+    "as", "or", "to", "of", "in", "on", "at", "by", "is", "be", "an", "a"
+}
+
+KNOWN_SKILLS = {
+    "python", "java", "javascript", "typescript", "node", "nodejs", "react", "angular",
+    "vue", "django", "flask", "fastapi", "spring", "springboot", "express", "mongodb",
+    "mysql", "postgresql", "sql", "nosql", "redis", "docker", "kubernetes", "aws", "gcp",
+    "azure", "git", "linux", "rest", "graphql", "microservices", "c", "c++", "c#", "go",
+    "rust", "php", "html", "css", "tailwind", "bootstrap", "pandas", "numpy", "ml", "ai"
+}
 
 
 def _get_client():
@@ -35,7 +50,10 @@ def _get_client():
 
 def _get_model():
     global _model
+    if not USE_EMBEDDINGS:
+        return None
     if _model is None:
+        from sentence_transformers import SentenceTransformer
         _model = SentenceTransformer('all-MiniLM-L6-v2')
     return _model
 
@@ -72,10 +90,30 @@ def _extract_job_skills(job):
     normalized = []
     for value in skills + text_tokens:
         token = _normalize_text(value)
-        if token and token not in normalized:
+        if not token:
+            continue
+        if token in COMMON_STOPWORDS:
+            continue
+        if token.isdigit():
+            continue
+        if token not in KNOWN_SKILLS and len(token) < 3:
+            continue
+        if token not in normalized:
             normalized.append(token)
 
     return normalized
+
+
+def _merge_job_context(job, job_context):
+    if not isinstance(job_context, dict):
+        return job
+
+    merged = dict(job or {})
+    for key in ["jobTitle", "jobDescription", "responsibilities", "eligibility", "skills", "experienceLevel", "location", "tags"]:
+        value = job_context.get(key)
+        if value is not None:
+            merged[key] = value
+    return merged
 
 
 def _extract_section_snippet(text, keywords, window=220):
@@ -216,19 +254,21 @@ def _score_candidate(job, app, job_skills, model, resume_text):
     }
 
 
-def recommend_resumes(job_id, top_n=5):
-    detailed = recommend_resumes_detailed(job_id, top_n)
+def recommend_resumes(job_id, top_n=5, job_context=None):
+    detailed = recommend_resumes_detailed(job_id, top_n, job_context=job_context)
     return detailed.get("recommendations", [])
 
 
-def recommend_resumes_detailed(job_id, top_n=5):
+def recommend_resumes_detailed(job_id, top_n=5, job_context=None):
     client = _get_client()
     db = client[DB_NAME]
 
     job_oid = ObjectId(job_id) if ObjectId.is_valid(job_id) else None
     job = db[JOBS_COLLECTION].find_one({"_id": job_oid}) if job_oid else None
-    if not job:
+    if not job and not job_context:
         return {"job_id": job_id, "job": None, "recommendations": [], "vectorData": {}}
+
+    job = _merge_job_context(job or {}, job_context)
 
     applications_query = {"jobId": job_oid} if job_oid else {"jobId": job_id}
     applications = list(db[APPLICATIONS_COLLECTION].find(applications_query))
@@ -287,6 +327,7 @@ def recommend_resumes_detailed(job_id, top_n=5):
             "jobSkills": job_skills,
             "jobTitle": job.get("jobTitle", ""),
             "experienceLevel": job.get("experienceLevel", ""),
-            "candidateCount": len(recommendations)
+            "candidateCount": len(recommendations),
+            "modelMode": "embedding" if USE_EMBEDDINGS else "lightweight-lexical"
         }
     }

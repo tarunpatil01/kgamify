@@ -172,6 +172,8 @@ router.post('/application-status', async (req, res) => {
     const emailData = {
       jobTitle: job.title,
       companyName: job.company.name,
+      applicantName: application.applicantName || '',
+      applicantPhone: application.applicantPhone || '',
       status,
       message
     };

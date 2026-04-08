@@ -687,3 +687,80 @@ export async function repeatSubscription(email) {
   if (!res.ok) throw new Error(j.error || 'Renewal failed');
   return j; // { message, plan, invoiceId, startAt, endAt }
 }
+
+// ---------------- Support tickets & chatbot history ----------------
+export async function fetchChatHistory(email) {
+  if (!email) return { messages: [] };
+  const res = await fetch(`${API_URL}/support/chat-history?email=${encodeURIComponent(email)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load chat history');
+  return data;
+}
+
+export async function saveChatMessage({ email, companyName, role, text }) {
+  const res = await fetch(`${API_URL}/support/chat-history/message`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, companyName, role, text })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to save chat message');
+  return data;
+}
+
+export async function raiseSupportTicket({ email, companyName, issueSummary, transcript }) {
+  const res = await fetch(`${API_URL}/support/tickets/raise`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, companyName, issueSummary, transcript })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to raise support ticket');
+  return data;
+}
+
+export async function fetchCompanyTickets(email) {
+  if (!email) return { tickets: [] };
+  const res = await fetch(`${API_URL}/support/tickets?email=${encodeURIComponent(email)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch support tickets');
+  return data;
+}
+
+export async function fetchAdminTickets({ status = '', q = '' } = {}) {
+  const token = localStorage.getItem('adminToken');
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (q) params.set('q', q);
+  const res = await fetch(`${API_URL}/support/admin/tickets${params.toString() ? `?${params.toString()}` : ''}`, {
+    headers: token ? { 'x-auth-token': token } : undefined
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch admin tickets');
+  return data;
+}
+
+export async function updateAdminTicket(ticketId, payload) {
+  const token = localStorage.getItem('adminToken');
+  const res = await fetch(`${API_URL}/support/admin/tickets/${ticketId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'x-auth-token': token } : {})
+    },
+    body: JSON.stringify(payload || {})
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update ticket');
+  return data;
+}
+
+export async function fetchAdminPlanPurchases() {
+  const token = localStorage.getItem('adminToken');
+  const res = await fetch(`${API_URL}/admin/subscriptions/history`, {
+    headers: token ? { 'x-auth-token': token } : undefined
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch plan purchases');
+  return data;
+}

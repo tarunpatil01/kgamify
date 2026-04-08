@@ -109,6 +109,11 @@ router.post('/', upload.single('resume'), async (req, res) => {
       applicationData.applicantEmail = req.body.email;
     }
 
+    // Persist applicant phone when provided so WhatsApp notifications can be sent.
+    if (req.body.phone && !applicationData.applicantPhone) {
+      applicationData.applicantPhone = req.body.phone;
+    }
+
     const newApplication = new Application(applicationData);
     await newApplication.save();
 
@@ -144,6 +149,7 @@ router.get('/company', checkCompanySubscriptionActive, async (req, res) => {
       jobId: a.jobId?._id || a.jobId,
       jobTitle: a.jobId?.jobTitle || 'Unknown Job',
       applicantName: a.applicantName,
+      applicantPhone: a.applicantPhone || null,
       companyEmail: a.companyEmail,
       companyName: a.CompanyName,
       appliedAt: a.createdAt,
@@ -206,6 +212,7 @@ router.get('/job/:jobId', checkCompany, checkCompanySubscriptionActive, async (r
         _id: app._id,
         jobId: app.jobId,
         applicantName: app.applicantName,
+        applicantPhone: app.applicantPhone || '',
         companyName: app.CompanyName || app.companyName || 'Unknown',
         companyEmail: app.companyEmail || app.CompanyEmail || job.companyEmail || '',
         resume: app.resume,
@@ -224,6 +231,7 @@ router.get('/job/:jobId', checkCompany, checkCompanySubscriptionActive, async (r
       _id: app._id,
       jobId: app.jobId,
       applicantName: app.applicantName,
+      applicantPhone: app.applicantPhone || '',
       companyName: app.CompanyName || app.companyName || 'Unknown',
       companyEmail: app.companyEmail || app.CompanyEmail || job.companyEmail || '',
       resume: app.resume,
@@ -289,6 +297,8 @@ router.post('/:id/shortlist', async (req, res) => {
       if (app.applicantEmail) {
         await sendEmail(app.applicantEmail, 'applicationStatusUpdate', {
           jobTitle: app.jobTitle || 'Your Application',
+          applicantName: app.applicantName || '',
+          applicantPhone: app.applicantPhone || '',
           companyName: app.CompanyName || 'Company',
           status: 'shortlisted',
           message: 'Congratulations! You have been shortlisted. We will contact you soon with next steps.'
@@ -318,6 +328,8 @@ router.post('/:id/reject', async (req, res) => {
       if (app.applicantEmail) {
         await sendEmail(app.applicantEmail, 'applicationStatusUpdate', {
           jobTitle: app.jobTitle || 'Your Application',
+          applicantName: app.applicantName || '',
+          applicantPhone: app.applicantPhone || '',
           companyName: app.CompanyName || 'Company',
           status: 'rejected',
           message: 'Thank you for applying. We appreciate your interest, but we will not be moving forward at this time.'

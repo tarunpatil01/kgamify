@@ -97,6 +97,51 @@ router.get('/companies', adminAuth, async (req, res) => {
   }
 });
 
+// List subscription purchase history across all companies for admin panel
+router.get('/subscriptions/history', adminAuth, async (req, res) => {
+  try {
+    const companies = await Company.find(
+      {},
+      {
+        companyName: 1,
+        email: 1,
+        subscriptionPlan: 1,
+        subscriptionStartedAt: 1,
+        subscriptionEndsAt: 1,
+        subscriptionHistory: 1
+      }
+    ).lean();
+
+    const purchases = [];
+    companies.forEach((company) => {
+      const history = Array.isArray(company.subscriptionHistory) ? company.subscriptionHistory : [];
+      history.forEach((entry) => {
+        purchases.push({
+          companyId: company._id,
+          companyName: company.companyName,
+          companyEmail: company.email,
+          plan: entry.plan,
+          status: entry.status,
+          startAt: entry.startAt,
+          endAt: entry.endAt,
+          invoiceId: entry.invoiceId || '',
+          paymentId: entry.paymentId || '',
+          orderId: entry.orderId || '',
+          paymentProvider: entry.paymentProvider || '',
+          amount: entry.amount,
+          currency: entry.currency || 'INR',
+          createdAt: entry.createdAt || entry.startAt || null
+        });
+      });
+    });
+
+    purchases.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    return res.json({ count: purchases.length, purchases });
+  } catch {
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Admin login route with database-stored credentials
 router.post('/login', loginLimiter, async (req, res) => {
   try {

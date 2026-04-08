@@ -1,40 +1,158 @@
 import { useEffect, useRef, useState } from "react";
 import { sendMessage } from "../services/chatbotApi";
 import { FaRobot, FaUser, FaTimes } from "react-icons/fa";
+import { fetchChatHistory, raiseSupportTicket, saveChatMessage } from "../api";
+
+const UNRESOLVED_PATTERNS = [
+  'i could not',
+  'unable to',
+  'not sure',
+  'cannot help',
+  'try again later',
+  'service unavailable',
+  'error connecting'
+];
+
+function getCompanyContext() {
+  let company = null;
+  try {
+    company = JSON.parse(localStorage.getItem('companyData') || 'null');
+  } catch {
+    company = null;
+  }
+  const email =
+    company?.email ||
+    localStorage.getItem('rememberedEmail') ||
+    sessionStorage.getItem('sessionEmail') ||
+    '';
+  const companyName = company?.companyName || '';
+  return { email, companyName };
+}
 
 export default function FloatingChatbot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [offerEscalation, setOfferEscalation] = useState(false);
+  const [raisingTicket, setRaisingTicket] = useState(false);
   const messagesEndRef = useRef(null);
+  const { email, companyName } = getCompanyContext();
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  useEffect(() => {
+    let active = true;
+    if (!email) return () => {};
+
+    fetchChatHistory(email)
+      .then((data) => {
+        if (!active) return;
+        const history = Array.isArray(data?.messages) ? data.messages : [];
+        if (history.length) {
+          setMessages(history.map((m) => ({ role: m.role, text: m.text })));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [email]);
+
+  const persistMessage = async (role, messageText) => {
+    if (!email || !messageText) return;
+    try {
+      await saveChatMessage({
+        email,
+        companyName,
+        role,
+        text: messageText
+      });
+    } catch {
+      // best effort persistence
+    }
+  };
+
+  const maybeOfferEscalation = (aiReply) => {
+    const userTurns = messages.filter((m) => m.role === 'user').length + 1;
+    if (userTurns < 3) {
+      setOfferEscalation(false);
+      return;
+    }
+
+    const lower = String(aiReply || '').toLowerCase();
+    const unresolved = UNRESOLVED_PATTERNS.some((pattern) => lower.includes(pattern));
+    setOfferEscalation(unresolved);
+  };
+
   const send = async () => {
     if (!text.trim()) return;
 
-    const userMsg = { role: "user", text };
+    const userMsg = { role: "user", text: text.trim() };
     setMessages((prev) => [...prev, userMsg]);
     setText("");
     setLoading(true);
+    setOfferEscalation(false);
+
+    persistMessage('user', userMsg.text);
 
     try {
       const res = await sendMessage(userMsg.text);
+      const replyText = res?.data?.reply || 'I could not generate a response right now.';
       setMessages((prev) => [
         ...prev,
-        { role: "ai", text: res.data.reply },
+        { role: "ai", text: replyText },
       ]);
+      persistMessage('ai', replyText);
+      maybeOfferEscalation(replyText);
     } catch {
+      const errorReply = 'Error connecting to AI. If this continues, you can raise a support ticket.';
       setMessages((prev) => [
         ...prev,
-        { role: "ai", text: "❌ Error connecting to AI." },
+        { role: "ai", text: errorReply },
       ]);
+      persistMessage('ai', errorReply);
+      maybeOfferEscalation(errorReply);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const raiseTicketFromChat = async () => {
+    if (!email) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'system',
+          text: 'Please login as a company to raise a support ticket from chatbot.'
+        }
+      ]);
+      return;
+    }
+
+    const lastUserQuestion = [...messages].reverse().find((m) => m.role === 'user')?.text || 'Chatbot support needed';
+    setRaisingTicket(true);
+    try {
+      const ticketRes = await raiseSupportTicket({
+        email,
+        companyName,
+        issueSummary: lastUserQuestion,
+        transcript: messages.slice(-50)
+      });
+      const systemText = `Support ticket ${ticketRes?.ticket?.ticketNumber || ''} has been raised. We have notified admin@kgamify.com and you will get a reply within 24 hours.`.trim();
+      setMessages((prev) => [...prev, { role: 'system', text: systemText }]);
+      persistMessage('system', systemText);
+      setOfferEscalation(false);
+    } catch {
+      const failText = 'Ticket creation failed right now. Please try again in a moment.';
+      setMessages((prev) => [...prev, { role: 'system', text: failText }]);
+      persistMessage('system', failText);
+    } finally {
+      setRaisingTicket(false);
     }
   };
 
@@ -87,7 +205,9 @@ export default function FloatingChatbot() {
                   ${
                     m.role === "user"
                       ? "bg-orange-500 text-white"
-                      : "bg-gray-100 text-gray-800"
+                      : m.role === 'system'
+                        ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                        : "bg-gray-100 text-gray-800"
                   }`}
                 >
                   {m.text}
@@ -102,6 +222,27 @@ export default function FloatingChatbot() {
             {loading && (
               <div className="text-xs text-orange-500 animate-pulse">
                 Generating response...
+              </div>
+            )}
+
+            {offerEscalation && !loading && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">
+                <p className="font-medium mb-2">Need further help with this issue?</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={raiseTicketFromChat}
+                    disabled={raisingTicket}
+                    className="px-3 py-1.5 rounded bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold disabled:opacity-60"
+                  >
+                    {raisingTicket ? 'Raising Ticket...' : 'Yes, Raise Ticket'}
+                  </button>
+                  <button
+                    onClick={() => setOfferEscalation(false)}
+                    className="px-3 py-1.5 rounded border border-gray-300 text-gray-700 text-xs font-semibold hover:bg-gray-100"
+                  >
+                    No, Continue Chat
+                  </button>
+                </div>
               </div>
             )}
 

@@ -7,6 +7,7 @@ const applicationSchema = new mongoose.Schema({
   companyEmail: { type: String, required: true }, // Add explicit company email field
   applicantName: { type: String, required: true },
   applicantEmail: { type: String },
+  applicantPhone: { type: String },
   appName: { type: String }, // Store the name of the app/platform used for application
   resume: { 
     type: String, // Cloudinary URL for the resume

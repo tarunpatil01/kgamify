@@ -474,6 +474,148 @@ const formatDateDDMMYYYY = (value) => {
   return date.toLocaleDateString('en-GB');
 };
 
+const stripHtml = (html = '') => String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+const normalizePhoneForWhatsApp = (phone) => {
+  if (!phone) return null;
+  const normalized = String(phone).replace(/[^\d+]/g, '');
+  const digitsOnly = normalized.replace(/^\+/, '');
+  if (!digitsOnly || digitsOnly.length < 10) return null;
+  return digitsOnly;
+};
+
+const parsePhoneEnvList = (rawValue = '') => String(rawValue)
+  .split(',')
+  .map((entry) => normalizePhoneForWhatsApp(entry))
+  .filter(Boolean);
+
+const buildWhatsAppMessage = (template, emailContent, data = {}) => {
+  const title = emailContent?.subject || 'kGamify Notification';
+  const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+
+  const templateBuilders = {
+    applicationStatusUpdate: () => {
+      const status = data.status ? String(data.status).toUpperCase() : 'UPDATED';
+      const lines = [
+        `kGamify: Application ${status}`,
+        `Job: ${data.jobTitle || 'Your Application'}`,
+        `Company: ${data.companyName || 'Company'}`
+      ];
+      if (data.message) {
+        lines.push(`Message: ${String(data.message).trim()}`);
+      }
+      if (data.viewUrl) {
+        lines.push(`View: ${data.viewUrl}`);
+      }
+      return lines.join('\n');
+    },
+    jobApplication: () => [
+      'kGamify: New job application received',
+      `Job: ${data.jobTitle || 'N/A'}`,
+      `Applicant: ${data.applicantName || 'N/A'}`,
+      `Email: ${data.applicantEmail || 'N/A'}`
+    ].join('\n'),
+    jobPosted: () => [
+      'kGamify: Job posted successfully',
+      `Job: ${data.jobTitle || 'N/A'}`,
+      `Company: ${data.companyName || 'N/A'}`,
+      `Dashboard: ${frontendBase}/dashboard`
+    ].join('\n'),
+    passwordReset: () => [
+      'kGamify: Password reset request',
+      `Reset link: ${data.resetLink || `${frontendBase}/reset-password`}`,
+      'If this was not requested by you, ignore this message.'
+    ].join('\n'),
+    otp: () => {
+      const context = (data.context || 'verify').toLowerCase();
+      const action = context === 'verify' ? 'email verification' : 'password reset';
+      return [
+        `kGamify OTP for ${action}`,
+        `Code: ${data.code || 'N/A'}`,
+        `Valid for: ${data.expiresInMinutes || 10} minutes`
+      ].join('\n');
+    },
+    custom: () => {
+      const plain = stripHtml(data.html || emailContent?.html || '');
+      return plain ? `${title}\n${plain}` : title;
+    }
+  };
+
+  const message = templateBuilders[template]?.();
+  if (message) return message;
+
+  const fallbackBody = stripHtml(emailContent?.html || '');
+  return fallbackBody ? `${title}\n${fallbackBody}` : title;
+};
+
+const resolveWhatsAppRecipients = (data = {}) => {
+  const explicitList = Array.isArray(data.whatsappTo) ? data.whatsappTo : [data.whatsappTo];
+  const candidates = [
+    ...explicitList,
+    data.applicantPhone,
+    data.phone,
+    data.companyPhone
+  ];
+
+  const normalized = candidates
+    .map((candidate) => normalizePhoneForWhatsApp(candidate))
+    .filter(Boolean);
+
+  return [...new Set(normalized)];
+};
+
+const sendWhatsAppMessage = async (phone, message) => {
+  const provider = (process.env.WHATSAPP_PROVIDER || 'callmebot').toLowerCase();
+
+  if (provider === 'callmebot') {
+    const apiKey = process.env.CALLMEBOT_API_KEY;
+    if (!apiKey) {
+      throw new Error('CALLMEBOT_API_KEY is required for WhatsApp notifications.');
+    }
+
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${encodeURIComponent(apiKey)}`;
+    await axios.get(url, { timeout: 10000 });
+    return { success: true, provider: 'callmebot', phone };
+  }
+
+  throw new Error(`Unsupported WHATSAPP_PROVIDER: ${provider}`);
+};
+
+const sendWhatsAppNotification = async (template, data, emailContent) => {
+  if (String(process.env.WHATSAPP_ENABLED || 'false').toLowerCase() !== 'true') {
+    return { success: false, skipped: true, reason: 'disabled' };
+  }
+
+  const recipients = resolveWhatsAppRecipients(data);
+  const fallbackRecipients = parsePhoneEnvList(process.env.WHATSAPP_DEFAULT_TO || '');
+  const finalRecipients = recipients.length ? recipients : fallbackRecipients;
+
+  if (!finalRecipients.length) {
+    return { success: false, skipped: true, reason: 'no-recipient' };
+  }
+
+  const message = buildWhatsAppMessage(template, emailContent, data);
+  const results = [];
+
+  for (const phone of finalRecipients) {
+    try {
+      const sent = await sendWhatsAppMessage(phone, message);
+      results.push({ phone, ...sent });
+    } catch (error) {
+      results.push({ phone, success: false, error: error.message });
+    }
+  }
+
+  const successCount = results.filter((entry) => entry.success).length;
+  return {
+    success: successCount > 0,
+    attempted: finalRecipients.length,
+    sent: successCount,
+    failed: finalRecipients.length - successCount,
+    results
+  };
+};
+
 // Main email sending function using SendGrid
 const sendEmail = async (to, template, data) => {
   try {
@@ -624,8 +766,22 @@ const sendEmail = async (to, template, data) => {
 
     const result = await sg.send(msg);
     const messageId = result?.[0]?.headers?.['x-message-id'] || result?.[0]?.headers?.['x-message-id'.toLowerCase()] || 'unknown';
+    let whatsapp = null;
+    try {
+      whatsapp = await sendWhatsAppNotification(template, data, emailContent);
+      if (!whatsapp?.skipped) {
+        console.log('[emailService] WhatsApp dispatch result:', {
+          success: whatsapp.success,
+          attempted: whatsapp.attempted,
+          sent: whatsapp.sent,
+          failed: whatsapp.failed
+        });
+      }
+    } catch (whatsappError) {
+      console.error('[emailService] WhatsApp dispatch failed:', whatsappError.message);
+    }
     console.log('[emailService] Email sent successfully via SendGrid. MessageId:', messageId, 'timestamp:', new Date().toISOString());
-    return { success: true, messageId, provider: 'sendgrid' };
+    return { success: true, messageId, provider: 'sendgrid', whatsapp };
     
   } catch (error) {
     // Extract detailed error info for debugging
@@ -783,6 +939,7 @@ module.exports = {
   sendEmail,
   sendBulkEmails,
   sendVerificationEmail,
+  sendWhatsAppNotification,
   emailTemplates,
   testSmtpConnection,
   sendSubscriptionReminderEmail,
