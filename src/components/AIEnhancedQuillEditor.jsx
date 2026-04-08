@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import QuillEditor from './QuillEditor';
 import PropTypes from 'prop-types';
+import { config } from '../config/env';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = (config.API_URL || 'http://localhost:5000/api').replace(/\/$/, '');
 
 // ─── Formatting Helpers ───────────────────────────────────────────────────────
 
@@ -245,7 +246,7 @@ export default function AIEnhancedQuillEditor({
     const timer = setTimeout(async () => {
       try {
         const plainText = value.replace(/<[^>]*>/g, '');
-        const apiResp = await fetch(`${API_BASE}/api/ai/suggest`, {
+        const apiResp = await fetch(`${API_BASE}/ai/suggest`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: plainText }),
         });
@@ -263,7 +264,7 @@ export default function AIEnhancedQuillEditor({
   const handleGenerate = useCallback(async (userPrompt) => {
     setIsGenerating(true);
     try {
-      const generateResp = await fetch(`${API_BASE}/api/ai/generate-jd`, {
+      const generateResp = await fetch(`${API_BASE}/ai/generate-jd`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -315,7 +316,7 @@ export default function AIEnhancedQuillEditor({
     if (!value || isRephrasing) return;
     setIsRephrasing(true);
     try {
-      const rephraseResp = await fetch(`${API_BASE}/api/ai/rephrase`, {
+      const rephraseResp = await fetch(`${API_BASE}/ai/rephrase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: htmlToPlainText(value) }),
@@ -429,7 +430,7 @@ export function useAIRephrase() {
   const rephrase = useCallback(async (text) => {
     setLoading(true);
     try {
-      const rephraseResp = await fetch(`${API_BASE}/api/ai/rephrase`, {
+      const rephraseResp = await fetch(`${API_BASE}/ai/rephrase`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       });

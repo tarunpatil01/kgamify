@@ -3,12 +3,11 @@ import { config } from './config/env.js';
 import backoff from './utils/backoff.js';
 
 const API_URL = config.API_URL;
-const AI_API_URL = config.AI_API_URL;
 
 // Create a custom axios instance with default settings
 const apiClient = axios.create({
   baseURL: API_URL,
-  timeout: 30000, // 30 seconds timeout
+  timeout: 60000, // 60 seconds timeout (increased for mobile networks)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -56,25 +55,38 @@ export const loginCompany = async (loginData) => {
     
     return response.data;
   } catch (error) {
+    let errorMessage = 'An error occurred during login. Please try again.';
+    
+    // Handle timeout errors (common on mobile networks)
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      errorMessage = 'Request timed out. Check your internet connection and try again.';
+    }
     // Handle network errors
-    if (error.code === 'ERR_NETWORK') {
-      throw { error: 'Network error. Please check your connection and try again.' };
+    else if (error.code === 'ERR_NETWORK') {
+      errorMessage = 'Network error. Please check your connection and try again.';
+    }
+    // Handle CORS errors (mobile-specific issue)
+    else if (error.message?.includes('CORS') || error.response?.status === 0) {
+      errorMessage = 'Connection error. If testing on mobile, ensure you are using the correct server address. Please check your internet connection.';
+    }
+    // Handle specific HTTP status codes
+    else if (error.response?.status === 403) {
+      errorMessage = error.response.data?.error || 'Your email is not verified';
+    } else if (error.response?.status === 401) {
+      errorMessage = 'Invalid email or password';
+    } else if (error.response?.status === 404) {
+      errorMessage = 'Company not found. Please register first.';
+    } else if (error.response?.status === 400) {
+      errorMessage = error.response.data?.error || 'Invalid request';
+    } else if (error.response?.status >= 500) {
+      errorMessage = 'Server error. Please try again later.';
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.message) {
+      errorMessage = error.message;
     }
     
-    // Handle specific HTTP status codes
-    if (error.response?.status === 403) {
-      throw error.response.data || { error: 'Your email is not verified' };
-    } else if (error.response?.status === 401) {
-      throw { error: 'Invalid email or password' };
-    } else if (error.response?.status === 404) {
-      throw { error: 'Company not found. Please register first.' };
-    } else if (error.response?.status === 400) {
-      throw error.response.data || { error: 'Invalid request' };
-    } else if (error.response?.status >= 500) {
-      throw { error: 'Server error. Please try again later.' };
-    } else {
-      throw error.response?.data || { error: 'An error occurred during login' };
-    }
+    throw { error: errorMessage };
   }
 };
 
@@ -230,6 +242,15 @@ export const toggleJobActive = async (jobId, jobActive, email) => {
 export const adminListCompanyJobs = async (companyId) => {
   const token = localStorage.getItem('adminToken');
   const res = await axios.get(`${API_URL}/admin/company/${companyId}/jobs`, { headers: token ? { 'x-auth-token': token } : undefined });
+  return res.data;
+};
+
+export const adminListAllJobs = async (query = '') => {
+  const token = localStorage.getItem('adminToken');
+  const params = new URLSearchParams();
+  if (query) params.set('q', query);
+  const qs = params.toString();
+  const res = await axios.get(`${API_URL}/admin/jobs${qs ? `?${qs}` : ''}`, { headers: token ? { 'x-auth-token': token } : undefined });
   return res.data;
 };
 
@@ -469,9 +490,8 @@ export const rejectApplication = async (applicationId) => {
 
 // AI recommendations for a job
 export const getRecommendationsForJob = async (jobId, topN = 5) => {
-  const response = await axios.get(`${AI_API_URL}/recommend`, {
-    params: { job_id: jobId, top_n: topN },
-    withCredentials: false
+  const response = await axios.get(`${API_URL}/ai/recommendation-insights`, {
+    params: { job_id: jobId, top_n: topN }
   });
   const recs = response.data?.recommendations || [];
   // Normalize to always include .name for UI
@@ -479,6 +499,13 @@ export const getRecommendationsForJob = async (jobId, topN = 5) => {
     ...r,
     name: r.applicantName || r.name || 'N/A'
   }));
+};
+
+export const getRecommendationInsightsForJob = async (jobId, topN = 10) => {
+  const response = await axios.get(`${API_URL}/ai/recommendation-insights`, {
+    params: { job_id: jobId, top_n: topN }
+  });
+  return response.data;
 };
 
 export async function registerBasic(data) {
@@ -489,17 +516,23 @@ export async function registerBasic(data) {
 }
 
 export async function verifySignupOtp(email, code) {
-  const res = await fetch(`${API_URL}/auth/verify-signup-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) });
-  const j = await res.json();
-  if (!res.ok) throw new Error(j.error || 'Verification failed');
-  return j;
+  try {
+    const response = await apiClient.post('/auth/verify-signup-otp', { email, code });
+    return response.data;
+  } catch (error) {
+    const apiError = error.response?.data?.error || error.response?.data?.message;
+    throw new Error(apiError || 'OTP verification failed');
+  }
 }
 
 export async function resendSignupOtp(email) {
-  const res = await fetch(`${API_URL}/auth/resend-signup-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-  const j = await res.json();
-  if (!res.ok) throw new Error(j.error || 'Resend failed');
-  return j;
+  try {
+    const response = await apiClient.post('/auth/resend-signup-otp', { email });
+    return response.data;
+  } catch (error) {
+    const apiError = error.response?.data?.error || error.response?.data?.message;
+    throw new Error(apiError || 'Failed to resend OTP');
+  }
 }
 
 // Subscription & profile helpers (company routes mounted at /api/companies)
@@ -653,4 +686,81 @@ export async function repeatSubscription(email) {
   const j = await res.json();
   if (!res.ok) throw new Error(j.error || 'Renewal failed');
   return j; // { message, plan, invoiceId, startAt, endAt }
+}
+
+// ---------------- Support tickets & chatbot history ----------------
+export async function fetchChatHistory(email) {
+  if (!email) return { messages: [] };
+  const res = await fetch(`${API_URL}/support/chat-history?email=${encodeURIComponent(email)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load chat history');
+  return data;
+}
+
+export async function saveChatMessage({ email, companyName, role, text }) {
+  const res = await fetch(`${API_URL}/support/chat-history/message`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, companyName, role, text })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to save chat message');
+  return data;
+}
+
+export async function raiseSupportTicket({ email, companyName, issueSummary, transcript }) {
+  const res = await fetch(`${API_URL}/support/tickets/raise`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, companyName, issueSummary, transcript })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to raise support ticket');
+  return data;
+}
+
+export async function fetchCompanyTickets(email) {
+  if (!email) return { tickets: [] };
+  const res = await fetch(`${API_URL}/support/tickets?email=${encodeURIComponent(email)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch support tickets');
+  return data;
+}
+
+export async function fetchAdminTickets({ status = '', q = '' } = {}) {
+  const token = localStorage.getItem('adminToken');
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (q) params.set('q', q);
+  const res = await fetch(`${API_URL}/support/admin/tickets${params.toString() ? `?${params.toString()}` : ''}`, {
+    headers: token ? { 'x-auth-token': token } : undefined
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch admin tickets');
+  return data;
+}
+
+export async function updateAdminTicket(ticketId, payload) {
+  const token = localStorage.getItem('adminToken');
+  const res = await fetch(`${API_URL}/support/admin/tickets/${ticketId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'x-auth-token': token } : {})
+    },
+    body: JSON.stringify(payload || {})
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update ticket');
+  return data;
+}
+
+export async function fetchAdminPlanPurchases() {
+  const token = localStorage.getItem('adminToken');
+  const res = await fetch(`${API_URL}/admin/subscriptions/history`, {
+    headers: token ? { 'x-auth-token': token } : undefined
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch plan purchases');
+  return data;
 }

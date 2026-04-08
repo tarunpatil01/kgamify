@@ -70,15 +70,49 @@ export default function AdminApplicants({ isDarkMode }) {
             {slice.length === 0 ? (
               <div className={`p-6 rounded border text-sm ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>No applications found for this company.</div>
             ) : slice.map(a => (
-              <div key={a.id || a._id} className={`p-4 rounded border ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold">{a.applicantName || a.name || 'Applicant'}</div>
-                    <div className="text-xs opacity-70">Applied for: {a.jobTitle || '-'}</div>
+              <div key={a.id || a._id} className={`p-5 rounded border-2 ${isDarkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-white'}`}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Applicant Info */}
+                  <div className={`pb-4 md:pb-0 md:border-r ${isDarkMode ? 'md:border-gray-600' : 'md:border-gray-300'}`}>
+                    <div className="text-sm font-bold text-[#ff8200] uppercase tracking-wide">Applicant</div>
+                    <div className="font-semibold mt-1 text-base">{a.applicantName || a.name || 'Applicant'}</div>
+                    {a.email && (
+                      <div className="text-xs opacity-70 mt-1">{a.email}</div>
+                    )}
+                    {a.phone && (
+                      <div className="text-xs opacity-70">{a.phone}</div>
+                    )}
                   </div>
-                  {a.resume && (
-                    <a href={a.resume} target="_blank" rel="noreferrer" className="px-3 py-1 text-sm rounded bg-blue-600 text-white">View Resume</a>
-                  )}
+                  
+                  {/* Position Applied */}
+                  <div className={`pb-4 md:pb-0 md:border-r ${isDarkMode ? 'md:border-gray-600' : 'md:border-gray-300'}`}>
+                    <div className="text-sm font-bold text-[#ff8200] uppercase tracking-wide">Position</div>
+                    <div className="font-semibold mt-1 text-base">{a.jobTitle || '-'}</div>
+                    {a.jobStatus && (
+                      <div className="inline-block mt-2 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-medium">
+                        {a.jobStatus}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Resume & Actions */}
+                  <div className="flex flex-col justify-end">
+                    {a.resume ? (
+                      <div className="space-y-2">
+                        <div className="text-sm font-bold text-[#ff8200] uppercase tracking-wide">Resume</div>
+                        <a 
+                          href={a.resume} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition"
+                        >
+                          📄 View Resume
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-500 italic">No resume attached</div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

@@ -1,7 +1,9 @@
 const sgMail = require('@sendgrid/mail');
 const https = require('https');
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const { generateInvoicePdfBuffer } = require('./invoiceGenerator');
 
 // SendGrid Configuration
 const createSendGridClient = () => {
@@ -39,7 +41,7 @@ const renderEmail = ({
   const ctaHtml = cta && cta.url && cta.label
     ? `<div style="margin: 28px 0 8px 0;">
       <a href="${cta.url}"
-      style="background:linear-gradient(135deg, #ff7a1a, #ff4d8d);color:#ffffff;padding:14px 26px;text-decoration:none;border-radius:10px;border:0;font-weight:700;display:inline-block;box-shadow:0 6px 18px rgba(255,122,26,0.28)" target="_blank" rel="noopener">${cta.label}</a>
+      style="background:linear-gradient(135deg, #ff8200, #ffb347);color:#ffffff;padding:14px 26px;text-decoration:none;border-radius:10px;border:0;font-weight:700;display:inline-block;box-shadow:0 6px 18px rgba(255,130,0,0.28)" target="_blank" rel="noopener">${cta.label}</a>
     </div>`
     : '';
 
@@ -143,8 +145,11 @@ const renderEmail = ({
 const resolveLogo = async () => {
   const frontend = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
   const brandLogoUrl = process.env.BRAND_LOGO_URL || `${frontend}/KLOGO.png`;
-  const strategy = (process.env.EMAIL_LOGO_STRATEGY || '').toLowerCase();
+  let strategy = (process.env.EMAIL_LOGO_STRATEGY || '').toLowerCase();
   const embedFlag = String(process.env.EMAIL_EMBED_LOGO || '').toLowerCase() === 'true';
+  if (!strategy && process.env.SENDGRID_API_KEY) {
+    strategy = 'inline';
+  }
 
   // Explicit strategies: 'cid' (attachment), 'inline' (base64), default remote URL
   if (strategy === 'cid' || embedFlag) {
@@ -159,9 +164,7 @@ const resolveLogo = async () => {
     for (const p of localCandidates) {
       try {
         if (fs.existsSync(p)) {
-          const buf = fs.readFileSync(p);
-          const b64 = buf.toString('base64');
-          return { logoSrc: `data:image/png;base64,${b64}`, embed: false, inline: true, frontend };
+          return { logoSrc: 'cid:brandlogo@kgamify', embed: true, inline: false, frontend };
         }
       } catch { /* ignore */ }
     }
@@ -387,16 +390,63 @@ const emailTemplates = {
       preheader: `Your ${data.plan} plan is now active`,
       bodyHtml: `
         <p>Hi ${data.companyName || data.companyEmail || 'there'},</p>
-        <p>Your <strong>${data.plan.toUpperCase()}</strong> subscription has started.</p>
-        <p><strong>Start:</strong> ${new Date(data.startAt).toLocaleString()}<br/>
-        <strong>End:</strong> ${new Date(data.endAt).toLocaleString()}</p>
-        <p style="margin-top:10px;">Invoice ID: <strong>${data.invoiceId}</strong></p>
-        <p style="margin-top:14px;">Amount: <strong>${data.amountFormatted}</strong></p>
-        <div style="margin-top:16px;background:#fff7ed;border:1px solid #fdba74;padding:12px;border-radius:8px;font-size:12px;color:#9a3412;line-height:1.5;">
-          <strong>Important:</strong><br/>
-          • This subscription is <strong>non-refundable</strong>.<br/>
-          • Funds are not returned after activation.<br/>
-          • The subscription is <strong>non-transferable</strong> between companies.<br/>
+        <p>Welcome to your <strong>${data.planLabel || data.plan}</strong> plan. Your subscription is now active and you have unlocked premium capabilities.</p>
+
+        <div style="background:#fff7ed;border:1px solid #fdba74;padding:16px;border-radius:12px;margin:16px 0;">
+          <p style="margin:0 0 6px 0;"><strong>Plan:</strong> ${data.planLabel || data.plan}</p>
+          <p style="margin:0 0 6px 0;"><strong>Company:</strong> ${data.companyName || data.companyEmail}</p>
+          <p style="margin:0 0 6px 0;"><strong>Account:</strong> ${data.companyEmail || '—'}</p>
+          <p style="margin:0 0 6px 0;"><strong>Order Number:</strong> ${data.orderId || '—'}</p>
+          <p style="margin:0 0 6px 0;"><strong>Order Date:</strong> ${formatDateDDMMYYYY(data.orderDate || new Date())}</p>
+          <p style="margin:0 0 6px 0;"><strong>Starts:</strong> ${formatDateDDMMYYYY(data.startAt)}</p>
+          <p style="margin:0 0 6px 0;"><strong>Ends:</strong> ${formatDateDDMMYYYY(data.endAt)}</p>
+          <p style="margin:0 0 6px 0;"><strong>Job Limit:</strong> ${data.jobLimit || '—'}</p>
+          <p style="margin:0 0 6px 0;"><strong>Invoice ID:</strong> ${data.invoiceId}</p>
+          <p style="margin:0 0 6px 0;"><strong>Payment Method:</strong> ${data.paymentMethod || '—'}</p>
+          <p style="margin:0;"><strong>Amount:</strong> ${data.amountFormatted}</p>
+        </div>
+
+        <div style="margin:8px 0 14px 0;">
+          <div style="font-weight:600;margin-bottom:6px;">Billing Address</div>
+          <div style="color:#374151;">${data.billingAddress || '—'}</div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;margin:12px 0;border:1px solid #e5e7eb;">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:10px;background:#fff7ed;border-bottom:1px solid #e5e7eb;">Item</th>
+              <th style="text-align:left;padding:10px;background:#fff7ed;border-bottom:1px solid #e5e7eb;">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:10px;border-bottom:1px solid #e5e7eb;">kGamify - Paid plan</td>
+              <td style="padding:10px;border-bottom:1px solid #e5e7eb;">${data.amountFormatted}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td style="padding:10px;font-weight:600;">Total</td>
+              <td style="padding:10px;font-weight:600;">${data.amountFormatted}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="margin:10px 0 16px 0;">
+          <h3 style="margin:0 0 8px 0;color:#ff8200;">AI Features Unlocked</h3>
+          <ul style="margin:0;padding-left:18px;color:#374151;">
+            <li><strong>AI Chatbot for assistance</strong> to guide hiring workflows.</li>
+            <li><strong>AI suggestions + JD verification</strong> for clearer, higher‑quality postings.</li>
+            <li><strong>AI resume recommendations</strong> to shortlist better candidates faster.</li>
+          </ul>
+        </div>
+
+        <p style="margin-top:10px;">Your invoice PDF is attached for your records.</p>
+        <div style="margin-top:16px;background:#1e2938;border:1px solid #0f172a;padding:12px;border-radius:8px;font-size:12px;color:#e2e8f0;line-height:1.6;">
+          <strong>Disclaimer:</strong> Subscriptions are non‑refundable and non‑transferable once activated.
+        </div>
+        <div style="margin-top:14px;">
+          <a href="https://kgamify-job.onrender.com/support" style="background:#ff8200;color:#ffffff;padding:10px 16px;text-decoration:none;border-radius:8px;display:inline-block;font-weight:600;">Contact Support</a>
         </div>
       `,
       logoSrc: data.logoSrc
@@ -417,6 +467,155 @@ const getStatusColor = (status) => {
   return colors[status.toLowerCase()] || '#6b7280';
 };
 
+const formatDateDDMMYYYY = (value) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-GB');
+};
+
+const stripHtml = (html = '') => String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+const normalizePhoneForWhatsApp = (phone) => {
+  if (!phone) return null;
+  const normalized = String(phone).replace(/[^\d+]/g, '');
+  const digitsOnly = normalized.replace(/^\+/, '');
+  if (!digitsOnly || digitsOnly.length < 10) return null;
+  return digitsOnly;
+};
+
+const parsePhoneEnvList = (rawValue = '') => String(rawValue)
+  .split(',')
+  .map((entry) => normalizePhoneForWhatsApp(entry))
+  .filter(Boolean);
+
+const buildWhatsAppMessage = (template, emailContent, data = {}) => {
+  const title = emailContent?.subject || 'kGamify Notification';
+  const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+
+  const templateBuilders = {
+    applicationStatusUpdate: () => {
+      const status = data.status ? String(data.status).toUpperCase() : 'UPDATED';
+      const lines = [
+        `kGamify: Application ${status}`,
+        `Job: ${data.jobTitle || 'Your Application'}`,
+        `Company: ${data.companyName || 'Company'}`
+      ];
+      if (data.message) {
+        lines.push(`Message: ${String(data.message).trim()}`);
+      }
+      if (data.viewUrl) {
+        lines.push(`View: ${data.viewUrl}`);
+      }
+      return lines.join('\n');
+    },
+    jobApplication: () => [
+      'kGamify: New job application received',
+      `Job: ${data.jobTitle || 'N/A'}`,
+      `Applicant: ${data.applicantName || 'N/A'}`,
+      `Email: ${data.applicantEmail || 'N/A'}`
+    ].join('\n'),
+    jobPosted: () => [
+      'kGamify: Job posted successfully',
+      `Job: ${data.jobTitle || 'N/A'}`,
+      `Company: ${data.companyName || 'N/A'}`,
+      `Dashboard: ${frontendBase}/dashboard`
+    ].join('\n'),
+    passwordReset: () => [
+      'kGamify: Password reset request',
+      `Reset link: ${data.resetLink || `${frontendBase}/reset-password`}`,
+      'If this was not requested by you, ignore this message.'
+    ].join('\n'),
+    otp: () => {
+      const context = (data.context || 'verify').toLowerCase();
+      const action = context === 'verify' ? 'email verification' : 'password reset';
+      return [
+        `kGamify OTP for ${action}`,
+        `Code: ${data.code || 'N/A'}`,
+        `Valid for: ${data.expiresInMinutes || 10} minutes`
+      ].join('\n');
+    },
+    custom: () => {
+      const plain = stripHtml(data.html || emailContent?.html || '');
+      return plain ? `${title}\n${plain}` : title;
+    }
+  };
+
+  const message = templateBuilders[template]?.();
+  if (message) return message;
+
+  const fallbackBody = stripHtml(emailContent?.html || '');
+  return fallbackBody ? `${title}\n${fallbackBody}` : title;
+};
+
+const resolveWhatsAppRecipients = (data = {}) => {
+  const explicitList = Array.isArray(data.whatsappTo) ? data.whatsappTo : [data.whatsappTo];
+  const candidates = [
+    ...explicitList,
+    data.applicantPhone,
+    data.phone,
+    data.companyPhone
+  ];
+
+  const normalized = candidates
+    .map((candidate) => normalizePhoneForWhatsApp(candidate))
+    .filter(Boolean);
+
+  return [...new Set(normalized)];
+};
+
+const sendWhatsAppMessage = async (phone, message) => {
+  const provider = (process.env.WHATSAPP_PROVIDER || 'callmebot').toLowerCase();
+
+  if (provider === 'callmebot') {
+    const apiKey = process.env.CALLMEBOT_API_KEY;
+    if (!apiKey) {
+      throw new Error('CALLMEBOT_API_KEY is required for WhatsApp notifications.');
+    }
+
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${encodeURIComponent(apiKey)}`;
+    await axios.get(url, { timeout: 10000 });
+    return { success: true, provider: 'callmebot', phone };
+  }
+
+  throw new Error(`Unsupported WHATSAPP_PROVIDER: ${provider}`);
+};
+
+const sendWhatsAppNotification = async (template, data, emailContent) => {
+  if (String(process.env.WHATSAPP_ENABLED || 'false').toLowerCase() !== 'true') {
+    return { success: false, skipped: true, reason: 'disabled' };
+  }
+
+  const recipients = resolveWhatsAppRecipients(data);
+  const fallbackRecipients = parsePhoneEnvList(process.env.WHATSAPP_DEFAULT_TO || '');
+  const finalRecipients = recipients.length ? recipients : fallbackRecipients;
+
+  if (!finalRecipients.length) {
+    return { success: false, skipped: true, reason: 'no-recipient' };
+  }
+
+  const message = buildWhatsAppMessage(template, emailContent, data);
+  const results = [];
+
+  for (const phone of finalRecipients) {
+    try {
+      const sent = await sendWhatsAppMessage(phone, message);
+      results.push({ phone, ...sent });
+    } catch (error) {
+      results.push({ phone, success: false, error: error.message });
+    }
+  }
+
+  const successCount = results.filter((entry) => entry.success).length;
+  return {
+    success: successCount > 0,
+    attempted: finalRecipients.length,
+    sent: successCount,
+    failed: finalRecipients.length - successCount,
+    results
+  };
+};
+
 // Main email sending function using SendGrid
 const sendEmail = async (to, template, data) => {
   try {
@@ -434,7 +633,7 @@ const sendEmail = async (to, template, data) => {
     });
     
     // Get logo
-    const { logoSrc } = await resolveLogo();
+    const { logoSrc, embed } = await resolveLogo();
     const emailContent = emailTemplates[template]({ ...data, logoSrc });
 
     // Initialize SendGrid client
@@ -450,10 +649,139 @@ const sendEmail = async (to, template, data) => {
       html: emailContent.html
     };
 
+    if (embed) {
+      try {
+        const frontend = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+        const brandLogoUrl = process.env.BRAND_LOGO_URL || `${frontend}/KLOGO.png`;
+        const localCandidates = [
+          path.resolve(__dirname, '../../src/assets/KLOGO.png'),
+          path.resolve(__dirname, '../../public/KLOGO.png')
+        ];
+        let logoBuffer;
+        for (const p of localCandidates) {
+          if (fs.existsSync(p)) {
+            logoBuffer = fs.readFileSync(p);
+            break;
+          }
+        }
+        if (!logoBuffer) {
+          const resp = await axios.get(brandLogoUrl, { responseType: 'arraybuffer', timeout: 5000 });
+          logoBuffer = Buffer.from(resp.data);
+        }
+        msg.attachments = [
+          {
+            content: logoBuffer.toString('base64'),
+            filename: 'kgamify-logo.png',
+            type: 'image/png',
+            disposition: 'inline',
+            content_id: 'brandlogo@kgamify'
+          }
+        ];
+      } catch (logoErr) {
+        console.error('[emailService] Failed to attach logo:', logoErr.message);
+      }
+    }
+
+    if (template === 'subscriptionInvoice') {
+      try {
+        // Import models for professional invoice generation
+        const Company = require('../models/Company.js');
+        const Settings = require('../models/Settings.js');
+
+        // Fetch company address and GSTIN
+        let companyAddress = '';
+        let companyGSTIN = '';
+        try {
+          if (data.companyId) {
+            const company = await Company.findById(data.companyId).select('address gstNumber');
+            companyAddress = company?.address || '';
+            companyGSTIN = company?.gstNumber || '';
+          }
+        } catch (err) {
+          console.warn('[emailService] Failed to fetch company details:', err.message);
+        }
+
+        // Fetch current GST rate
+        let gstRate = 18;
+        try {
+          const gstSetting = await Settings.findOne({ key: 'gst_rate' });
+          if (gstSetting && typeof gstSetting.value === 'number') {
+            gstRate = gstSetting.value;
+          }
+        } catch (err) {
+          console.warn('[emailService] Failed to fetch GST rate, using default 18%:', err.message);
+        }
+
+        // Calculate amounts
+        const subtotal = typeof data.amount === 'number' ? data.amount : 0;
+        const gstAmount = (subtotal * gstRate) / 100;
+        const total = subtotal + gstAmount;
+
+        // Construct billing items array
+        const billingItems = [];
+        if (data.plan) {
+          billingItems.push({
+            description: `${data.plan} Plan Subscription`,
+            units: 1,
+            unitPrice: subtotal
+          });
+        }
+
+        // Generate professional invoice
+        const invoiceBuffer = await generateInvoicePdfBuffer({
+          invoiceId: data.invoiceId,
+          sellerName: 'kGamify',
+          sellerAddress: 'Electronic City, Bangalore',
+          sellerGSTIN: '',
+          sellerHSN: '',
+          companyName: data.companyName,
+          companyEmail: data.companyEmail,
+          companyAddress,
+          companyGSTIN,
+          billingItems,
+          subtotal,
+          gstRate,
+          gstAmount,
+          total,
+          currency: data.currency || 'INR',
+          billingStartDate: data.startAt,
+          billingEndDate: data.endAt,
+          nextBillingDate: data.nextBillingDate || data.endAt,
+          issuedAt: new Date()
+        });
+
+        msg.attachments = [
+          ...(msg.attachments || []),
+          {
+            content: invoiceBuffer.toString('base64'),
+            filename: `${data.invoiceId || 'invoice'}.pdf`,
+            type: 'application/pdf',
+            disposition: 'attachment'
+          }
+        ];
+      } catch (attachErr) {
+        console.error('[emailService] Failed to build invoice PDF attachment:', attachErr.message);
+      }
+    }
+
     const result = await sg.send(msg);
     const messageId = result?.[0]?.headers?.['x-message-id'] || result?.[0]?.headers?.['x-message-id'.toLowerCase()] || 'unknown';
+    let whatsapp = null;
+    try {
+      whatsapp = await sendWhatsAppNotification(template, data, emailContent);
+      if (!whatsapp?.skipped) {
+        console.log('[emailService] WhatsApp dispatch result:', {
+          success: whatsapp.success,
+          attempted: whatsapp.attempted,
+          sent: whatsapp.sent,
+          failed: whatsapp.failed
+        });
+      }
+    } catch (whatsappError) {
+      console.error('[emailService] WhatsApp dispatch failed:', whatsappError.message);
+    }
     console.log('[emailService] Email sent successfully via SendGrid. MessageId:', messageId, 'timestamp:', new Date().toISOString());
-    return { success: true, messageId, provider: 'sendgrid' };
+    return { success: true, messageId, provider: 'sendgrid', whatsapp };
     
   } catch (error) {
     // Extract detailed error info for debugging
@@ -592,7 +920,7 @@ async function sendSubscriptionExpiredEmail(email, { companyName, previousPlan }
   const bodyHtml = `
     <p>Hi ${companyName || 'there'},</p>
     <p>Your previous plan <strong>${previousPlan}</strong> has expired and you have been moved to the Free plan.</p>
-    <p>The Free plan grants up to 3 active jobs and shows ads. Upgrade to regain higher limits and recommendations.</p>
+    <p>The Free plan grants up to 3 active jobs. Upgrade to regain higher limits and recommendations.</p>
   `;
   const base = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
   const emailContent = {
@@ -611,6 +939,7 @@ module.exports = {
   sendEmail,
   sendBulkEmails,
   sendVerificationEmail,
+  sendWhatsAppNotification,
   emailTemplates,
   testSmtpConnection,
   sendSubscriptionReminderEmail,

@@ -1,7 +1,6 @@
 import requests
 import PyPDF2
 import io
-from sentence_transformers import util
 from deep_translator import GoogleTranslator
 from langdetect import detect
 from langdetect.lang_detect_exception import LangDetectException
@@ -50,25 +49,59 @@ def calculate_skill_match(job_skills, job_description, resume_text, model):
     if not resume_text:
         return 0.0
 
-    resume_embedding = model.encode(resume_text, convert_to_tensor=True)
+    resume_lower = str(resume_text).lower()
+    skills = [str(skill).strip().lower() for skill in (job_skills or []) if str(skill).strip()]
 
-    skill_scores = []
-    for skill in job_skills:
-        skill_embedding = model.encode(skill, convert_to_tensor=True)
-        sim = util.cos_sim(skill_embedding, resume_embedding).item()
-        skill_scores.append(sim)
+    # Lightweight lexical scoring used by default in low-memory environments.
+    skill_hits = sum(1 for skill in skills if skill in resume_lower)
+    skill_ratio = (skill_hits / len(skills)) if skills else 0.0
 
-    avg_skill_score = sum(skill_scores) / len(skill_scores) if skill_scores else 0.0
+    desc_tokens = [token for token in str(job_description or '').lower().split() if len(token) > 2]
+    if desc_tokens:
+        overlap = sum(1 for token in set(desc_tokens) if token in resume_lower)
+        desc_ratio = overlap / len(set(desc_tokens))
+    else:
+        desc_ratio = 0.0
 
-    desc_embedding = model.encode(job_description, convert_to_tensor=True)
-    desc_score = util.cos_sim(desc_embedding, resume_embedding).item()
+    if model is None:
+        return (0.7 * skill_ratio) + (0.3 * desc_ratio)
 
-    final_score = 0.7 * avg_skill_score + 0.3 * desc_score
-    return final_score
+    try:
+        from sentence_transformers import util  # Imported lazily to avoid heavy startup memory usage.
+
+        resume_embedding = model.encode(resume_text, convert_to_tensor=True)
+
+        skill_scores = []
+        for skill in skills:
+            skill_embedding = model.encode(skill, convert_to_tensor=True)
+            sim = util.cos_sim(skill_embedding, resume_embedding).item()
+            skill_scores.append(sim)
+
+        avg_skill_score = sum(skill_scores) / len(skill_scores) if skill_scores else 0.0
+
+        desc_embedding = model.encode(job_description or '', convert_to_tensor=True)
+        desc_score = util.cos_sim(desc_embedding, resume_embedding).item()
+
+        return (0.7 * avg_skill_score) + (0.3 * desc_score)
+    except Exception:
+        return (0.7 * skill_ratio) + (0.3 * desc_ratio)
 
 def semantic_match(text1, text2, model, threshold=0.75):
+    if model is None:
+        left = str(text1 or '').lower()
+        right = str(text2 or '').lower()
+        if not left or not right:
+            return 0.0, False
+        left_tokens = set(token for token in left.split() if len(token) > 2)
+        right_tokens = set(token for token in right.split() if len(token) > 2)
+        union = left_tokens | right_tokens
+        score = (len(left_tokens & right_tokens) / len(union)) if union else 0.0
+        is_match = score >= threshold
+        return score, is_match
+
     emb1 = model.encode(text1, convert_to_tensor=True)
     emb2 = model.encode(text2, convert_to_tensor=True)
+    from sentence_transformers import util
     score = util.cos_sim(emb1, emb2).item()
     is_match = score >= threshold
     return score, is_match

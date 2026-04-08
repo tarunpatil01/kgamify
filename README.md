@@ -61,6 +61,23 @@ cp .env.example .env
 npm run dev
 ```
 
+### for AI
+```
+cd AI
+
+# Install dependencies
+pip install -r requirements.txt
+
+#activate virtual env
+.\.venv\Scripts\Activate.ps1
+
+#run server
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+#ensure ollama is running and model is installed
+
+```
+
 ## 🔧 Environment Variables
 
 ### Frontend (.env)

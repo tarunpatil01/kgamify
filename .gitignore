@@ -39,6 +39,12 @@ node_modules
 dist
 dist-ssr
 *.local
+.venv/
+.venv311/
+venv/
+env/
+**/.venv/
+**/.venv311/
 
 # Build outputs
 build/

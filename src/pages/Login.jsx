@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 import { setSubscription } from '../store/slices/subscriptionSlice';
 import extractSubscriptionSnapshot from '../utils/subscriptionSnapshot';
 import { useNavigate, Link } from 'react-router-dom';
-import { FaEye, FaEyeSlash, FaSpinner, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaSpinner, FaCheckCircle, FaTimesCircle, FaWifi } from 'react-icons/fa';
 import Klogo from '../assets/KLOGO.png';
 import SplitText from '../components/SplitText.jsx';
 import { loginCompany, resendSignupOtp } from '../api';
@@ -30,6 +30,22 @@ const Login = ({ setLoggedInEmail }) => {
   const [pendingEmail, setPendingEmail] = useState("");
   const [otpResendTimer, setOtpResendTimer] = useState(0);
   const [otpResendLoading, setOtpResendLoading] = useState(false);
+  // Mobile network status
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  // Track online/offline status for mobile networks
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Real-time validation via shared validators
   const runValidation = (field, value) => {
@@ -99,6 +115,10 @@ const Login = ({ setLoggedInEmail }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    
+    // Prevent double submission on mobile (common issue)
+    if (isLoading) return;
+    
     setErrorMessage(""); // Clear previous errors
     
     // Validate all fields
@@ -178,18 +198,25 @@ const Login = ({ setLoggedInEmail }) => {
         navigate("/dashboard");
       }
     } catch (error) {
-      if (error?.error === 'Verify your email first' || /not verified/i.test(error?.error||'')) {
+      const errText = error?.error || error?.message || '';
+      if (errText === 'Verify your email first' || /not verified/i.test(errText)) {
         setErrorMessage("Your email is not verified. Please check your inbox for the OTP.");
         setNeedsVerification(true);
         setPendingEmail(formData.identifier);
-      } else if (/on hold/i.test(error?.error||'') || /not approved/i.test(error?.error||'')) {
+      } else if (/on hold/i.test(errText) || /not approved/i.test(errText)) {
         // Treat pending/hold as informational, not blocking
         localStorage.setItem('companyLimitedAccess','true');
         setErrorMessage("Your company is awaiting approval. You can explore the dashboard, but posting jobs is disabled until approval.");
         // Auto navigate after a brief delay to show message context
         setTimeout(()=>navigate('/dashboard'), 600);
-      } else if (error?.error === 'Invalid credentials') {
+      } else if (errText === 'Invalid credentials' || /invalid email or password/i.test(errText) || /invalid.*password/i.test(errText)) {
         setErrorMessage("Invalid username/email or password. Please try again.");
+      } else if (/company not found/i.test(errText)) {
+        setErrorMessage("Company not found. Please register first.");
+      } else if (/timeout|timed out/i.test(errText) || /network error/i.test(errText)) {
+        setErrorMessage(`${errText} If you are on mobile, make sure you have stable internet connection.`);
+      } else if (errText) {
+        setErrorMessage(errText);
       } else {
         setErrorMessage("An error occurred during login. Please try again.");
       }
@@ -270,6 +297,13 @@ const Login = ({ setLoggedInEmail }) => {
   <div className="w-full max-w-md mx-auto rounded-3xl shadow-2xl border bg-white border-orange-200 p-6 sm:p-10 relative z-10">
         {/* Logo Section */}
         <div className="text-center mb-6">
+          {/* Network Status Indicator for Mobile */}
+          {!isOnline && (
+            <div className="mb-3 p-2 rounded-lg bg-red-50 border border-red-300 flex items-center justify-center gap-2 text-xs">
+              <FaWifi className="text-red-600 opacity-50" />
+              <span className="font-semibold text-red-600">No internet connection</span>
+            </div>
+          )}
           <img
             src={Klogo}
             alt="kGamify Logo"
@@ -423,10 +457,15 @@ const Login = ({ setLoggedInEmail }) => {
           {/* Login Button */}
           <button
             type="submit"
-            disabled={isLoading || otpResendLoading}
-            className="w-full py-3 rounded-xl font-bold text-lg shadow-lg transition duration-300 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] flex items-center justify-center disabled:opacity-70"
+            disabled={isLoading || otpResendLoading || !isOnline}
+            className="w-full py-3 rounded-xl font-bold text-lg shadow-lg transition duration-300 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {isLoading ? (
+            {!isOnline ? (
+              <span className="flex items-center justify-center">
+                <FaWifi className="mr-2 opacity-50" />
+                No Connection
+              </span>
+            ) : isLoading ? (
               <span className="flex items-center justify-center">
                 <FaSpinner className="animate-spin mr-2" />
                 Signing in...

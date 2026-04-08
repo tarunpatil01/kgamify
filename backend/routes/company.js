@@ -664,7 +664,23 @@ router.post('/subscription/purchase', async (req, res) => {
     company.subscriptionJobLimit = cfg.jobLimit;
     await company.save({ validateModifiedOnly: true });
     const amountFormatted = finalAmount === 0 ? 'FREE' : new Intl.NumberFormat('en-IN',{ style:'currency', currency: finalCurrency }).format(finalAmount);
-    sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan, startAt: startedAt, endAt: endsAt || startedAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
+    sendEmail(company.email, 'subscriptionInvoice', {
+      invoiceId,
+      companyId: company._id.toString(),
+      plan,
+      planLabel: cfg.label,
+      startAt: startedAt,
+      endAt: endsAt || startedAt,
+      companyName: company.companyName,
+      companyEmail: company.email,
+      billingAddress: [company.addressLine1, company.addressLine2, company.address].filter(Boolean).join(', ') || company.address || '',
+      orderDate: new Date(),
+      amountFormatted,
+      amount: finalAmount,
+      currency: finalCurrency,
+      jobLimit: cfg.jobLimit,
+      paymentMethod: '—'
+    }).catch(()=>{});
     return res.json({ message: 'Subscription purchased', invoiceId, plan, startAt: startedAt, endAt: endsAt, amount: finalAmount, currency: finalCurrency, amountFormatted });
   } catch (err) {
     console.error('subscription purchase error:', err);
@@ -681,6 +697,10 @@ router.post('/subscription/repeat', async (req, res) => {
     const company = await Company.findOne({ email });
     if (!company) return res.status(404).json({ error: 'Company not found' });
     const currentPlan = company.subscriptionPlan || 'free';
+    if (process.env.NODE_ENV === 'production') {
+      const { paymentId, orderId } = req.body || {};
+      if (!paymentId && !orderId) return res.status(400).json({ error: 'Payment required to renew subscription' });
+    }
     if (currentPlan === 'free') return res.status(400).json({ error: 'Free plan does not require renewal' });
     const cfg = getPlan(currentPlan);
     const now = new Date();
@@ -699,7 +719,23 @@ router.post('/subscription/repeat', async (req, res) => {
     company.subscriptionJobLimit = cfg.jobLimit;
     await company.save({ validateModifiedOnly: true });
     const amountFormatted = new Intl.NumberFormat('en-IN',{ style:'currency', currency }).format(amount);
-    sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan: currentPlan, startAt: startedAt, endAt: endsAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
+    sendEmail(company.email, 'subscriptionInvoice', {
+      invoiceId,
+      companyId: company._id.toString(),
+      plan: currentPlan,
+      planLabel: cfg.label,
+      startAt: startedAt,
+      endAt: endsAt,
+      companyName: company.companyName,
+      companyEmail: company.email,
+      billingAddress: [company.addressLine1, company.addressLine2, company.address].filter(Boolean).join(', ') || company.address || '',
+      orderDate: new Date(),
+      amountFormatted,
+      amount,
+      currency,
+      jobLimit: cfg.jobLimit,
+      paymentMethod: '—'
+    }).catch(()=>{});
     return res.json({ message: 'Subscription renewed', plan: currentPlan, invoiceId, startAt: startedAt, endAt: endsAt, amount, currency, amountFormatted });
   } catch (err) {
     console.error('subscription repeat error:', err);
@@ -714,6 +750,10 @@ router.post('/subscription/upgrade', async (req, res) => {
     const { email, plan } = req.body || {};
     if (!email || !plan) return res.status(400).json({ error: 'email and plan required' });
     if (!Object.keys(plans).includes(plan) || plan === 'free') return res.status(400).json({ error: 'Invalid upgrade target' });
+    if (process.env.NODE_ENV === 'production') {
+      const { paymentId, orderId } = req.body || {};
+      if (!paymentId && !orderId) return res.status(400).json({ error: 'Payment required to upgrade subscription' });
+    }
     const company = await Company.findOne({ email });
     if (!company) return res.status(404).json({ error: 'Company not found' });
     const order = ['free','paid3m','paid6m','paid12m'];
@@ -735,7 +775,23 @@ router.post('/subscription/upgrade', async (req, res) => {
     company.subscriptionJobLimit = PLAN_LIMITS[plan];
     await company.save({ validateModifiedOnly: true });
     const amountFormatted = new Intl.NumberFormat('en-IN',{ style:'currency', currency }).format(amount);
-    sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan, startAt: startedAt, endAt: endsAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
+    sendEmail(company.email, 'subscriptionInvoice', {
+      invoiceId,
+      companyId: company._id.toString(),
+      plan,
+      planLabel: getPlan(plan).label,
+      startAt: startedAt,
+      endAt: endsAt,
+      companyName: company.companyName,
+      companyEmail: company.email,
+      billingAddress: [company.addressLine1, company.addressLine2, company.address].filter(Boolean).join(', ') || company.address || '',
+      orderDate: new Date(),
+      amountFormatted,
+      amount,
+      currency,
+      jobLimit: getPlan(plan).jobLimit,
+      paymentMethod: '—'
+    }).catch(()=>{});
     return res.json({ message: 'Subscription upgraded', plan, invoiceId, startAt: startedAt, endAt: endsAt, amount, currency, amountFormatted });
   } catch (err) {
     console.error('subscription upgrade error:', err);
@@ -896,7 +952,23 @@ module.exports.activateSubscription = async function activateSubscription({ emai
   company.subscriptionExpiresAt = endAt;
   await company.save({ validateModifiedOnly: true });
   const amountFormatted = amount === 0 ? 'FREE' : new Intl.NumberFormat('en-IN',{ style:'currency', currency }).format(amount);
-  sendEmail(company.email, 'subscriptionInvoice', { invoiceId, plan, startAt, endAt: endAt || startAt, companyName: company.companyName, companyEmail: company.email, amountFormatted }).catch(()=>{});
+  sendEmail(company.email, 'subscriptionInvoice', {
+    invoiceId,
+    companyId: company._id.toString(),
+    plan,
+    planLabel: getPlan(plan).label,
+    startAt,
+    endAt: endAt || startAt,
+    companyName: company.companyName,
+    companyEmail: company.email,
+    billingAddress: [company.addressLine1, company.addressLine2, company.address].filter(Boolean).join(', ') || company.address || '',
+    orderDate: new Date(),
+    amountFormatted,
+    amount,
+    currency,
+    jobLimit: getPlan(plan).jobLimit,
+    paymentMethod: '—'
+  }).catch(()=>{});
   return { success: true, invoiceId, plan, startAt, endAt, origin, paymentId, orderId };
 };
 // Chat-style messaging endpoints appended below for company/admin conversation

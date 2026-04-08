@@ -55,7 +55,7 @@ const Register = () => {
 
   useEffect(()=>{ let t; if(step===2 && otpTimer>0){ t=setTimeout(()=>setOtpTimer(s=>s-1),1000);} return ()=>clearTimeout(t); },[otpTimer,step]);
 
-  async function verifyOtp(e){ e.preventDefault(); try{ setIsOtpSending(true); await verifySignupOtp(form.email, otpCode.trim()); setSnackbarMessage('Email verified. Redirecting...'); setSnackbarSeverity('success'); setOpenSnackbar(true); setTimeout(()=>navigate('/'),1500);}catch(err){ setSnackbarMessage(err.message||'OTP verification failed'); setSnackbarSeverity('error'); setOpenSnackbar(true);} finally { setIsOtpSending(false);} }
+  async function verifyOtp(e){ e.preventDefault(); try{ setIsOtpSending(true); await verifySignupOtp(form.email, otpCode.trim()); setSnackbarMessage('Email verified. Redirecting...'); setSnackbarSeverity('success'); setOpenSnackbar(true); setTimeout(()=>navigate('/login'),1500);}catch(err){ setSnackbarMessage(err.message||'OTP verification failed'); setSnackbarSeverity('error'); setOpenSnackbar(true);} finally { setIsOtpSending(false);} }
   async function resend(){ if(otpTimer>0) return; try{ setIsOtpSending(true); await resendSignupOtp(form.email); setOtpTimer(60);}catch(err){ setSnackbarMessage(err.message||'Resend failed'); setSnackbarSeverity('error'); setOpenSnackbar(true);} finally { setIsOtpSending(false);} }
 
   return (
@@ -81,7 +81,7 @@ const Register = () => {
             <button disabled={isSubmitting} className="w-full py-3 rounded-xl font-bold text-lg shadow-lg transition duration-300 bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347] flex items-center justify-center">{isSubmitting? <><FaSpinner className="animate-spin mr-2"/>Creating...</> : 'Create Account'}</button>
             <div className="text-center pt-4 border-t border-gray-200/50">
               <p className="text-black text-sm">
-                Already have an account? <Link to="/" className="text-[#ff8200] hover:text-[#e57400] font-semibold transition-colors">Sign in</Link>
+                Already have an account? <Link to="/login" className="text-[#ff8200] hover:text-[#e57400] font-semibold transition-colors">Sign in</Link>
               </p>
               <p className="text-[12px] leading-5 text-center text-black/70 mt-3">
                 By signing up, you agree to our{' '}

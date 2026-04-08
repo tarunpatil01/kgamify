@@ -1,15 +1,236 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const axios = require('axios');
+const Job = require('../models/Job');
+const Application = require('../models/Application');
 
 // Import AI services
-const { jdRules } = require(path.join(__dirname, '../../AI/jdRules.cjs'));
 const { verifyJD } = require(path.join(__dirname, '../../AI/jdVerifier.cjs'));
 const { rephraseJD } = require(path.join(__dirname, '../../AI/rephraseService_ML.cjs'));
 const { getSuggestionsML, testPythonML } = require(path.join(__dirname, '../../AI/pythonMLService.cjs'));
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const ML_SERVER_URL = process.env.ML_SERVER_URL || 'http://localhost:5001';
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+
+const normalizeSkillToken = (value) => String(value || '')
+  .toLowerCase()
+  .replace(/[^a-z0-9+#.\s]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+function extractJobSkills(job) {
+  const raw = [
+    job?.skills,
+    job?.jobTitle,
+    job?.jobDescription,
+    job?.responsibilities,
+    job?.eligibility,
+    job?.tags
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const tokens = normalizeSkillToken(raw)
+    .split(/[,\s/|]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 1);
+
+  return Array.from(new Set(tokens));
+}
+
+function scoreApplicationForJob(application, jobSkillSet) {
+  const applicantSkills = Array.isArray(application?.skills)
+    ? application.skills.map((s) => normalizeSkillToken(s)).filter(Boolean)
+    : [];
+
+  const applicantSkillSet = new Set(applicantSkills);
+  let matches = 0;
+  jobSkillSet.forEach((skill) => {
+    if (applicantSkillSet.has(skill)) matches += 1;
+  });
+
+  const baseMatchScore = jobSkillSet.size > 0
+    ? (matches / jobSkillSet.size) * 100
+    : 0;
+
+  const testScoreRaw = Number.parseFloat(String(application?.testScore || '').replace(/[^0-9.]/g, ''));
+  const normalizedTestScore = Number.isFinite(testScoreRaw)
+    ? Math.max(0, Math.min(100, testScoreRaw))
+    : 0;
+
+  // Weighted relevance score: skills overlap dominates, then test score, then resume presence.
+  const resumeBoost = application?.resume ? 5 : 0;
+  const relevanceScore = (baseMatchScore * 0.75) + (normalizedTestScore * 0.20) + resumeBoost;
+
+  return {
+    score: Number(relevanceScore.toFixed(2)),
+    matchedSkills: matches,
+    totalJobSkills: jobSkillSet.size
+  };
+}
+
+function cleanGeminiJsonText(rawText) {
+  return String(rawText || '')
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+}
+
+async function getDetailedRecommendationPayload(jobId, topN) {
+  const normalizedTopN = Math.max(1, Math.min(50, Number.parseInt(topN, 10) || 5));
+  const job = await Job.findById(jobId).lean();
+  if (!job) {
+    const notFoundError = new Error('Job not found');
+    notFoundError.statusCode = 404;
+    notFoundError.jobId = jobId;
+    throw notFoundError;
+  }
+
+  const jobContext = {
+    jobTitle: job.jobTitle || '',
+    jobDescription: job.jobDescription || '',
+    responsibilities: job.responsibilities || '',
+    eligibility: job.eligibility || '',
+    skills: job.skills || '',
+    experienceLevel: job.experienceLevel || '',
+    location: job.location || '',
+    tags: job.tags || ''
+  };
+
+  try {
+    const response = await axios.post(`${AI_SERVICE_URL}/recommend-detailed`, {
+      job_id: jobId,
+      top_n: normalizedTopN,
+      job_context: jobContext
+    }, {
+      timeout: 45000
+    });
+
+    const payload = response.data || {};
+    const recommendations = Array.isArray(payload.recommendations) ? payload.recommendations : [];
+    const normalizedRecommendations = recommendations
+      .map((rec) => {
+        const score = Number(rec.score ?? rec.final_score ?? rec.similarity_score ?? 0) || 0;
+        return {
+          ...rec,
+          name: rec.applicantName || rec.name || 'Unknown',
+          score,
+          final_score: score,
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    return {
+      job_id: payload.job_id || jobId,
+      job: payload.job || jobContext,
+      vectorData: payload.vectorData || {},
+      recommendations: normalizedRecommendations.slice(0, normalizedTopN),
+      count: normalizedRecommendations.slice(0, normalizedTopN).length,
+      fallbackUsed: Boolean(payload.fallbackUsed),
+      source: 'python-vector-model',
+    };
+  } catch (error) {
+    console.error('❌ Detailed AI recommendation fetch failed:', error.message);
+  }
+
+  try {
+    const response = await axios.post(`${AI_SERVICE_URL}/recommend`, {
+      job_id: jobId,
+      top_n: normalizedTopN,
+      job_context: jobContext
+    }, {
+      timeout: 30000
+    });
+
+    const recommendations = response.data?.recommendations || [];
+    const normalized = recommendations
+      .map((rec) => {
+        const score = Number(
+          rec.score ?? rec.similarity_score ?? rec.matchScore ?? rec.match_score ?? 0
+        ) || 0;
+        return {
+          ...rec,
+          name: rec.applicantName || rec.name || 'Unknown',
+          score,
+          final_score: score
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, normalizedTopN);
+
+    return {
+      job_id: jobId,
+      job: jobContext,
+      vectorData: {},
+      recommendations: normalized,
+      count: normalized.length,
+      fallbackUsed: false,
+      source: 'ai-service'
+    };
+  } catch (error) {
+    console.error('❌ Basic AI recommendation fetch failed:', error.message);
+  }
+
+  const applications = await Application.find({ jobId }).lean();
+  const jobSkills = extractJobSkills(job);
+  const jobSkillSet = new Set(jobSkills);
+
+  const fallbackRecommendations = applications
+    .map((app) => {
+      const scoring = scoreApplicationForJob(app, jobSkillSet);
+      return {
+        applicantName: app.applicantName,
+        email: app.applicantEmail || '',
+        resume_url: app.resume || '',
+        skills: Array.isArray(app.skills) ? app.skills : [],
+        similarity_score: scoring.score,
+        score: scoring.score,
+        final_score: scoring.score,
+        matched_skills: scoring.matchedSkills,
+        total_job_skills: scoring.totalJobSkills,
+        source: 'fallback-rule-engine',
+        vectorData: {
+          featureVector: [
+            scoring.score / 100,
+            scoring.matchedSkills,
+            scoring.totalJobSkills,
+            app.resume ? 1 : 0,
+          ],
+        }
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, normalizedTopN);
+
+  return {
+    job_id: jobId,
+    job: {
+      jobTitle: job.jobTitle || '',
+      jobDescription: job.jobDescription || '',
+      skills: jobSkills,
+      experienceLevel: job.experienceLevel || '',
+      location: job.location || ''
+    },
+    vectorData: {
+      jobSkills,
+      jobTitle: job.jobTitle || '',
+      candidateCount: fallbackRecommendations.length,
+      source: 'fallback-rule-engine'
+    },
+    recommendations: fallbackRecommendations,
+    count: fallbackRecommendations.length,
+    fallbackUsed: true,
+    source: 'fallback-rule-engine'
+  };
+}
+
+if (!GEMINI_API_KEY) {
+  console.warn('⚠️ GEMINI_API_KEY is missing. Gemini features will fall back to non-Gemini logic.');
+}
 
 // Test ML availability on startup
 let mlAvailable = false;
@@ -60,7 +281,7 @@ router.post('/verify-jd', async (req, res) => {
 
     // ── Use Gemini for verification ──
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
       const prompt = `You are a professional HR consultant reviewing a job description.
@@ -102,7 +323,7 @@ Be specific in issues and suggestions. If the JD is good, return a high score wi
       let geminiResult;
       try {
         geminiResult = JSON.parse(cleaned);
-      } catch (parseErr) {
+      } catch {
         console.error('Gemini verify parse failed, falling back to rule-based');
         throw new Error('parse_failed');
       }
@@ -214,7 +435,7 @@ Fix the following job description text:
 Text to fix:
 ${text}`;
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const result    = await model.generateContent(prompt);
@@ -539,5 +760,194 @@ function checkFieldRules(text, field) {
   }
   return issues;
 }
+
+// ==================== JOB RECOMMENDATIONS (AI Service Proxy) ====================
+router.get('/recommend', async (req, res) => {
+  try {
+    const { job_id, top_n = 5 } = req.query;
+
+    if (!job_id) {
+      return res.status(400).json({ error: 'job_id query parameter is required' });
+    }
+
+    const payload = await getDetailedRecommendationPayload(job_id, top_n);
+    return res.json({
+      job_id: payload.job_id,
+      recommendations: payload.recommendations,
+      count: payload.count,
+      fallbackUsed: payload.fallbackUsed,
+      source: payload.source
+    });
+
+  } catch (error) {
+    console.error('❌ Recommendation proxy error:', error.message);
+
+    try {
+      const payload = await getDetailedRecommendationPayload(req.query.job_id, req.query.top_n || 5);
+      return res.json({
+        job_id: payload.job_id,
+        recommendations: payload.recommendations,
+        count: payload.count,
+        fallbackUsed: payload.fallbackUsed,
+        source: payload.source
+      });
+    } catch (fallbackError) {
+      if (fallbackError.statusCode === 404) {
+        return res.status(404).json({ error: 'Job not found or no recommendations available', job_id: fallbackError.jobId });
+      }
+      return res.status(500).json({ error: 'Failed to get recommendations', details: fallbackError.message });
+    }
+  }
+});
+
+// ==================== RECOMMENDATION INSIGHTS (VECTOR DATA + GEMINI SUMMARY) ====================
+router.get('/recommendation-insights', async (req, res) => {
+  try {
+    const { job_id, top_n = 5 } = req.query;
+
+    if (!job_id) {
+      return res.status(400).json({ error: 'job_id query parameter is required' });
+    }
+
+    const payload = await getDetailedRecommendationPayload(job_id, top_n);
+
+    let summary = null;
+    if (GEMINI_API_KEY && payload.recommendations.length > 0) {
+      try {
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        const prompt = `You are a senior recruiter reviewing ranked job applicants.
+
+Return ONLY a raw JSON object with these exact keys:
+{
+  "summary": "one short executive summary",
+  "topStrengths": ["..."],
+  "topRisks": ["..."],
+  "hiringRecommendation": "...",
+  "rankedCandidates": [
+    {
+      "name": "...",
+      "reason": "...",
+      "fit": "high|medium|low"
+    }
+  ]
+}
+
+Job:
+${JSON.stringify(payload.job || {}, null, 2)}
+
+Vector payload:
+${JSON.stringify({
+          vectorData: payload.vectorData,
+          recommendations: payload.recommendations.slice(0, Math.min(10, payload.recommendations.length))
+        }, null, 2)}
+
+Focus on skills, past experience, projects, and academic evidence. Prioritize the strongest candidates in descending order.`;
+
+        const result = await model.generateContent(prompt);
+        const rawText = result.response.text();
+        const parsed = JSON.parse(cleanGeminiJsonText(rawText));
+        summary = parsed;
+      } catch (geminiError) {
+        console.error('❌ Gemini insights generation failed:', geminiError.message);
+      }
+    }
+
+    if (!summary) {
+      const topCandidate = payload.recommendations[0];
+      summary = {
+        summary: topCandidate
+          ? `${topCandidate.applicantName || 'Top candidate'} is currently the strongest match based on the available resume signals.`
+          : 'No applicants matched the current job signals strongly enough for a summary.',
+        topStrengths: [
+          'Ranked using resume skills, experience, project signals, and academic evidence.'
+        ],
+        topRisks: [
+          'This fallback summary is heuristic-only when Gemini is unavailable.'
+        ],
+        hiringRecommendation: topCandidate
+          ? `Prioritize ${topCandidate.applicantName || 'the top candidate'} for the next interview round.`
+          : 'Review additional applicants or adjust the job requirements.',
+        rankedCandidates: payload.recommendations.slice(0, Math.min(10, payload.recommendations.length)).map((candidate) => ({
+          name: candidate.applicantName || candidate.name || 'Unknown',
+          reason: `Score ${candidate.score}. Matched skills: ${(candidate.matched_skills || candidate.matchedSkills || []).join(', ') || 'none'}.`,
+          fit: candidate.score >= 75 ? 'high' : candidate.score >= 55 ? 'medium' : 'low'
+        }))
+      };
+    }
+
+    return res.json({
+      job_id: payload.job_id,
+      job: payload.job,
+      recommendations: payload.recommendations,
+      vectorData: payload.vectorData,
+      summary,
+      count: payload.count,
+      fallbackUsed: payload.fallbackUsed,
+      source: payload.source
+    });
+  } catch (error) {
+    console.error('❌ Recommendation insights error:', error.message);
+    return res.status(error.statusCode || 500).json({
+      error: 'Failed to build recommendation insights',
+      details: error.message
+    });
+  }
+});
+
+// ==================== CHATBOT (Gemini Primary + AI Service Fallback) ====================
+router.post('/chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    // Primary path: Gemini API
+    if (GEMINI_API_KEY) {
+      try {
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const prompt = `You are kGamify's hiring assistant chatbot.
+
+Guidelines:
+- Keep responses concise, practical, and friendly.
+- Focus on hiring, job descriptions, applicants, interview process, and recruitment best practices.
+- If asked outside hiring scope, still answer briefly and steer back helpfully.
+
+User message:
+${message}`;
+
+        const result = await model.generateContent(prompt);
+        const reply = result.response.text()?.trim() || 'I could not generate a response right now.';
+        return res.json({ reply, provider: 'gemini' });
+      } catch (geminiError) {
+        console.error('❌ Gemini chat failed, trying AI service fallback:', geminiError.message);
+      }
+    }
+
+    // Secondary fallback path: existing AI service
+    const response = await axios.post(`${AI_SERVICE_URL}/chat`, { message }, { timeout: 30000 });
+    const reply = response.data?.reply || '';
+    return res.json({ reply, provider: 'ai-service' });
+
+  } catch (error) {
+    console.error('❌ Chat proxy error:', error.message);
+
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(503).json({
+        error: 'Chatbot service unavailable',
+        details: 'The chatbot service is not currently available. Please try again later.'
+      });
+    }
+
+    return res.status(error.response?.status || 500).json({
+      error: 'Failed to get chat response',
+      details: error.message
+    });
+  }
+});
 
 module.exports = router;

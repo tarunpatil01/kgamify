@@ -1,6 +1,14 @@
 // Environment configuration
 const host = typeof window !== 'undefined' ? window.location.host : '';
 
+// Detect if running on mobile device
+const isMobileDevice = () => {
+  if (typeof window === 'undefined') return false;
+  return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+    navigator.userAgent.toLowerCase()
+  );
+};
+
 // Map frontends to the correct backend base URL
 const HOST_API_MAP = {
   'kgamify-job.onrender.com': '/api',  // Same origin backend
@@ -9,7 +17,16 @@ const HOST_API_MAP = {
   'localhost:3000': 'http://localhost:5000/api'
 };
 
-const resolvedApiUrl = import.meta.env.VITE_API_URL || HOST_API_MAP[host] || 'https://job-portal-backend-629b.onrender.com/api';
+// Determine API URL with mobile-specific fallback
+let resolvedApiUrl = import.meta.env.VITE_API_URL || HOST_API_MAP[host];
+
+// For mobile devices on localhost, use production backend
+if (isMobileDevice() && (!resolvedApiUrl || resolvedApiUrl.includes('localhost'))) {
+  resolvedApiUrl = 'https://job-portal-backend-629b.onrender.com/api';
+}
+
+// Final fallback
+resolvedApiUrl = resolvedApiUrl || 'https://job-portal-backend-629b.onrender.com/api';
 
 export const config = {
   API_URL: resolvedApiUrl,

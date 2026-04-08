@@ -211,9 +211,9 @@ export class RoutePrefetcher {
   // Prefetch API data that might be needed for the route
   prefetchRouteData(href) {
     const routeDataMap = {
-      '/dashboard': [`${config.API_URL}/user/stats`, `${config.API_URL}/job?recent=true`],
+      '/dashboard': [`${config.API_URL}/job?page=1&limit=5`],
       '/jobs': [`${config.API_URL}/job?page=1`, `${config.API_URL}/companies`],
-      '/applications': [`${config.API_URL}/applications`],
+      '/applications': [`${config.API_URL}/application`],
     };
     
     const endpoints = routeDataMap[href];

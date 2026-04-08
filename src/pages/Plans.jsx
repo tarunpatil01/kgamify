@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { setSubscription } from '../store/slices/subscriptionSlice';
 import extractSubscriptionSnapshot from '../utils/subscriptionSnapshot';
+import { formatDateDDMMYYYY } from '../utils/date';
 import PropTypes from 'prop-types';
-import { getPaymentConfig, createPaymentOrder, verifyPayment, getSubscriptionHistory, selectFreePlan, upgradeSubscription, repeatSubscription } from '../api';
+import { getPaymentConfig, createPaymentOrder, verifyPayment, getSubscriptionHistory, selectFreePlan } from '../api';
 import usePlanMeta from '../hooks/usePlanMeta';
 import { FaRocket, FaStar, FaUserTie } from "react-icons/fa";
 
@@ -19,7 +20,6 @@ const PLAN_DEFINITIONS = {
     features: [
       'Post up to 3 active jobs',
       'Basic listing visibility',
-      'Ads displayed (support platform)',
       'Recommendations disabled'
     ]
   },
@@ -32,7 +32,6 @@ const PLAN_DEFINITIONS = {
     features: [
       'Post up to 15 active jobs',
       'Higher visibility & ranking boost',
-      'No ads on your dashboard',
       'Recommendations enabled'
     ]
   },
@@ -45,7 +44,7 @@ const PLAN_DEFINITIONS = {
     features: [
       'Post up to 20 active jobs',
       'Priority search presence',
-      'No ads + recommendations enabled',
+      'Recommendations enabled',
       'Extended subscription duration'
     ]
   },
@@ -58,7 +57,7 @@ const PLAN_DEFINITIONS = {
     features: [
       'Post up to 30 active jobs',
       'Maximum visibility & priority',
-      'No ads + recommendations enabled',
+      'Recommendations enabled',
       'Longest duration & best value'
     ]
   }
@@ -112,6 +111,62 @@ export default function Plans({ isDarkMode = false }) {
     });
   }
 
+  async function processPaidPlan(planId) {
+    const cfg = await getPaymentConfig();
+    const order = await createPaymentOrder(email, planId);
+    try { await ensureRazorpayLoaded(); } catch { setError('Failed to load payment SDK'); return; }
+    await new Promise((resolve, reject) => {
+      const rzp = new window.Razorpay({
+        key: cfg.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'kGamify',
+        description: `${PLAN_DEFINITIONS[planId].title} Subscription`,
+        order_id: order.orderId,
+        notes: { email, plan: planId },
+        prefill: { email, name: company?.companyName || email },
+        theme: { color: '#ff8200' },
+        handler: async (resp) => {
+          try {
+            await verifyPayment({
+              razorpay_order_id: resp.razorpay_order_id,
+              razorpay_payment_id: resp.razorpay_payment_id,
+              razorpay_signature: resp.razorpay_signature,
+              email,
+              plan: planId
+            });
+            // Refresh metadata & history
+            try {
+              const hist = await getSubscriptionHistory(email);
+              if (hist?.company) {
+                const updated = {
+                  ...company,
+                  subscriptionPlan: hist.company.plan,
+                  subscriptionStartedAt: hist.company.startAt || hist.company.startedAt || hist.company.subscriptionStartedAt || new Date().toISOString(),
+                  subscriptionEndsAt: hist.company.endAt || hist.company.subscriptionEndsAt || null,
+                  subscriptionJobLimit: hist.company.jobLimit || hist.company.subscriptionJobLimit || PLAN_DEFINITIONS[planId]?.limit || company?.subscriptionJobLimit,
+                  downgradedFromPlan: hist.company.downgradedFromPlan || null
+                };
+                localStorage.setItem('companyData', JSON.stringify(updated));
+                setCompany(updated);
+                setHistory({ company: hist.company, history: Array.isArray(hist.history) ? hist.history : [] });
+                dispatch(setSubscription(extractSubscriptionSnapshot(updated)));
+              }
+            } catch { /* ignore */ }
+            await refreshPlanMeta(true);
+            setSuccess(`${PLAN_DEFINITIONS[planId].title} plan activated`);
+            resolve();
+          } catch (e) {
+            setError(e.message || 'Payment verification failed');
+            reject(e);
+          }
+        },
+        modal: { ondismiss: () => { setError('Payment cancelled'); reject(new Error('cancelled')); } }
+      });
+      rzp.open();
+    });
+  }
+
   async function handleSelect(planId) {
     setError(''); setSuccess('');
     if (!email) { setError('Please login to choose a plan.'); return; }
@@ -129,60 +184,7 @@ export default function Plans({ isDarkMode = false }) {
         setSuccess('Free plan activated');
         return;
       }
-      // Paid plan purchase via Razorpay
-      const cfg = await getPaymentConfig();
-      const order = await createPaymentOrder(email, planId);
-      try { await ensureRazorpayLoaded(); } catch { setError('Failed to load payment SDK'); return; }
-      await new Promise((resolve, reject) => {
-        const rzp = new window.Razorpay({
-          key: cfg.keyId,
-          amount: order.amount,
-          currency: order.currency,
-          name: 'kGamify',
-          description: `${PLAN_DEFINITIONS[planId].title} Subscription`,
-          order_id: order.orderId,
-          notes: { email, plan: planId },
-          prefill: { email, name: company?.companyName || email },
-          theme: { color: '#ff8200' },
-          handler: async (resp) => {
-            try {
-              await verifyPayment({
-                razorpay_order_id: resp.razorpay_order_id,
-                razorpay_payment_id: resp.razorpay_payment_id,
-                razorpay_signature: resp.razorpay_signature,
-                email,
-                plan: planId
-              });
-              // Refresh metadata & history
-              try {
-                const hist = await getSubscriptionHistory(email);
-                if (hist?.company) {
-                  const updated = {
-                    ...company,
-                    subscriptionPlan: hist.company.plan,
-                    subscriptionStartedAt: hist.company.startAt || hist.company.startedAt || hist.company.subscriptionStartedAt || new Date().toISOString(),
-                    subscriptionEndsAt: hist.company.endAt || hist.company.subscriptionEndsAt || null,
-                    subscriptionJobLimit: hist.company.jobLimit || hist.company.subscriptionJobLimit || PLAN_DEFINITIONS[planId]?.limit || company?.subscriptionJobLimit,
-                    downgradedFromPlan: hist.company.downgradedFromPlan || null
-                  };
-                  localStorage.setItem('companyData', JSON.stringify(updated));
-                  setCompany(updated);
-                  setHistory({ company: hist.company, history: Array.isArray(hist.history) ? hist.history : [] });
-                  dispatch(setSubscription(extractSubscriptionSnapshot(updated)));
-                }
-              } catch { /* ignore */ }
-              await refreshPlanMeta(true);
-              setSuccess(`${PLAN_DEFINITIONS[planId].title} plan activated`);
-              resolve();
-            } catch (e) {
-              setError(e.message || 'Payment verification failed');
-              reject(e);
-            }
-          },
-          modal: { ondismiss: () => { setError('Payment cancelled'); reject(new Error('cancelled')); } }
-        });
-        rzp.open();
-      });
+      await processPaidPlan(planId);
     } catch (err) {
       setError(err.message || 'Failed to process subscription');
     } finally {
@@ -195,26 +197,7 @@ export default function Plans({ isDarkMode = false }) {
     if (!email) { setError('Login required'); return; }
     try {
       setLoadingPlan(targetPlan);
-      await upgradeSubscription(email, targetPlan);
-      await refreshPlanMeta(true);
-      // After refresh, pull latest history/company to dispatch
-      try {
-        const hist = await getSubscriptionHistory(email);
-        if (hist?.company) {
-          const updated = {
-            ...company,
-            subscriptionPlan: hist.company.plan,
-            subscriptionStartedAt: hist.company.startAt || hist.company.subscriptionStartedAt || new Date().toISOString(),
-            subscriptionEndsAt: hist.company.endAt || hist.company.subscriptionEndsAt || null,
-            subscriptionJobLimit: hist.company.jobLimit || hist.company.subscriptionJobLimit || PLAN_DEFINITIONS[targetPlan]?.limit || company?.subscriptionJobLimit,
-            downgradedFromPlan: hist.company.downgradedFromPlan || null
-          };
-          localStorage.setItem('companyData', JSON.stringify(updated));
-          setCompany(updated);
-          dispatch(setSubscription(extractSubscriptionSnapshot(updated)));
-        }
-      } catch { /* ignore */ }
-      setSuccess('Upgraded successfully');
+      await processPaidPlan(targetPlan);
     } catch (e) {
       setError(e.message || 'Upgrade failed');
     } finally {
@@ -227,25 +210,7 @@ export default function Plans({ isDarkMode = false }) {
     if (!email || !planMeta?.plan || planMeta.plan === 'free') { setError('No paid plan to renew'); return; }
     try {
       setLoadingPlan(planMeta.plan);
-      await repeatSubscription(email);
-      await refreshPlanMeta(true);
-      try {
-        const hist = await getSubscriptionHistory(email);
-        if (hist?.company) {
-          const updated = {
-            ...company,
-            subscriptionPlan: hist.company.plan,
-            subscriptionStartedAt: hist.company.startAt || hist.company.subscriptionStartedAt || new Date().toISOString(),
-            subscriptionEndsAt: hist.company.endAt || hist.company.subscriptionEndsAt || null,
-            subscriptionJobLimit: hist.company.jobLimit || hist.company.subscriptionJobLimit || PLAN_DEFINITIONS[planMeta.plan]?.limit || company?.subscriptionJobLimit,
-            downgradedFromPlan: hist.company.downgradedFromPlan || null
-          };
-          localStorage.setItem('companyData', JSON.stringify(updated));
-          setCompany(updated);
-          dispatch(setSubscription(extractSubscriptionSnapshot(updated)));
-        }
-      } catch { /* ignore */ }
-      setSuccess('Renewed successfully');
+      await processPaidPlan(planMeta.plan);
     } catch (e) {
       setError(e.message || 'Renewal failed');
     } finally {
@@ -338,18 +303,18 @@ export default function Plans({ isDarkMode = false }) {
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-lg font-semibold">Subscription Snapshot</h4>
               <div className="flex items-center gap-3 text-sm opacity-80">
-                <span>Plan: <strong>{planMeta.plan}</strong>{planMeta.endsAt && ` • Ends: ${planMeta.endsAt.toISOString().slice(0,10)}`}</span>
+                <span>Plan: <strong>{planMeta.plan}</strong>{planMeta.endsAt && ` • Ends: ${formatDateDDMMYYYY(planMeta.endsAt)}`}</span>
                 <Link to="/subscription" className="underline text-[#ff8200]">Open full snapshot</Link>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
               <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                 <div className="opacity-70">Started</div>
-                <div className="font-medium">{planMeta.started ? planMeta.started.toLocaleDateString() : '—'}</div>
+                <div className="font-medium">{formatDateDDMMYYYY(planMeta.started)}</div>
               </div>
               <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                 <div className="opacity-70">Ends</div>
-                <div className="font-medium">{planMeta.endsAt ? planMeta.endsAt.toLocaleDateString() : 'Indefinite'}</div>
+                <div className="font-medium">{planMeta.endsAt ? formatDateDDMMYYYY(planMeta.endsAt) : 'Indefinite'}</div>
               </div>
               <div className={`p-3 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                 <div className="opacity-70">Active jobs</div>
@@ -375,8 +340,8 @@ export default function Plans({ isDarkMode = false }) {
                         <tr key={h.invoiceId || h.startAt} className={isDarkMode ? 'border-t border-gray-700' : 'border-t border-gray-200'}>
                           <td className="py-2 pr-4 font-mono">{h.invoiceId || '—'}</td>
                           <td className="py-2 pr-4">{h.plan}</td>
-                          <td className="py-2 pr-4">{h.startAt ? new Date(h.startAt).toLocaleString() : '—'}</td>
-                          <td className="py-2 pr-4">{h.endAt ? new Date(h.endAt).toLocaleString() : '—'}</td>
+                          <td className="py-2 pr-4">{formatDateDDMMYYYY(h.startAt)}</td>
+                          <td className="py-2 pr-4">{formatDateDDMMYYYY(h.endAt)}</td>
                           <td className="py-2 pr-4">
                             <span className={`px-2 py-0.5 rounded text-xs ${h.status==='active' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'}`}>{h.status}</span>
                           </td>

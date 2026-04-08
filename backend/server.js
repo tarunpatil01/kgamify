@@ -10,6 +10,9 @@ const { Server } = require('socket.io');
 
 const app = express();
 
+// Render runs behind a reverse proxy. Trust first proxy so req.ip is client IP.
+app.set('trust proxy', 1);
+
 // Minimal internal logger
 function devLog(...args) {
   if (process.env.NODE_ENV !== 'production') console.log(...args);
@@ -99,6 +102,7 @@ app.use('/api/application', require('./routes/application'));
 app.use('/api/job', require('./routes/job'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/support', require('./routes/support'));
 
 // ✅ AI ROUTES (NEW)
 app.use('/api/ai', require('./routes/ai'));

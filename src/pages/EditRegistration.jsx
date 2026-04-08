@@ -346,7 +346,7 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
           localStorage.removeItem('rememberedEmail');
           localStorage.removeItem('companyType');
           localStorage.removeItem('companyData');
-          navigate('/');
+          navigate('/login');
         }
       }, 3000);
     } catch (error) {
@@ -399,7 +399,7 @@ function EditRegistration({ isDarkMode, $isDarkMode }) {
         <p className="text-xl font-bold mb-4">{errorMessage}</p>
         <button
           className="px-6 py-3 rounded-xl font-bold text-base shadow transition bg-gradient-to-r from-[#ff8200] to-[#ffb347] text-white hover:from-[#e57400] hover:to-[#ffb347]"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/login')}
         >
           Go to Login
         </button>

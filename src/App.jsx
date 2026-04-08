@@ -14,6 +14,9 @@ import LimitedAccessBanner from './components/LimitedAccessBanner';
 import { useState, useEffect, Suspense, lazy } from "react";
 import { getCompanyInfo } from "./api";
 import { PageLoadingFallback } from "./utils/lazyLoading";
+import FloatingChatbot from "./components/FloatingChatbot";
+import HomeInfo from "./pages/HomeInfo";
+const AdminLayout = lazy(() => import("./components/AdminLayout"));
 
 // Lazy load all pages for better performance
 const Login = lazy(() => import("./pages/Login"));
@@ -28,16 +31,20 @@ const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminMessages = lazy(() => import("./pages/AdminMessages"));
 const AdminApplicants = lazy(() => import("./pages/AdminApplicants"));
 const AdminJobs = lazy(() => import("./pages/AdminJobs"));
+const AdminAllJobs = lazy(() => import("./pages/AdminAllJobs"));
 const AdminProfile = lazy(() => import("./pages/AdminProfile"));
 const EditJob = lazy(() => import("./pages/EditJob"));
 const Job = lazy(() => import("./JobApplications/Job.jsx"));
-import AdminLayout from "./components/AdminLayout";
+const JobRecommendationInsights = lazy(() => import("./pages/JobRecommendationInsights"));
 const JobApplication = lazy(() => import("./pages/JobApplication"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Applications = lazy(() => import("./pages/Applications"));
 const Messages = lazy(() => import("./pages/Messages"));
 const Plans = lazy(() => import("./pages/Plans"));
 const SubscriptionSnapshot = lazy(() => import("./pages/SubscriptionSnapshot"));
+const SupportTickets = lazy(() => import("./pages/SupportTickets"));
+const AdminSupportTickets = lazy(() => import("./pages/AdminSupportTickets"));
+const AdminPlanHistory = lazy(() => import("./pages/AdminPlanHistory"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
@@ -48,7 +55,7 @@ const AdminAPI = lazy(() => import("./pages/AdminAPI"));
 
 function AppContent() {
   const location = useLocation();
-  const isLoginPage = ["/","/register","/forgot-password","/reset-password","/admin-login","/verify-email","/terms-of-service","/cookies","/privacy-policy","/support","/cancellations-refunds"].includes(location.pathname);
+  const isLoginPage = ["/","/login","/register","/forgot-password","/reset-password","/admin-login","/verify-email","/terms-of-service","/cookies","/privacy-policy","/support","/cancellations-refunds"].includes(location.pathname);
   
   const isAdminPage = location.pathname.startsWith('/admin');
   
@@ -144,6 +151,10 @@ function AppContent() {
               <Routes>
                 <Route
                   path="/"
+                  element={<HomeInfo isDarkMode={isDarkMode} />}
+                />
+                <Route
+                  path="/login"
                   element={<Login setLoggedInEmail={setLoggedInEmail} />}
                 />
                 <Route
@@ -332,8 +343,20 @@ function AppContent() {
                       element={<RequireCompanyAuth><Messages isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></RequireCompanyAuth>}
                     />
                     <Route
+                      path="/support-tickets"
+                      element={<RequireCompanyAuth><SupportTickets isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></RequireCompanyAuth>}
+                    />
+                    <Route
                       path="/admin"
                       element={<AdminLayout isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle}><AdminPortal isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></AdminLayout>}
+                    />
+                    <Route
+                      path="/admin/tickets"
+                      element={<AdminLayout isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle}><AdminSupportTickets isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></AdminLayout>}
+                    />
+                    <Route
+                      path="/admin/plans"
+                      element={<AdminLayout isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle}><AdminPlanHistory isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></AdminLayout>}
                     />
                     <Route
                       path="/admin/messages/:companyId"
@@ -346,6 +369,10 @@ function AppContent() {
                     <Route
                       path="/admin/jobs/:companyId"
                       element={<AdminLayout isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle}><AdminJobs isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></AdminLayout>}
+                    />
+                    <Route
+                      path="/admin/jobs"
+                      element={<AdminLayout isDarkMode={isDarkMode} $isDarkMode={isDarkMode} onThemeToggle={handleThemeToggle}><AdminAllJobs isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></AdminLayout>}
                     />
                     <Route
                       path="/admin/api"
@@ -364,6 +391,10 @@ function AppContent() {
                       element={<Job isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
                     />
                     <Route
+                      path="/job/:jobId/recommendations"
+                      element={<RequireCompanyAuth><JobRecommendationInsights isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></RequireCompanyAuth>}
+                    />
+                    <Route
                       path="/apply/:jobId"
                       element={<JobApplication $isDarkMode={isDarkMode} />}
                     />
@@ -376,7 +407,7 @@ function AppContent() {
             </div>
           </div>
           {/* Footer should shift with content when sidebar opens */}
-          {!isAdminPage && (
+          {!isAdminPage && location.pathname !== '/' && (
             <div
               className={`transform transition-transform duration-300 ${
                 isMobileView && isSidebarOpen ? 'translate-x-64' : 'translate-x-0'
@@ -387,6 +418,7 @@ function AppContent() {
               <Footer isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />
             </div>
           )}
+          <FloatingChatbot />
           </>
         )}
       </div>

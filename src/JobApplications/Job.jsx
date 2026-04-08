@@ -8,6 +8,7 @@ import { getJobById, getApplicationsByJobId, getRecommendationsForJob, shortlist
 import usePlanMeta from '../hooks/usePlanMeta';
 import sanitizeHTML from "../utils/sanitizeHTML";
 import ResumeViewer from "../components/ResumeViewer";
+import { formatDateDDMMYYYY } from '../utils/date';
 
 const Job = ({ isDarkMode }) => {
   const { jobId } = useParams();
@@ -486,7 +487,7 @@ const Job = ({ isDarkMode }) => {
           <div className={`flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
             <div>
               <div className="text-xl font-semibold">Applicants</div>
-              <div className="mt-2 flex items-center gap-3 text-sm">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
                 {planMeta?.recommendationsEnabled ? (
                   <>
                     <label className="inline-flex items-center gap-2">
@@ -521,6 +522,13 @@ const Job = ({ isDarkMode }) => {
                 ) : (
                   <div className={`px-3 py-2 rounded text-xs font-medium ${isDarkMode ? 'bg-gray-800 text-gray-300 border border-gray-700' : 'bg-white text-gray-600 border border-gray-300'}`}>AI recommendations available on paid plans</div>
                 )}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/job/${jobId}/recommendations`)}
+                  className="px-3 py-2 rounded-lg border border-[#ff8200] text-[#ff8200] bg-white hover:bg-orange-50 font-medium transition-colors"
+                >
+                  Open AI Insights
+                </button>
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm">
@@ -548,13 +556,72 @@ const Job = ({ isDarkMode }) => {
               const recNames = new Set((ai.items||[]).map(r => String(r.applicantName || r.name || '').trim().toLowerCase()).filter(Boolean));
               const recEmails = new Set((ai.items||[]).map(r => String(r.email || '').trim().toLowerCase()).filter(Boolean));
               const recResumes = new Set((ai.items||[]).map(r => String(r.resume_url || '').trim()).filter(u => !!u));
+
+              const recRankByName = new Map();
+              const recRankByEmail = new Map();
+              const recRankByResume = new Map();
+              const recScoreByName = new Map();
+              const recScoreByEmail = new Map();
+              const recScoreByResume = new Map();
+
+              (ai.items || []).forEach((r, idx) => {
+                const rank = idx + 1;
+                const score = Number(r.score ?? r.similarity_score ?? r.matchScore ?? 0) || 0;
+                const nameKey = String(r.applicantName || r.name || '').trim().toLowerCase();
+                const emailKey = String(r.email || '').trim().toLowerCase();
+                const resumeKey = String(r.resume_url || '').trim();
+
+                if (nameKey) {
+                  recRankByName.set(nameKey, rank);
+                  recScoreByName.set(nameKey, score);
+                }
+                if (emailKey) {
+                  recRankByEmail.set(emailKey, rank);
+                  recScoreByEmail.set(emailKey, score);
+                }
+                if (resumeKey) {
+                  recRankByResume.set(resumeKey, rank);
+                  recScoreByResume.set(resumeKey, score);
+                }
+              });
+
               const isRec = (a) => {
                 const nameKey = String(a.applicantName||'').trim().toLowerCase();
                 const emailKey = String(a.applicantEmail||'').trim().toLowerCase();
                 const resumeKey = String(a.resume||'').trim();
                 return (nameKey && recNames.has(nameKey)) || (emailKey && recEmails.has(emailKey)) || (resumeKey && recResumes.has(resumeKey));
               };
-              const visibleApps = planMeta?.recommendationsEnabled && recommendedOnly ? applications.filter(isRec) : applications;
+              const getRank = (a) => {
+                const nameKey = String(a.applicantName || '').trim().toLowerCase();
+                const emailKey = String(a.applicantEmail || '').trim().toLowerCase();
+                const resumeKey = String(a.resume || '').trim();
+                return recRankByEmail.get(emailKey)
+                  || recRankByResume.get(resumeKey)
+                  || recRankByName.get(nameKey)
+                  || Number.MAX_SAFE_INTEGER;
+              };
+              const getScore = (a) => {
+                const nameKey = String(a.applicantName || '').trim().toLowerCase();
+                const emailKey = String(a.applicantEmail || '').trim().toLowerCase();
+                const resumeKey = String(a.resume || '').trim();
+                return recScoreByEmail.get(emailKey)
+                  ?? recScoreByResume.get(resumeKey)
+                  ?? recScoreByName.get(nameKey)
+                  ?? -1;
+              };
+              const formatAiScore = (score) => {
+                if (score < 0) return 'N/A';
+                if (score <= 1) return `${(score * 100).toFixed(1)}%`;
+                return `${score.toFixed(1)}`;
+              };
+
+              const visibleApps = (planMeta?.recommendationsEnabled && recommendedOnly ? applications.filter(isRec) : applications)
+                .slice()
+                .sort((a, b) => {
+                  const rankDiff = getRank(a) - getRank(b);
+                  if (rankDiff !== 0) return rankDiff;
+                  return getScore(b) - getScore(a);
+                });
 
               if (planMeta?.recommendationsEnabled && recommendedOnly && !ai.loading && (ai.items||[]).length === 0) {
                 return (
@@ -581,6 +648,7 @@ const Job = ({ isDarkMode }) => {
                         <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
                           <tr>
                             <th className="text-left py-2 px-3">Name</th>
+                            <th className="text-left py-2 px-3">AI Score</th>
                             <th className="text-left py-2 px-3">Status</th>
                             <th className="text-right py-2 px-3">Date</th>
                             <th className="text-right py-2 px-3">Resume</th>
@@ -591,10 +659,15 @@ const Job = ({ isDarkMode }) => {
                           {visibleApps.map(applicant => (
                             <tr key={applicant._id} className={isDarkMode ? 'border-t border-gray-700' : 'border-top border-gray-200'}>
                               <td className="py-2 px-3 whitespace-nowrap">{applicant.applicantName}</td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${isDarkMode ? 'bg-gray-700 text-orange-300' : 'bg-orange-50 text-orange-700'}`}>
+                                  {formatAiScore(getScore(applicant))}
+                                </span>
+                              </td>
                               <td className="py-2 px-3">
                                 <span className={`px-2 py-0.5 rounded text-xs ${applicant.status === 'shortlisted' ? 'bg-green-100 text-green-700' : applicant.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{applicant.status || 'new'}</span>
                               </td>
-                              <td className="py-2 px-3 text-right whitespace-nowrap">{new Date(applicant.createdAt).toLocaleDateString()}</td>
+                              <td className="py-2 px-3 text-right whitespace-nowrap">{formatDateDDMMYYYY(applicant.createdAt)}</td>
                               <td className="py-2 px-3 text-right">
                                 {applicant.resume ? (
                                   <a href={applicant.resume} target="_blank" rel="noreferrer" className="px-2 py-1 rounded border hover:bg-gray-50 dark:hover:bg-gray-700">View</a>
@@ -603,7 +676,14 @@ const Job = ({ isDarkMode }) => {
                                 )}
                               </td>
                               <td className="py-2 px-3 text-right whitespace-nowrap">
-                                <div className="inline-flex items-center gap-2">
+                                <div className="inline-flex items-center gap-2 flex-wrap justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate(`/job/${jobId}/recommendations?applicant=${applicant._id}`)}
+                                    className="px-2 py-1 rounded text-xs font-medium transition-colors border border-[#ff8200] text-[#ff8200] bg-white hover:bg-orange-50"
+                                  >
+                                    View Applicant
+                                  </button>
                                   <button
                                     type="button"
                                     disabled={updatingIds.has(applicant._id) || applicant.status === 'shortlisted'}
@@ -645,7 +725,7 @@ const Job = ({ isDarkMode }) => {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className={`text-base font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{applicant.applicantName}</div>
-                              <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Applied on: {new Date(applicant.createdAt).toLocaleDateString()}</div>
+                              <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Applied on: {formatDateDDMMYYYY(applicant.createdAt)}</div>
                             </div>
                             <div className="shrink-0">
                               {applicant.status ? (
@@ -655,6 +735,11 @@ const Job = ({ isDarkMode }) => {
                                 }`}>{applicant.status}</span>
                               ) : null}
                             </div>
+                          </div>
+
+                          <div className="text-xs">
+                            <span className="font-medium">AI Score: </span>
+                            <span className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>{formatAiScore(getScore(applicant))}</span>
                           </div>
 
                           {applicant.testScore && (
@@ -684,7 +769,14 @@ const Job = ({ isDarkMode }) => {
                           </div>
 
                           {/* Actions */}
-                          <div className="mt-2 flex items-center gap-2">
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/job/${jobId}/recommendations?applicant=${applicant._id}`)}
+                              className="px-3 py-1 rounded text-xs font-medium transition-colors border border-[#ff8200] text-[#ff8200] bg-white hover:bg-orange-50"
+                            >
+                              View Applicant
+                            </button>
                             <button
                               type="button"
                               disabled={updatingIds.has(applicant._id) || applicant.status === 'shortlisted'}
