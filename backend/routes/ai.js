@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const axios = require('axios');
+const Job = require('../models/Job');
+const Application = require('../models/Application');
 
 // Import AI services
 const { jdRules } = require(path.join(__dirname, '../../AI/jdRules.cjs'));
@@ -13,6 +15,63 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const ML_SERVER_URL = process.env.ML_SERVER_URL || 'http://localhost:5001';
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+
+const normalizeSkillToken = (value) => String(value || '')
+  .toLowerCase()
+  .replace(/[^a-z0-9+#.\s]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+function extractJobSkills(job) {
+  const raw = [
+    job?.skills,
+    job?.jobTitle,
+    job?.jobDescription,
+    job?.responsibilities,
+    job?.eligibility,
+    job?.tags
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const tokens = normalizeSkillToken(raw)
+    .split(/[,\s/|]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 1);
+
+  return Array.from(new Set(tokens));
+}
+
+function scoreApplicationForJob(application, jobSkillSet) {
+  const applicantSkills = Array.isArray(application?.skills)
+    ? application.skills.map((s) => normalizeSkillToken(s)).filter(Boolean)
+    : [];
+
+  const applicantSkillSet = new Set(applicantSkills);
+  let matches = 0;
+  jobSkillSet.forEach((skill) => {
+    if (applicantSkillSet.has(skill)) matches += 1;
+  });
+
+  const baseMatchScore = jobSkillSet.size > 0
+    ? (matches / jobSkillSet.size) * 100
+    : 0;
+
+  const testScoreRaw = Number.parseFloat(String(application?.testScore || '').replace(/[^0-9.]/g, ''));
+  const normalizedTestScore = Number.isFinite(testScoreRaw)
+    ? Math.max(0, Math.min(100, testScoreRaw))
+    : 0;
+
+  // Weighted relevance score: skills overlap dominates, then test score, then resume presence.
+  const resumeBoost = application?.resume ? 5 : 0;
+  const relevanceScore = (baseMatchScore * 0.75) + (normalizedTestScore * 0.20) + resumeBoost;
+
+  return {
+    score: Number(relevanceScore.toFixed(2)),
+    matchedSkills: matches,
+    totalJobSkills: jobSkillSet.size
+  };
+}
 
 if (!GEMINI_API_KEY) {
   console.warn('⚠️ GEMINI_API_KEY is missing. Gemini features will fall back to non-Gemini logic.');
@@ -579,6 +638,48 @@ router.get('/recommend', async (req, res) => {
   } catch (error) {
     console.error('❌ Recommendation proxy error:', error.message);
 
+    // Fallback: in-process ranking using stored applicant skills + test score.
+    try {
+      const { job_id, top_n = 5 } = req.query;
+      const topN = Math.max(1, Math.min(50, Number.parseInt(top_n, 10) || 5));
+
+      const job = await Job.findById(job_id).lean();
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found', job_id });
+      }
+
+      const applications = await Application.find({ jobId: job_id }).lean();
+      const jobSkills = extractJobSkills(job);
+      const jobSkillSet = new Set(jobSkills);
+
+      const fallbackRecommendations = applications
+        .map((app) => {
+          const scoring = scoreApplicationForJob(app, jobSkillSet);
+          return {
+            applicantName: app.applicantName,
+            email: app.applicantEmail || '',
+            resume_url: app.resume || '',
+            skills: Array.isArray(app.skills) ? app.skills : [],
+            similarity_score: scoring.score,
+            score: scoring.score,
+            matched_skills: scoring.matchedSkills,
+            total_job_skills: scoring.totalJobSkills,
+            source: 'fallback-rule-engine'
+          };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, topN);
+
+      return res.json({
+        job_id,
+        recommendations: fallbackRecommendations,
+        count: fallbackRecommendations.length,
+        fallbackUsed: true
+      });
+    } catch (fallbackError) {
+      console.error('❌ Recommendation fallback error:', fallbackError.message);
+    }
+
     if (error.code === 'ECONNREFUSED') {
       return res.status(503).json({
         error: 'AI service unavailable',
@@ -600,7 +701,7 @@ router.get('/recommend', async (req, res) => {
   }
 });
 
-// ==================== CHATBOT (AI Service Proxy) ====================
+// ==================== CHATBOT (Gemini Primary + AI Service Fallback) ====================
 router.post('/chat', async (req, res) => {
   try {
     const { message } = req.body;
@@ -609,14 +710,33 @@ router.post('/chat', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    console.log(`💬 Proxying chat request: "${message.substring(0, 50)}..."`);
+    // Primary path: Gemini API
+    if (GEMINI_API_KEY) {
+      try {
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const prompt = `You are kGamify's hiring assistant chatbot.
 
+Guidelines:
+- Keep responses concise, practical, and friendly.
+- Focus on hiring, job descriptions, applicants, interview process, and recruitment best practices.
+- If asked outside hiring scope, still answer briefly and steer back helpfully.
+
+User message:
+${message}`;
+
+        const result = await model.generateContent(prompt);
+        const reply = result.response.text()?.trim() || 'I could not generate a response right now.';
+        return res.json({ reply, provider: 'gemini' });
+      } catch (geminiError) {
+        console.error('❌ Gemini chat failed, trying AI service fallback:', geminiError.message);
+      }
+    }
+
+    // Secondary fallback path: existing AI service
     const response = await axios.post(`${AI_SERVICE_URL}/chat`, { message }, { timeout: 30000 });
-
     const reply = response.data?.reply || '';
-
-    console.log(`✅ Got chat response from AI service`);
-    return res.json({ reply });
+    return res.json({ reply, provider: 'ai-service' });
 
   } catch (error) {
     console.error('❌ Chat proxy error:', error.message);
