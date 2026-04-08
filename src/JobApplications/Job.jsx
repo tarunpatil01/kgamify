@@ -487,7 +487,7 @@ const Job = ({ isDarkMode }) => {
           <div className={`flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
             <div>
               <div className="text-xl font-semibold">Applicants</div>
-              <div className="mt-2 flex items-center gap-3 text-sm">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
                 {planMeta?.recommendationsEnabled ? (
                   <>
                     <label className="inline-flex items-center gap-2">
@@ -522,6 +522,13 @@ const Job = ({ isDarkMode }) => {
                 ) : (
                   <div className={`px-3 py-2 rounded text-xs font-medium ${isDarkMode ? 'bg-gray-800 text-gray-300 border border-gray-700' : 'bg-white text-gray-600 border border-gray-300'}`}>AI recommendations available on paid plans</div>
                 )}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/job/${jobId}/recommendations`)}
+                  className="px-3 py-2 rounded-lg border border-[#ff8200] text-[#ff8200] bg-white hover:bg-orange-50 font-medium transition-colors"
+                >
+                  Open AI Insights
+                </button>
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm">

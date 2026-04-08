@@ -6,7 +6,6 @@ const Job = require('../models/Job');
 const Application = require('../models/Application');
 
 // Import AI services
-const { jdRules } = require(path.join(__dirname, '../../AI/jdRules.cjs'));
 const { verifyJD } = require(path.join(__dirname, '../../AI/jdVerifier.cjs'));
 const { rephraseJD } = require(path.join(__dirname, '../../AI/rephraseService_ML.cjs'));
 const { getSuggestionsML, testPythonML } = require(path.join(__dirname, '../../AI/pythonMLService.cjs'));
@@ -70,6 +69,152 @@ function scoreApplicationForJob(application, jobSkillSet) {
     score: Number(relevanceScore.toFixed(2)),
     matchedSkills: matches,
     totalJobSkills: jobSkillSet.size
+  };
+}
+
+function cleanGeminiJsonText(rawText) {
+  return String(rawText || '')
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+}
+
+async function getDetailedRecommendationPayload(jobId, topN) {
+  const normalizedTopN = Math.max(1, Math.min(50, Number.parseInt(topN, 10) || 5));
+
+  try {
+    const response = await axios.get(`${AI_SERVICE_URL}/recommend-detailed`, {
+      params: {
+        job_id: jobId,
+        top_n: normalizedTopN
+      },
+      timeout: 45000
+    });
+
+    const payload = response.data || {};
+    const recommendations = Array.isArray(payload.recommendations) ? payload.recommendations : [];
+    const normalizedRecommendations = recommendations
+      .map((rec) => {
+        const score = Number(rec.score ?? rec.final_score ?? rec.similarity_score ?? 0) || 0;
+        return {
+          ...rec,
+          name: rec.applicantName || rec.name || 'Unknown',
+          score,
+          final_score: score,
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    return {
+      job_id: payload.job_id || jobId,
+      job: payload.job || null,
+      vectorData: payload.vectorData || {},
+      recommendations: normalizedRecommendations.slice(0, normalizedTopN),
+      count: normalizedRecommendations.slice(0, normalizedTopN).length,
+      fallbackUsed: Boolean(payload.fallbackUsed),
+      source: 'python-vector-model',
+    };
+  } catch (error) {
+    console.error('❌ Detailed AI recommendation fetch failed:', error.message);
+  }
+
+  try {
+    const response = await axios.get(`${AI_SERVICE_URL}/recommend`, {
+      params: {
+        job_id: jobId,
+        top_n: normalizedTopN
+      },
+      timeout: 30000
+    });
+
+    const recommendations = response.data?.recommendations || [];
+    const normalized = recommendations
+      .map((rec) => {
+        const score = Number(
+          rec.score ?? rec.similarity_score ?? rec.matchScore ?? rec.match_score ?? 0
+        ) || 0;
+        return {
+          ...rec,
+          name: rec.applicantName || rec.name || 'Unknown',
+          score,
+          final_score: score
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, normalizedTopN);
+
+    return {
+      job_id: jobId,
+      job: null,
+      vectorData: {},
+      recommendations: normalized,
+      count: normalized.length,
+      fallbackUsed: false,
+      source: 'ai-service'
+    };
+  } catch (error) {
+    console.error('❌ Basic AI recommendation fetch failed:', error.message);
+  }
+
+  const job = await Job.findById(jobId).lean();
+  if (!job) {
+    const notFoundError = new Error('Job not found');
+    notFoundError.statusCode = 404;
+    notFoundError.jobId = jobId;
+    throw notFoundError;
+  }
+
+  const applications = await Application.find({ jobId }).lean();
+  const jobSkills = extractJobSkills(job);
+  const jobSkillSet = new Set(jobSkills);
+
+  const fallbackRecommendations = applications
+    .map((app) => {
+      const scoring = scoreApplicationForJob(app, jobSkillSet);
+      return {
+        applicantName: app.applicantName,
+        email: app.applicantEmail || '',
+        resume_url: app.resume || '',
+        skills: Array.isArray(app.skills) ? app.skills : [],
+        similarity_score: scoring.score,
+        score: scoring.score,
+        final_score: scoring.score,
+        matched_skills: scoring.matchedSkills,
+        total_job_skills: scoring.totalJobSkills,
+        source: 'fallback-rule-engine',
+        vectorData: {
+          featureVector: [
+            scoring.score / 100,
+            scoring.matchedSkills.length,
+            scoring.totalJobSkills,
+            app.resume ? 1 : 0,
+          ],
+        }
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, normalizedTopN);
+
+  return {
+    job_id: jobId,
+    job: {
+      jobTitle: job.jobTitle || '',
+      jobDescription: job.jobDescription || '',
+      skills: jobSkills,
+      experienceLevel: job.experienceLevel || '',
+      location: job.location || ''
+    },
+    vectorData: {
+      jobSkills,
+      jobTitle: job.jobTitle || '',
+      candidateCount: fallbackRecommendations.length,
+      source: 'fallback-rule-engine'
+    },
+    recommendations: fallbackRecommendations,
+    count: fallbackRecommendations.length,
+    fallbackUsed: true,
+    source: 'fallback-rule-engine'
   };
 }
 
@@ -168,7 +313,7 @@ Be specific in issues and suggestions. If the JD is good, return a high score wi
       let geminiResult;
       try {
         geminiResult = JSON.parse(cleaned);
-      } catch (parseErr) {
+      } catch {
         console.error('Gemini verify parse failed, falling back to rule-based');
         throw new Error('parse_failed');
       }
@@ -602,100 +747,127 @@ router.get('/recommend', async (req, res) => {
       return res.status(400).json({ error: 'job_id query parameter is required' });
     }
 
-    console.log(`🤖 Proxying recommendation request: job_id=${job_id}, top_n=${top_n}`);
-
-    const response = await axios.get(`${AI_SERVICE_URL}/recommend`, {
-      params: {
-        job_id,
-        top_n: parseInt(top_n) || 5
-      },
-      timeout: 30000
-    });
-
-    const recommendations = response.data?.recommendations || [];
-
-    // Normalize response to ensure all items have expected fields
-    const normalized = recommendations
-      .map((rec) => {
-        const score = Number(
-          rec.score ?? rec.similarity_score ?? rec.matchScore ?? rec.match_score ?? 0
-        ) || 0;
-        return {
-          ...rec,
-          name: rec.applicantName || rec.name || 'Unknown',
-          score
-        };
-      })
-      .sort((a, b) => b.score - a.score);
-
-    console.log(`✅ Got ${normalized.length} recommendations from AI service`);
+    const payload = await getDetailedRecommendationPayload(job_id, top_n);
     return res.json({
-      job_id,
-      recommendations: normalized,
-      count: normalized.length
+      job_id: payload.job_id,
+      recommendations: payload.recommendations,
+      count: payload.count,
+      fallbackUsed: payload.fallbackUsed,
+      source: payload.source
     });
 
   } catch (error) {
     console.error('❌ Recommendation proxy error:', error.message);
 
-    // Fallback: in-process ranking using stored applicant skills + test score.
     try {
-      const { job_id, top_n = 5 } = req.query;
-      const topN = Math.max(1, Math.min(50, Number.parseInt(top_n, 10) || 5));
-
-      const job = await Job.findById(job_id).lean();
-      if (!job) {
-        return res.status(404).json({ error: 'Job not found', job_id });
-      }
-
-      const applications = await Application.find({ jobId: job_id }).lean();
-      const jobSkills = extractJobSkills(job);
-      const jobSkillSet = new Set(jobSkills);
-
-      const fallbackRecommendations = applications
-        .map((app) => {
-          const scoring = scoreApplicationForJob(app, jobSkillSet);
-          return {
-            applicantName: app.applicantName,
-            email: app.applicantEmail || '',
-            resume_url: app.resume || '',
-            skills: Array.isArray(app.skills) ? app.skills : [],
-            similarity_score: scoring.score,
-            score: scoring.score,
-            matched_skills: scoring.matchedSkills,
-            total_job_skills: scoring.totalJobSkills,
-            source: 'fallback-rule-engine'
-          };
-        })
-        .sort((a, b) => b.score - a.score)
-        .slice(0, topN);
-
+      const payload = await getDetailedRecommendationPayload(req.query.job_id, req.query.top_n || 5);
       return res.json({
-        job_id,
-        recommendations: fallbackRecommendations,
-        count: fallbackRecommendations.length,
-        fallbackUsed: true
+        job_id: payload.job_id,
+        recommendations: payload.recommendations,
+        count: payload.count,
+        fallbackUsed: payload.fallbackUsed,
+        source: payload.source
       });
     } catch (fallbackError) {
-      console.error('❌ Recommendation fallback error:', fallbackError.message);
+      if (fallbackError.statusCode === 404) {
+        return res.status(404).json({ error: 'Job not found or no recommendations available', job_id: fallbackError.jobId });
+      }
+      return res.status(500).json({ error: 'Failed to get recommendations', details: fallbackError.message });
+    }
+  }
+});
+
+// ==================== RECOMMENDATION INSIGHTS (VECTOR DATA + GEMINI SUMMARY) ====================
+router.get('/recommendation-insights', async (req, res) => {
+  try {
+    const { job_id, top_n = 5 } = req.query;
+
+    if (!job_id) {
+      return res.status(400).json({ error: 'job_id query parameter is required' });
     }
 
-    if (error.code === 'ECONNREFUSED') {
-      return res.status(503).json({
-        error: 'AI service unavailable',
-        details: 'The recommendation service is not currently available. Please try again later.'
-      });
+    const payload = await getDetailedRecommendationPayload(job_id, top_n);
+
+    let summary = null;
+    if (GEMINI_API_KEY && payload.recommendations.length > 0) {
+      try {
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        const prompt = `You are a senior recruiter reviewing ranked job applicants.
+
+Return ONLY a raw JSON object with these exact keys:
+{
+  "summary": "one short executive summary",
+  "topStrengths": ["..."],
+  "topRisks": ["..."],
+  "hiringRecommendation": "...",
+  "rankedCandidates": [
+    {
+      "name": "...",
+      "reason": "...",
+      "fit": "high|medium|low"
+    }
+  ]
+}
+
+Job:
+${JSON.stringify(payload.job || {}, null, 2)}
+
+Vector payload:
+${JSON.stringify({
+          vectorData: payload.vectorData,
+          recommendations: payload.recommendations.slice(0, Math.min(10, payload.recommendations.length))
+        }, null, 2)}
+
+Focus on skills, past experience, projects, and academic evidence. Prioritize the strongest candidates in descending order.`;
+
+        const result = await model.generateContent(prompt);
+        const rawText = result.response.text();
+        const parsed = JSON.parse(cleanGeminiJsonText(rawText));
+        summary = parsed;
+      } catch (geminiError) {
+        console.error('❌ Gemini insights generation failed:', geminiError.message);
+      }
     }
 
-    if (error.response?.status === 404) {
-      return res.status(404).json({
-        error: 'Job not found or no recommendations available',
-        job_id: req.query.job_id
-      });
+    if (!summary) {
+      const topCandidate = payload.recommendations[0];
+      summary = {
+        summary: topCandidate
+          ? `${topCandidate.applicantName || 'Top candidate'} is currently the strongest match based on the available resume signals.`
+          : 'No applicants matched the current job signals strongly enough for a summary.',
+        topStrengths: [
+          'Ranked using resume skills, experience, project signals, and academic evidence.'
+        ],
+        topRisks: [
+          'This fallback summary is heuristic-only when Gemini is unavailable.'
+        ],
+        hiringRecommendation: topCandidate
+          ? `Prioritize ${topCandidate.applicantName || 'the top candidate'} for the next interview round.`
+          : 'Review additional applicants or adjust the job requirements.',
+        rankedCandidates: payload.recommendations.slice(0, Math.min(10, payload.recommendations.length)).map((candidate) => ({
+          name: candidate.applicantName || candidate.name || 'Unknown',
+          reason: `Score ${candidate.score}. Matched skills: ${(candidate.matched_skills || candidate.matchedSkills || []).join(', ') || 'none'}.`,
+          fit: candidate.score >= 75 ? 'high' : candidate.score >= 55 ? 'medium' : 'low'
+        }))
+      };
     }
 
-    return res.status(error.response?.status || 500).json({
-      error: 'Failed to get recommendations',
+    return res.json({
+      job_id: payload.job_id,
+      job: payload.job,
+      recommendations: payload.recommendations,
+      vectorData: payload.vectorData,
+      summary,
+      count: payload.count,
+      fallbackUsed: payload.fallbackUsed,
+      source: payload.source
+    });
+  } catch (error) {
+    console.error('❌ Recommendation insights error:', error.message);
+    return res.status(error.statusCode || 500).json({
+      error: 'Failed to build recommendation insights',
       details: error.message
     });
   }

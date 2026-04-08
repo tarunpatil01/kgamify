@@ -34,6 +34,7 @@ const AdminAllJobs = lazy(() => import("./pages/AdminAllJobs"));
 const AdminProfile = lazy(() => import("./pages/AdminProfile"));
 const EditJob = lazy(() => import("./pages/EditJob"));
 const Job = lazy(() => import("./JobApplications/Job.jsx"));
+const JobRecommendationInsights = lazy(() => import("./pages/JobRecommendationInsights"));
 import AdminLayout from "./components/AdminLayout";
 const JobApplication = lazy(() => import("./pages/JobApplication"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -373,6 +374,10 @@ function AppContent() {
                     <Route
                       path="/job/:jobId"
                       element={<Job isDarkMode={isDarkMode} $isDarkMode={isDarkMode} />}
+                    />
+                    <Route
+                      path="/job/:jobId/recommendations"
+                      element={<RequireCompanyAuth><JobRecommendationInsights isDarkMode={isDarkMode} $isDarkMode={isDarkMode} /></RequireCompanyAuth>}
                     />
                     <Route
                       path="/apply/:jobId"

@@ -490,7 +490,7 @@ export const rejectApplication = async (applicationId) => {
 
 // AI recommendations for a job
 export const getRecommendationsForJob = async (jobId, topN = 5) => {
-  const response = await axios.get(`${API_URL}/ai/recommend`, {
+  const response = await axios.get(`${API_URL}/ai/recommendation-insights`, {
     params: { job_id: jobId, top_n: topN }
   });
   const recs = response.data?.recommendations || [];
@@ -499,6 +499,13 @@ export const getRecommendationsForJob = async (jobId, topN = 5) => {
     ...r,
     name: r.applicantName || r.name || 'N/A'
   }));
+};
+
+export const getRecommendationInsightsForJob = async (jobId, topN = 10) => {
+  const response = await axios.get(`${API_URL}/ai/recommendation-insights`, {
+    params: { job_id: jobId, top_n: topN }
+  });
+  return response.data;
 };
 
 export async function registerBasic(data) {

@@ -36,6 +36,7 @@ models = {
 }
 
 _recommend_resumes_fn = None
+_recommend_resumes_detailed_fn = None
 _chat_with_ollama_fn = None
 
 
@@ -45,6 +46,14 @@ def _get_recommend_resumes_fn():
         from recommendation import recommend_resumes as _recommend
         _recommend_resumes_fn = _recommend
     return _recommend_resumes_fn
+
+
+def _get_recommend_resumes_detailed_fn():
+    global _recommend_resumes_detailed_fn
+    if _recommend_resumes_detailed_fn is None:
+        from recommendation import recommend_resumes_detailed as _recommend_detailed
+        _recommend_resumes_detailed_fn = _recommend_detailed
+    return _recommend_resumes_detailed_fn
 
 
 def _get_chat_with_ollama_fn():
@@ -165,6 +174,15 @@ def recommend(job_id: str = Query(...), top_n: Optional[int] = 5):
         recommend_resumes = _get_recommend_resumes_fn()
         results = recommend_resumes(job_id, top_n)
         return {"job_id": job_id, "recommendations": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/recommend-detailed", summary="Get detailed vector-based recommendations and summary data")
+def recommend_detailed(job_id: str = Query(...), top_n: Optional[int] = 5):
+    try:
+        recommend_resumes_detailed = _get_recommend_resumes_detailed_fn()
+        return recommend_resumes_detailed(job_id, top_n)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
