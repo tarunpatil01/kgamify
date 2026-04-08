@@ -332,45 +332,58 @@ router.post('/generate-jd', async (req, res) => {
 
     const finalPrompt = `${prompt || `Write a professional job description for "${jobTitle}"`}${skillsLine}
 
-Return a JSON object with EXACTLY these 7 keys. Every value must be a plain string only — no arrays, no nested objects:
+Return a JSON object with EXACTLY these 7 keys. Every value must be a plain string only — no arrays, no nested objects.
 
-{
-  "jobDescription": "2-3 sentence summary of the role",
-  "responsibilities": "* First responsibility\n* Second responsibility\n* Third responsibility\n* Fourth responsibility\n* Fifth responsibility",
-  "skills": "* First required skill\n* Second required skill\n* Third required skill\n* Fourth required skill",
-  "eligibility": "* Education requirement\n* Experience requirement\n* Other eligibility criteria",
-  "benefits": "* First benefit\n* Second benefit\n* Third benefit\n* Fourth benefit",
-  "recruitmentProcess": "* Step 1\n* Step 2\n* Step 3\n* Step 4",
-  "relocationBenefits": "One or two sentences about relocation support, or empty string if not applicable"
-}
+CRITICAL: Use the literal two-character sequence \\n (backslash + n) to separate bullet points inside strings. Do NOT use actual newline characters inside JSON string values.
 
-STRICT RULES:
-- Every value must be a plain STRING — never an array, never a nested object
-- Bullet points must use * at the start of each line
-- Separate bullet points with \\n
-- Use formal professional language
-- Do NOT include salary figures
-- Do NOT use placeholder text like [Company Name] or [Country]
-- Return ONLY the raw JSON, no markdown, no code fences`;
+Example of correct format:
+{"jobDescription":"We are seeking a skilled professional.","responsibilities":"* Design and develop features\\n* Collaborate with teams\\n* Review code","skills":"* JavaScript\\n* Node.js\\n* React","eligibility":"* Bachelor degree in CS\\n* 3+ years experience","benefits":"* Health insurance\\n* Remote work\\n* Annual bonus","recruitmentProcess":"* Resume screening\\n* Technical interview\\n* HR round","relocationBenefits":"Full relocation package provided including moving allowance."}
+
+Now generate for the requested role. Return ONLY the raw JSON object, no markdown, no code fences, no extra text before or after.`;
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        maxOutputTokens: 8192,
+        temperature: 0.7,
+      },
+    });
 
     const result  = await model.generateContent(finalPrompt);
     const rawText = result.response.text();
 
-    const cleaned = rawText
+    // Step 1: Strip markdown fences if present
+    let cleaned = rawText
       .replace(/^```json\s*/i, '')
       .replace(/^```\s*/i, '')
       .replace(/\s*```$/i, '')
       .trim();
+
+    // Step 2: Find the JSON object boundaries (in case there's extra text)
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd   = cleaned.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
+    }
+
+    // Step 3: Fix unescaped literal newlines inside JSON string values
+    // This replaces actual newline chars inside quoted strings with \n
+    cleaned = cleaned.replace(/"(?:[^"\\]|\\.)*"/g, (match) => {
+      return match
+        .replace(/\r\n/g, '\\n')
+        .replace(/\r/g, '\\n')
+        .replace(/\n/g, '\\n')
+        .replace(/\t/g, '\\t');
+    });
 
     let sections;
     try {
       sections = JSON.parse(cleaned);
     } catch (parseErr) {
       console.error('JSON parse failed:', parseErr.message);
-      console.error('Raw response was:', rawText.substring(0, 300));
+      console.error('Raw response was:', rawText.substring(0, 500));
+      console.error('Cleaned was:', cleaned.substring(0, 500));
       return res.status(500).json({ error: 'AI returned invalid format. Please try again.' });
     }
 

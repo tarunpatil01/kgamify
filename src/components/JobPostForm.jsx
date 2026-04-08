@@ -11,7 +11,7 @@ export default function JobPostForm() {
     skills: "",
     benefits: "",
     eligibility: "",
-    relocationBenefits: "",
+    OtherInfo: "",
     recruitmentProcess: "",
     companyDescription: "",
     additionalInfo: "",
@@ -230,7 +230,7 @@ export default function JobPostForm() {
       setSuccess("✅ Job Posted Successfully!");
       setFormData({
         title: "", description: "", requirements: "", responsibilities: "",
-        skills: "", benefits: "", eligibility: "", relocationBenefits: "",
+        skills: "", benefits: "", eligibility: "", OtherInfo: "",
         recruitmentProcess: "", companyDescription: "", additionalInfo: "",
         location: "", salary: "",
       });
@@ -388,15 +388,15 @@ export default function JobPostForm() {
       />
 
       <FormTextArea
-        label="Relocation Benefits"
-        value={formData.relocationBenefits}
-        onChange={(v) => handleChange("relocationBenefits", v)}
-        onSpellCorrect={() => handleSpellCorrect("relocationBenefits")}
-        onRephrase={() => handleRephraseField("relocationBenefits")}
-        spellChecking={spellChecking.relocationBenefits}
-        rephrasing={rephrasing.relocationBenefits}
-        suggestions={suggestions.relocationBenefits}
-        feedback={fieldFeedback.relocationBenefits}
+        label="Other Info"
+        value={formData.OtherInfo}
+        onChange={(v) => handleChange("OtherInfo", v)}
+        onSpellCorrect={() => handleSpellCorrect("OtherInfo")}
+        onRephrase={() => handleRephraseField("OtherInfo")}
+        spellChecking={spellChecking.OtherInfo}
+        rephrasing={rephrasing.OtherInfo}
+        suggestions={suggestions.OtherInfo}
+        feedback={fieldFeedback.OtherInfo}
         placeholder="Relocation package details, moving allowance..."
         rows={3}
       />
