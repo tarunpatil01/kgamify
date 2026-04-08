@@ -12,7 +12,8 @@ import { createJob } from "../api";
 import usePlanMeta from '../hooks/usePlanMeta';
 import AIEnhancedQuillEditor from '../components/AIEnhancedQuillEditor';
 import PropTypes from 'prop-types';
-
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const jobTitleOptions = [
@@ -41,6 +42,19 @@ const jobCategories = [
   "Analytics & BI", "Research & Development", "Other",
 ];
 
+const languageOptions = [
+  'English',
+  'Hindi',
+  'Marathi',
+  'Tamil',
+  'Telugu',
+  'Kannada',
+  'Malayalam',
+  'Bengali',
+  'Gujarati',
+  'Punjabi',
+];
+
 // Shared MUI sx helpers
 const muiInputSx = (isDarkMode) => ({
   '& .MuiOutlinedInput-root': {
@@ -64,6 +78,8 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
   const navigate = useNavigate();
   const [submitError, setSubmitError] = useState('');
   const [generateModalOpen, setGenerateModalOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
   const [formData, setFormData] = useState({
     jobTitle: "",
     jobDescription: "",
@@ -72,7 +88,7 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
     remoteOrOnsite: "",
     location: "",
     salary: "",
-    relocationBenefits: "",
+    otherInfo: "",
     equity: "",
     sponsorship: "",
     recruitmentProcess: "",
@@ -87,6 +103,7 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
     category: "",
     tags: "",
     validUntil: "",
+    languages: [],
     postedAt: new Date().toISOString(),
     companyEmail: email,
   });
@@ -122,6 +139,12 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // ── Handle languages selection ──
+  const handleLanguagesChange = (event) => {
+    const { value } = event.target;
+    setFormData({ ...formData, languages: typeof value === 'string' ? value.split(',') : value });
+  };
+
   // ── Strip HTML helper — removes Quill's empty paragraph <p><br></p> too ──
   const stripHtml = (html) =>
     (html || '')
@@ -129,6 +152,18 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
       .replace(/<[^>]*>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+
+  // ── Prepare HTML for PDF — converts list bullets to visible characters ──
+  const prepareHtmlForPdf = (html) => {
+    if (!html) return '';
+    return html
+      .replace(/<ul[^>]*>/gi, '<div style="margin:4px 0">')
+      .replace(/<\/ul>/gi, '</div>')
+      .replace(/<ol[^>]*>/gi, '<div style="margin:4px 0">')
+      .replace(/<\/ol>/gi, '</div>')
+      .replace(/<li[^>]*>/gi, '<div style="padding:2px 0;padding-left:16px;position:relative"><span style="position:absolute;left:0;color:#374151">•</span>')
+      .replace(/<\/li>/gi, '</div>');
+  };
 
   // Handle AI-generated sections filling all fields at once
   const handleSectionsGenerated = (sections) => {
@@ -140,8 +175,64 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
       eligibility:        sections.eligibility        || prev.eligibility,
       benefits:           sections.benefits           || prev.benefits,
       recruitmentProcess: sections.recruitmentProcess || prev.recruitmentProcess,
-      relocationBenefits: sections.relocationBenefits || prev.relocationBenefits,
+      otherInfo:          sections.otherInfo          || prev.otherInfo,
     }));
+  };
+
+  // ── Download PDF — uses hidden off-screen div, always in DOM ──
+  const handleDownloadPDF = async () => {
+    setPdfDownloading(true);
+    try {
+      const element = document.getElementById('jd-pdf-hidden');
+      if (!element) {
+        alert('PDF element not found. Please try again.');
+        return;
+      }
+
+      // Temporarily make visible for capture
+      element.style.display = 'block';
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+
+      element.style.display = 'none';
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const fileName = formData.jobTitle
+        ? `${formData.jobTitle.replace(/[^a-z0-9]/gi, '_')}_JD.pdf`
+        : 'Job_Description.pdf';
+
+      pdf.save(fileName);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      alert(`PDF failed: ${err.message}`);
+    } finally {
+      setPdfDownloading(false);
+      const el = document.getElementById('jd-pdf-hidden');
+      if (el) el.style.display = 'none';
+    }
   };
 
   // ── Verify JD — strips HTML first, validates on plain text ──
@@ -216,7 +307,13 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
       if (jdFiles && jdFiles.length) {
         payload = new FormData();
         Object.entries({ ...formData, companyEmail: email }).forEach(([k, v]) => {
-          if (v !== undefined && v !== null) payload.append(k, v);
+          if (v !== undefined && v !== null) {
+            if (k === 'languages' && Array.isArray(v)) {
+              payload.append(k, JSON.stringify(v));
+            } else {
+              payload.append(k, v);
+            }
+          }
         });
         jdFiles.forEach(file => payload.append('jdFiles', file));
         headers['Content-Type'] = 'multipart/form-data';
@@ -353,9 +450,37 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
 
         <form className="space-y-8" onSubmit={handleSubmit}>
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-6 border-b pb-2 border-dashed border-orange-300">
-              Job Details
-            </h2>
+            {/* ── Job Details heading with Preview + Download PDF buttons ── */}
+            <div className="flex items-center justify-between mb-6 border-b pb-2 border-dashed border-orange-300">
+              <h2 className="text-xl sm:text-2xl font-semibold">
+                Job Details
+              </h2>
+              <div className="flex items-center gap-2">
+                {/* Preview JD button */}
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 active:scale-95 shadow-sm"
+                  style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}
+                >
+                  <span>👁️</span><span>Preview JD</span>
+                </button>
+
+                {/* Download PDF button */}
+                <button
+                  type="button"
+                  onClick={handleDownloadPDF}
+                  disabled={pdfDownloading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 active:scale-95 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}
+                >
+                  {pdfDownloading
+                    ? <><span className="animate-spin">⏳</span><span>Generating...</span></>
+                    : <><span>📄</span><span>Download PDF</span></>
+                  }
+                </button>
+              </div>
+            </div>
 
             {/* ── Job Title — with Generate with AI button on the right ── */}
             <div className="mb-6">
@@ -464,15 +589,59 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
                 sx={muiInputSx(isDarkMode)} />
             </div>
 
-            {/* ── Relocation Benefits ── */}
+            {/* ── Languages ── */}
             <div className="mb-6">
-              <label className="block mb-2 font-medium">Relocation Benefits</label>
+              <label className="block mb-2 font-medium">Languages</label>
+              <Select
+                name="languages"
+                multiple
+                value={formData.languages}
+                onChange={handleLanguagesChange}
+                fullWidth
+                sx={muiSelectSx(isDarkMode)}
+                MenuProps={whitePaper}
+              >
+                {languageOptions.map((lang) => (
+                  <MenuItem key={lang} value={lang}>
+                    {lang}
+                  </MenuItem>
+                ))}
+              </Select>
+              {formData.languages.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {formData.languages.map((lang) => (
+                    <span
+                      key={lang}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-[#ff8200] text-white text-sm rounded-full"
+                    >
+                      {lang}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({
+                            ...formData,
+                            languages: formData.languages.filter((l) => l !== lang),
+                          });
+                        }}
+                        className="ml-1 hover:opacity-75 transition"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── Other Info (replaced from Relocation Benefits) ── */}
+            <div className="mb-6">
+              <label className="block mb-2 font-medium">Other Info</label>
               <AIEnhancedQuillEditor
-                value={formData.relocationBenefits}
-                onChange={(content) => setFormData({ ...formData, relocationBenefits: content })}
+                value={formData.otherInfo}
+                onChange={(content) => setFormData({ ...formData, otherInfo: content })}
                 isDarkMode={isDarkMode}
-                placeholder="e.g., Full relocation package, moving allowance provided"
-                fieldName="relocationBenefits"
+                placeholder="e.g., Full relocation package, moving allowance provided, flexible work hours, etc."
+                fieldName="otherInfo"
                 showRephraseButton={true}
               />
             </div>
@@ -710,6 +879,255 @@ export default function PostJob({ isDarkMode, email, userCompany }) {
             Job posted successfully
           </Alert>
         </Snackbar>
+      </div>
+
+      {/* ── JD Preview Modal ── */}
+      {previewOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-8 px-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setPreviewOpen(false); }}
+        >
+          <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100"
+              style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
+              <div>
+                <p className="text-white/80 text-sm font-medium">Job Preview</p>
+                <h2 className="text-white text-2xl font-bold">
+                  {formData.jobTitle || 'Untitled Position'}
+                </h2>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.location && (
+                    <span className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">📍 {formData.location}</span>
+                  )}
+                  {formData.employmentType && (
+                    <span className="bg-white/20 text-white text-xs px-2 py-1 rounded-full capitalize">💼 {formData.employmentType}</span>
+                  )}
+                  {formData.remoteOrOnsite && (
+                    <span className="bg-white/20 text-white text-xs px-2 py-1 rounded-full capitalize">🏠 {formData.remoteOrOnsite}</span>
+                  )}
+                  {formData.salary && (
+                    <span className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">💰 {formData.salary}</span>
+                  )}
+                  {formData.experienceLevel && (
+                    <span className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">⭐ {formData.experienceLevel}</span>
+                  )}
+                  {formData.languages.length > 0 && (
+                    <span className="bg-white/20 text-white text-xs px-2 py-1 rounded-full">🗣️ {formData.languages.join(', ')}</span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setPreviewOpen(false)}
+                className="text-white hover:bg-white/20 rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold transition-colors flex-shrink-0 ml-4"
+              >×</button>
+            </div>
+
+            {/* Body — id added here for html2canvas capture */}
+            <div id="jd-preview-content" className="px-8 py-6 space-y-6 text-gray-800 text-sm leading-relaxed bg-white">
+
+              {/* Job title + badges repeated inside capture area for clean PDF */}
+              <div className="pb-4 border-b border-gray-200">
+                <h1 className="text-2xl font-bold text-gray-900">{formData.jobTitle || 'Untitled Position'}</h1>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.location && <span className="bg-pink-100 text-pink-700 text-xs px-2 py-1 rounded-full">📍 {formData.location}</span>}
+                  {formData.employmentType && <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full capitalize">💼 {formData.employmentType}</span>}
+                  {formData.remoteOrOnsite && <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full capitalize">🏠 {formData.remoteOrOnsite}</span>}
+                  {formData.salary && <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full">💰 {formData.salary}</span>}
+                  {formData.experienceLevel && <span className="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full">⭐ {formData.experienceLevel}</span>}
+                  {formData.languages.length > 0 && <span className="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full">🗣️ {formData.languages.join(', ')}</span>}
+                </div>
+              </div>
+
+              {/* Helper: render a section only if it has content */}
+              {[
+                { label: '📋 Job Description',      html: formData.jobDescription },
+                { label: '🎯 Responsibilities',      html: formData.responsibilities },
+                { label: '🛠️ Skills Required',      html: formData.skills },
+                { label: '✅ Eligibility',           html: formData.eligibility },
+                { label: '🎁 Benefits',              html: formData.benefits },
+                { label: '🔄 Recruitment Process',  html: formData.recruitmentProcess },
+                { label: 'ℹ️ Other Info',            html: formData.otherInfo },
+                { label: '🏢 Company Description',  html: formData.companyDescription },
+                { label: 'ℹ️ Additional Information', html: formData.additionalInformation },
+              ].filter(sec => sec.html && sec.html.replace(/<[^>]*>/g, '').replace(/\s/g, '')).map((sec, i) => (
+                <div key={i}>
+                  <h3 className="font-bold text-base text-gray-900 mb-2 pb-1 border-b border-gray-100">{sec.label}</h3>
+                  <div
+                    className="prose prose-sm max-w-none text-gray-700
+                      [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1
+                      [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1
+                      [&_li]:text-gray-700
+                      [&_h3]:font-semibold [&_h3]:text-gray-800 [&_h3]:mt-3 [&_h3]:mb-1
+                      [&_strong]:font-semibold [&_strong]:text-gray-900
+                      [&_p]:mb-2"
+                    dangerouslySetInnerHTML={{ __html: prepareHtmlForPdf(sec.html) }}
+                  />
+                </div>
+              ))}
+
+              {/* Meta fields */}
+              {(formData.category || formData.tags || formData.numberOfPositions || formData.validUntil || formData.languages.length > 0) && (
+                <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-2 gap-3">
+                  {formData.category && (
+                    <div><span className="text-xs text-gray-500 block">Category</span><span className="font-medium">{formData.category}</span></div>
+                  )}
+                  {formData.numberOfPositions && (
+                    <div><span className="text-xs text-gray-500 block">Openings</span><span className="font-medium">{formData.numberOfPositions}</span></div>
+                  )}
+                  {formData.languages.length > 0 && (
+                    <div className="col-span-2"><span className="text-xs text-gray-500 block">Languages</span><span className="font-medium">{formData.languages.join(', ')}</span></div>
+                  )}
+                  {formData.tags && (
+                    <div className="col-span-2"><span className="text-xs text-gray-500 block">Tags</span><span className="font-medium">{formData.tags}</span></div>
+                  )}
+                  {formData.validUntil && (
+                    <div><span className="text-xs text-gray-500 block">Valid Until</span><span className="font-medium">{formData.validUntil}</span></div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+              <button
+                onClick={handleDownloadPDF}
+                disabled={pdfDownloading}
+                className="px-5 py-2 rounded-lg text-white font-semibold text-sm transition disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}
+              >
+                {pdfDownloading ? '⏳ Generating...' : '📄 Download PDF'}
+              </button>
+              <button
+                onClick={() => setPreviewOpen(false)}
+                className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-sm transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Hidden PDF capture div — always in DOM, never visible to user ── */}
+      <div
+        id="jd-pdf-hidden"
+        style={{
+          display: 'none',
+          position: 'fixed',
+          top: '-99999px',
+          left: '-99999px',
+          width: '794px',
+          backgroundColor: '#ffffff',
+          padding: '48px',
+          zIndex: -1,
+          fontFamily: 'Arial, sans-serif',
+        }}
+      >
+        {/* Title + badges */}
+        <div style={{ borderBottom: '3px solid #f5576c', paddingBottom: '20px', marginBottom: '28px' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: 'bold', color: '#111827', margin: '0 0 12px 0' }}>
+            {formData.jobTitle || 'Untitled Position'}
+          </h1>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {formData.location && (
+              <span style={{ background: '#fce7f3', color: '#be185d', fontSize: '12px', padding: '3px 12px', borderRadius: '999px', fontWeight: 500 }}>
+                📍 {formData.location}
+              </span>
+            )}
+            {formData.employmentType && (
+              <span style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '12px', padding: '3px 12px', borderRadius: '999px', fontWeight: 500, textTransform: 'capitalize' }}>
+                💼 {formData.employmentType}
+              </span>
+            )}
+            {formData.remoteOrOnsite && (
+              <span style={{ background: '#dcfce7', color: '#15803d', fontSize: '12px', padding: '3px 12px', borderRadius: '999px', fontWeight: 500, textTransform: 'capitalize' }}>
+                🏠 {formData.remoteOrOnsite}
+              </span>
+            )}
+            {formData.salary && (
+              <span style={{ background: '#fef9c3', color: '#a16207', fontSize: '12px', padding: '3px 12px', borderRadius: '999px', fontWeight: 500 }}>
+                💰 {formData.salary}
+              </span>
+            )}
+            {formData.experienceLevel && (
+              <span style={{ background: '#f3e8ff', color: '#7e22ce', fontSize: '12px', padding: '3px 12px', borderRadius: '999px', fontWeight: 500 }}>
+                ⭐ {formData.experienceLevel}
+              </span>
+            )}
+            {formData.languages.length > 0 && (
+              <span style={{ background: '#e0e7ff', color: '#4f46e5', fontSize: '12px', padding: '3px 12px', borderRadius: '999px', fontWeight: 500 }}>
+                🗣️ {formData.languages.join(', ')}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Content sections */}
+        {[
+          { label: 'Job Description',       html: formData.jobDescription },
+          { label: 'Responsibilities',       html: formData.responsibilities },
+          { label: 'Skills Required',        html: formData.skills },
+          { label: 'Eligibility',            html: formData.eligibility },
+          { label: 'Benefits',               html: formData.benefits },
+          { label: 'Recruitment Process',    html: formData.recruitmentProcess },
+          { label: 'Other Info',             html: formData.otherInfo },
+          { label: 'Company Description',    html: formData.companyDescription },
+          { label: 'Additional Information', html: formData.additionalInformation },
+        ].filter(sec => sec.html && sec.html.replace(/<[^>]*>/g, '').replace(/\s/g, '')).map((sec, i) => (
+          <div key={i} style={{ marginBottom: '24px' }}>
+            <h3 style={{
+              fontSize: '15px', fontWeight: 'bold', color: '#111827',
+              borderBottom: '1px solid #e5e7eb', paddingBottom: '8px', marginBottom: '10px', margin: '0 0 10px 0',
+            }}>
+              {sec.label}
+            </h3>
+            <div
+              style={{ fontSize: '13px', color: '#374151', lineHeight: '1.7' }}
+              dangerouslySetInnerHTML={{ __html: prepareHtmlForPdf(sec.html) }}
+            />
+          </div>
+        ))}
+
+        {/* Meta info */}
+        {(formData.category || formData.numberOfPositions || formData.tags || formData.validUntil || formData.languages.length > 0) && (
+          <div style={{
+            background: '#f9fafb', borderRadius: '10px', padding: '18px',
+            marginTop: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px',
+          }}>
+            {formData.category && (
+              <div>
+                <span style={{ fontSize: '11px', color: '#6b7280', display: 'block', marginBottom: '2px' }}>Category</span>
+                <span style={{ fontWeight: 600, fontSize: '13px' }}>{formData.category}</span>
+              </div>
+            )}
+            {formData.numberOfPositions && (
+              <div>
+                <span style={{ fontSize: '11px', color: '#6b7280', display: 'block', marginBottom: '2px' }}>Openings</span>
+                <span style={{ fontWeight: 600, fontSize: '13px' }}>{formData.numberOfPositions}</span>
+              </div>
+            )}
+            {formData.languages.length > 0 && (
+              <div style={{ gridColumn: 'span 2' }}>
+                <span style={{ fontSize: '11px', color: '#6b7280', display: 'block', marginBottom: '2px' }}>Languages</span>
+                <span style={{ fontWeight: 600, fontSize: '13px' }}>{formData.languages.join(', ')}</span>
+              </div>
+            )}
+            {formData.tags && (
+              <div style={{ gridColumn: 'span 2' }}>
+                <span style={{ fontSize: '11px', color: '#6b7280', display: 'block', marginBottom: '2px' }}>Tags</span>
+                <span style={{ fontWeight: 600, fontSize: '13px' }}>{formData.tags}</span>
+              </div>
+            )}
+            {formData.validUntil && (
+              <div>
+                <span style={{ fontSize: '11px', color: '#6b7280', display: 'block', marginBottom: '2px' }}>Valid Until</span>
+                <span style={{ fontWeight: 600, fontSize: '13px' }}>{formData.validUntil}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

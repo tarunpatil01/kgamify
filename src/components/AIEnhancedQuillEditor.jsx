@@ -7,6 +7,12 @@ const API_BASE = (config.API_URL || 'http://localhost:5000/api').replace(/\/$/, 
 
 // ─── Formatting Helpers ───────────────────────────────────────────────────────
 
+// Convert **bold** and *italic* markdown to HTML inline
+const applyInlineMarkdown = (text) =>
+  text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
 const formatPlainText = (text) => {
   if (!text || !text.trim()) return '';
   const lines = text.split('\n');
@@ -23,20 +29,22 @@ const formatPlainText = (text) => {
     const trimmed = line.trim();
     if (!trimmed) { closeLists(); return; }
     if (trimmed.length < 60 && (trimmed.endsWith(':') || trimmed === trimmed.toUpperCase())) {
-      closeLists(); html += `<h3>${trimmed}</h3>`; return;
+      closeLists(); html += `<h3>${applyInlineMarkdown(trimmed)}</h3>`; return;
     }
-    if (/^[\*\-\•\·]\s+/.test(trimmed)) {
+    if (/^[\*\-\u2022\u00b7]\s+/.test(trimmed)) {
       if (inOl) { html += '</ol>'; inOl = false; }
       if (!inUl) { html += '<ul>'; inUl = true; }
-      html += `<li>${trimmed.replace(/^[\*\-\•\·]\s+/, '')}</li>`; return;
+      const content = trimmed.replace(/^[\*\-\u2022\u00b7]\s+/, '');
+      html += `<li>${applyInlineMarkdown(content)}</li>`; return;
     }
-    if (/^\d+[\.\)]\s+/.test(trimmed)) {
+    if (/^\d+[\.]\s+/.test(trimmed)) {
       if (inUl) { html += '</ul>'; inUl = false; }
       if (!inOl) { html += '<ol>'; inOl = true; }
-      html += `<li>${trimmed.replace(/^\d+[\.\)]\s+/, '')}</li>`; return;
+      const content = trimmed.replace(/^\d+[\.]\s+/, '');
+      html += `<li>${applyInlineMarkdown(content)}</li>`; return;
     }
     closeLists();
-    html += `<p>${trimmed}</p>`;
+    html += `<p>${applyInlineMarkdown(trimmed)}</p>`;
   });
   closeLists();
   return html;
@@ -50,7 +58,6 @@ const htmlToPlainText = (html) =>
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&nbsp;/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 
-// Convert any value (string, array, object) to bullet plain text
 const toPlainBullets = (val) => {
   if (!val) return '';
   if (typeof val === 'string') return val;
@@ -79,7 +86,9 @@ function GenerateModal({ isOpen, onClose, onGenerate, isGenerating, jobTitle }) 
     }
   }, [isOpen, jobTitle]);
 
-  const submitPrompt = () => { if (promptText.trim()) onGenerate(promptText.trim()); };
+  const submitPrompt = () => {
+    if (promptText.trim()) onGenerate(promptText.trim());
+  };
 
   const handleKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); submitPrompt(); }
@@ -94,24 +103,26 @@ function GenerateModal({ isOpen, onClose, onGenerate, isGenerating, jobTitle }) 
       style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
       onClick={(e) => { if (e.target === e.currentTarget && !isGenerating) onClose(); }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4"
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0"
           style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
           <div className="flex items-center gap-2">
-            <span className="text-xl">🤖</span>
+            <span className="text-xl">&#129302;</span>
             <div>
               <h3 className="text-white font-bold text-lg leading-tight">Generate JD with AI</h3>
               <p className="text-purple-200 text-xs">All form fields will be auto-filled</p>
             </div>
           </div>
           <button onClick={() => !isGenerating && onClose()}
-            className="text-white/70 hover:text-white text-xl font-bold">✕</button>
+            className="text-white/70 hover:text-white text-xl font-bold">&times;</button>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-5">
+        {/* Scrollable Body */}
+        <div className="px-6 py-5 overflow-y-auto flex-1">
+
+          {/* Prompt textarea */}
           <label className="block text-sm font-semibold text-gray-700 mb-2">
             Describe the job you want to create:
           </label>
@@ -120,10 +131,10 @@ function GenerateModal({ isOpen, onClose, onGenerate, isGenerating, jobTitle }) 
             value={promptText}
             onChange={(e) => setPromptText(e.target.value)}
             onKeyDown={handleKeyDown}
-            rows={5}
-            placeholder={`Examples:\n• Senior Java Developer with Spring Boot\n• Data Scientist at a fintech company\n• DevOps Engineer focused on AWS`}
+            rows={4}
+            placeholder={`Examples:\n\u2022 Senior Java Developer with Spring Boot\n\u2022 Data Scientist at a fintech company\n\u2022 DevOps Engineer focused on AWS`}
             className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 resize-none focus:outline-none focus:border-purple-400 transition-colors"
-            style={{ minHeight: '130px' }}
+            style={{ minHeight: '110px' }}
           />
           <p className="text-xs text-gray-400 mt-1">
             Press <kbd className="bg-gray-100 px-1 py-0.5 rounded text-xs">Ctrl+Enter</kbd> to generate
@@ -149,16 +160,17 @@ function GenerateModal({ isOpen, onClose, onGenerate, isGenerating, jobTitle }) 
           )}
 
           {/* Info box */}
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs font-semibold text-blue-700 mb-1">📋 Fields that will be auto-filled:</p>
+          <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs font-semibold text-blue-700 mb-1">&#128203; Fields that will be auto-filled:</p>
             <p className="text-xs text-blue-600">
-              Job Description • Responsibilities • Skills • Eligibility • Benefits • Recruitment Process • Relocation Benefits
+              Job Description &bull; Responsibilities &bull; Skills &bull; Eligibility &bull; Benefits &bull; Recruitment Process
             </p>
           </div>
+
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t flex items-center gap-3">
+        <div className="px-6 py-4 bg-gray-50 border-t flex items-center gap-3 flex-shrink-0">
           <button type="button" onClick={() => !isGenerating && onClose()} disabled={isGenerating}
             className="px-5 py-2 rounded-lg text-sm font-medium text-gray-600 border border-gray-300 hover:bg-gray-100 disabled:opacity-50">
             Cancel
@@ -167,10 +179,11 @@ function GenerateModal({ isOpen, onClose, onGenerate, isGenerating, jobTitle }) 
             className="flex-1 py-2 rounded-lg text-sm font-bold text-white flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
             {isGenerating
-              ? <><span className="inline-block animate-spin">⏳</span><span>Generating all fields...</span></>
-              : <><span>✨</span><span>Generate &amp; Fill All Fields</span></>}
+              ? <><span className="inline-block animate-spin">&#9203;</span><span>Generating all fields...</span></>
+              : <><span>&#10024;</span><span>Generate &amp; Fill All Fields</span></>}
           </button>
         </div>
+
       </div>
     </div>
   );
@@ -200,7 +213,6 @@ export default function AIEnhancedQuillEditor({
   const isPastingRef                          = useRef(false);
   const wrapperRef                            = useRef(null);
 
-  // Combine internal and external modal open state
   const isModalOpen = modalOpen || externalModalOpen || false;
 
   const closeModal = useCallback(() => {
@@ -208,7 +220,7 @@ export default function AIEnhancedQuillEditor({
     onExternalModalClose?.();
   }, [onExternalModalClose]);
 
-  // ── Paste handler ─────────────────────────────────────────────────────────
+  // ── Paste handler ──────────────────────────────────────────────────────────
   useEffect(() => {
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
@@ -223,12 +235,12 @@ export default function AIEnhancedQuillEditor({
     if (!isPastingRef.current) { onChange(newValue); return; }
     isPastingRef.current = false;
     const plain = htmlToPlainText(newValue);
-    const hasStructure  = /[\n\r]/.test(plain) && /^[\*\-\•]|\d+[\.\)]/m.test(plain);
+    const hasStructure  = /[\n\r]/.test(plain) && /^[\*\-\u2022]|\d+[\.]/m.test(plain);
     const lostStructure = !/<(ul|ol|li|h[1-6])/i.test(newValue);
     onChange(hasStructure && lostStructure ? formatPlainText(plain) : newValue);
   }, [onChange]);
 
-  // ── Real-time issue detection ─────────────────────────────────────────────
+  // ── Real-time issue detection ──────────────────────────────────────────────
   useEffect(() => {
     if (!value || value.length < 10) { setSuggestions([]); setShowSuggestions(false); return; }
     const timer = setTimeout(async () => {
@@ -248,7 +260,7 @@ export default function AIEnhancedQuillEditor({
     return () => clearTimeout(timer);
   }, [value]);
 
-  // ── Generate JD ───────────────────────────────────────────────────────────
+  // ── Generate JD ─────────────────────────────���──────────────────────────────
   const handleGenerate = useCallback(async (userPrompt) => {
     setIsGenerating(true);
     try {
@@ -279,7 +291,6 @@ export default function AIEnhancedQuillEditor({
           eligibility:        formatPlainText(toPlainBullets(s.eligibility)),
           benefits:           formatPlainText(toPlainBullets(s.benefits)),
           recruitmentProcess: formatPlainText(toPlainBullets(s.recruitmentProcess)),
-          relocationBenefits: formatPlainText(toPlainBullets(s.relocationBenefits)),
         };
         onSectionsGenerated(filled);
         closeModal();
@@ -300,7 +311,7 @@ export default function AIEnhancedQuillEditor({
     }
   }, [jobTitle, skills, onChange, onSectionsGenerated, closeModal]);
 
-  // ── Fix & Formalize ───────────────────────────────────────────────────────
+  // ── Fix & Formalize ────────────────────────────────────────────────────────
   const handleRephrase = useCallback(async () => {
     if (!value || isRephrasing) return;
     setIsRephrasing(true);
@@ -327,7 +338,7 @@ export default function AIEnhancedQuillEditor({
   const hasIssues    = suggestions.length > 0;
   const isProcessing = isRephrasing || isGenerating;
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
       <GenerateModal
@@ -340,7 +351,6 @@ export default function AIEnhancedQuillEditor({
 
       <div className="mb-4" data-field={fieldName}>
 
-        {/* Label row — only shown if label prop passed AND showGenerateButton is true (internal button) */}
         {(label || showGenerateButton) && (
           <div className="flex items-center justify-between mb-2">
             {label && <label className="block text-sm font-medium">{label}</label>}
@@ -352,7 +362,7 @@ export default function AIEnhancedQuillEditor({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 shadow-sm"
                 style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
               >
-                <span>🤖</span><span>Generate with AI</span>
+                <span>&#129302;</span><span>Generate with AI</span>
               </button>
             )}
           </div>
@@ -369,10 +379,10 @@ export default function AIEnhancedQuillEditor({
         {showSuggestions && (
           <div className="mt-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between">
             <p className="text-sm text-yellow-800 font-medium">
-              📝 {suggestions.length} issue{suggestions.length > 1 ? 's' : ''} detected
+              &#128221; {suggestions.length} issue{suggestions.length > 1 ? 's' : ''} detected
             </p>
             <button type="button" onClick={() => setShowSuggestions(false)}
-              className="ml-3 text-yellow-500 hover:text-yellow-700 text-xs">✕</button>
+              className="ml-3 text-yellow-500 hover:text-yellow-700 text-xs">&times;</button>
           </div>
         )}
 
@@ -390,12 +400,12 @@ export default function AIEnhancedQuillEditor({
                 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {isRephrasing
-                ? <><span className="animate-spin">⏳</span><span>AI Processing...</span></>
-                : <><span>✨</span><span>Fix &amp; Formalize with AI</span></>}
+                ? <><span className="animate-spin">&#9203;</span><span>AI Processing...</span></>
+                : <><span>&#10024;</span><span>Fix &amp; Formalize with AI</span></>}
             </button>
             {hasIssues && !isProcessing && (
               <p className="mt-1 text-xs text-yellow-600">
-                📝 {suggestions.length} issue{suggestions.length > 1 ? 's' : ''} — click to fix
+                &#128221; {suggestions.length} issue{suggestions.length > 1 ? 's' : ''} &mdash; click to fix
               </p>
             )}
           </div>
