@@ -549,13 +549,72 @@ const Job = ({ isDarkMode }) => {
               const recNames = new Set((ai.items||[]).map(r => String(r.applicantName || r.name || '').trim().toLowerCase()).filter(Boolean));
               const recEmails = new Set((ai.items||[]).map(r => String(r.email || '').trim().toLowerCase()).filter(Boolean));
               const recResumes = new Set((ai.items||[]).map(r => String(r.resume_url || '').trim()).filter(u => !!u));
+
+              const recRankByName = new Map();
+              const recRankByEmail = new Map();
+              const recRankByResume = new Map();
+              const recScoreByName = new Map();
+              const recScoreByEmail = new Map();
+              const recScoreByResume = new Map();
+
+              (ai.items || []).forEach((r, idx) => {
+                const rank = idx + 1;
+                const score = Number(r.score ?? r.similarity_score ?? r.matchScore ?? 0) || 0;
+                const nameKey = String(r.applicantName || r.name || '').trim().toLowerCase();
+                const emailKey = String(r.email || '').trim().toLowerCase();
+                const resumeKey = String(r.resume_url || '').trim();
+
+                if (nameKey) {
+                  recRankByName.set(nameKey, rank);
+                  recScoreByName.set(nameKey, score);
+                }
+                if (emailKey) {
+                  recRankByEmail.set(emailKey, rank);
+                  recScoreByEmail.set(emailKey, score);
+                }
+                if (resumeKey) {
+                  recRankByResume.set(resumeKey, rank);
+                  recScoreByResume.set(resumeKey, score);
+                }
+              });
+
               const isRec = (a) => {
                 const nameKey = String(a.applicantName||'').trim().toLowerCase();
                 const emailKey = String(a.applicantEmail||'').trim().toLowerCase();
                 const resumeKey = String(a.resume||'').trim();
                 return (nameKey && recNames.has(nameKey)) || (emailKey && recEmails.has(emailKey)) || (resumeKey && recResumes.has(resumeKey));
               };
-              const visibleApps = planMeta?.recommendationsEnabled && recommendedOnly ? applications.filter(isRec) : applications;
+              const getRank = (a) => {
+                const nameKey = String(a.applicantName || '').trim().toLowerCase();
+                const emailKey = String(a.applicantEmail || '').trim().toLowerCase();
+                const resumeKey = String(a.resume || '').trim();
+                return recRankByEmail.get(emailKey)
+                  || recRankByResume.get(resumeKey)
+                  || recRankByName.get(nameKey)
+                  || Number.MAX_SAFE_INTEGER;
+              };
+              const getScore = (a) => {
+                const nameKey = String(a.applicantName || '').trim().toLowerCase();
+                const emailKey = String(a.applicantEmail || '').trim().toLowerCase();
+                const resumeKey = String(a.resume || '').trim();
+                return recScoreByEmail.get(emailKey)
+                  ?? recScoreByResume.get(resumeKey)
+                  ?? recScoreByName.get(nameKey)
+                  ?? -1;
+              };
+              const formatAiScore = (score) => {
+                if (score < 0) return 'N/A';
+                if (score <= 1) return `${(score * 100).toFixed(1)}%`;
+                return `${score.toFixed(1)}`;
+              };
+
+              const visibleApps = (planMeta?.recommendationsEnabled && recommendedOnly ? applications.filter(isRec) : applications)
+                .slice()
+                .sort((a, b) => {
+                  const rankDiff = getRank(a) - getRank(b);
+                  if (rankDiff !== 0) return rankDiff;
+                  return getScore(b) - getScore(a);
+                });
 
               if (planMeta?.recommendationsEnabled && recommendedOnly && !ai.loading && (ai.items||[]).length === 0) {
                 return (
@@ -582,6 +641,7 @@ const Job = ({ isDarkMode }) => {
                         <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
                           <tr>
                             <th className="text-left py-2 px-3">Name</th>
+                            <th className="text-left py-2 px-3">AI Score</th>
                             <th className="text-left py-2 px-3">Status</th>
                             <th className="text-right py-2 px-3">Date</th>
                             <th className="text-right py-2 px-3">Resume</th>
@@ -592,6 +652,11 @@ const Job = ({ isDarkMode }) => {
                           {visibleApps.map(applicant => (
                             <tr key={applicant._id} className={isDarkMode ? 'border-t border-gray-700' : 'border-top border-gray-200'}>
                               <td className="py-2 px-3 whitespace-nowrap">{applicant.applicantName}</td>
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${isDarkMode ? 'bg-gray-700 text-orange-300' : 'bg-orange-50 text-orange-700'}`}>
+                                  {formatAiScore(getScore(applicant))}
+                                </span>
+                              </td>
                               <td className="py-2 px-3">
                                 <span className={`px-2 py-0.5 rounded text-xs ${applicant.status === 'shortlisted' ? 'bg-green-100 text-green-700' : applicant.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>{applicant.status || 'new'}</span>
                               </td>
@@ -656,6 +721,11 @@ const Job = ({ isDarkMode }) => {
                                 }`}>{applicant.status}</span>
                               ) : null}
                             </div>
+                          </div>
+
+                          <div className="text-xs">
+                            <span className="font-medium">AI Score: </span>
+                            <span className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'}`}>{formatAiScore(getScore(applicant))}</span>
                           </div>
 
                           {applicant.testScore && (

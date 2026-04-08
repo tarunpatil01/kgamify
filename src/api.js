@@ -3,7 +3,6 @@ import { config } from './config/env.js';
 import backoff from './utils/backoff.js';
 
 const API_URL = config.API_URL;
-const AI_API_URL = config.AI_API_URL;
 
 // Create a custom axios instance with default settings
 const apiClient = axios.create({
@@ -491,9 +490,8 @@ export const rejectApplication = async (applicationId) => {
 
 // AI recommendations for a job
 export const getRecommendationsForJob = async (jobId, topN = 5) => {
-  const response = await axios.get(`${AI_API_URL}/recommend`, {
-    params: { job_id: jobId, top_n: topN },
-    withCredentials: false
+  const response = await axios.get(`${API_URL}/ai/recommend`, {
+    params: { job_id: jobId, top_n: topN }
   });
   const recs = response.data?.recommendations || [];
   // Normalize to always include .name for UI

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const axios = require('axios');
 
 // Import AI services
 const { jdRules } = require(path.join(__dirname, '../../AI/jdRules.cjs'));
@@ -10,6 +11,7 @@ const { getSuggestionsML, testPythonML } = require(path.join(__dirname, '../../A
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const ML_SERVER_URL = process.env.ML_SERVER_URL || 'http://localhost:5001';
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
 if (!GEMINI_API_KEY) {
@@ -531,5 +533,106 @@ function checkFieldRules(text, field) {
   }
   return issues;
 }
+
+// ==================== JOB RECOMMENDATIONS (AI Service Proxy) ====================
+router.get('/recommend', async (req, res) => {
+  try {
+    const { job_id, top_n = 5 } = req.query;
+
+    if (!job_id) {
+      return res.status(400).json({ error: 'job_id query parameter is required' });
+    }
+
+    console.log(`🤖 Proxying recommendation request: job_id=${job_id}, top_n=${top_n}`);
+
+    const response = await axios.get(`${AI_SERVICE_URL}/recommend`, {
+      params: {
+        job_id,
+        top_n: parseInt(top_n) || 5
+      },
+      timeout: 30000
+    });
+
+    const recommendations = response.data?.recommendations || [];
+
+    // Normalize response to ensure all items have expected fields
+    const normalized = recommendations
+      .map((rec) => {
+        const score = Number(
+          rec.score ?? rec.similarity_score ?? rec.matchScore ?? rec.match_score ?? 0
+        ) || 0;
+        return {
+          ...rec,
+          name: rec.applicantName || rec.name || 'Unknown',
+          score
+        };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    console.log(`✅ Got ${normalized.length} recommendations from AI service`);
+    return res.json({
+      job_id,
+      recommendations: normalized,
+      count: normalized.length
+    });
+
+  } catch (error) {
+    console.error('❌ Recommendation proxy error:', error.message);
+
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(503).json({
+        error: 'AI service unavailable',
+        details: 'The recommendation service is not currently available. Please try again later.'
+      });
+    }
+
+    if (error.response?.status === 404) {
+      return res.status(404).json({
+        error: 'Job not found or no recommendations available',
+        job_id: req.query.job_id
+      });
+    }
+
+    return res.status(error.response?.status || 500).json({
+      error: 'Failed to get recommendations',
+      details: error.message
+    });
+  }
+});
+
+// ==================== CHATBOT (AI Service Proxy) ====================
+router.post('/chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    console.log(`💬 Proxying chat request: "${message.substring(0, 50)}..."`);
+
+    const response = await axios.post(`${AI_SERVICE_URL}/chat`, { message }, { timeout: 30000 });
+
+    const reply = response.data?.reply || '';
+
+    console.log(`✅ Got chat response from AI service`);
+    return res.json({ reply });
+
+  } catch (error) {
+    console.error('❌ Chat proxy error:', error.message);
+
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(503).json({
+        error: 'Chatbot service unavailable',
+        details: 'The chatbot service is not currently available. Please try again later.'
+      });
+    }
+
+    return res.status(error.response?.status || 500).json({
+      error: 'Failed to get chat response',
+      details: error.message
+    });
+  }
+});
 
 module.exports = router;
