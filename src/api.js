@@ -727,6 +727,17 @@ export async function fetchCompanyTickets(email) {
   return data;
 }
 
+export async function postCompanyTicketMessage(ticketId, { email, text }) {
+  const res = await fetch(`${API_URL}/support/tickets/${ticketId}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, text })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to post ticket message');
+  return data;
+}
+
 export async function fetchAdminTickets({ status = '', q = '' } = {}) {
   const token = localStorage.getItem('adminToken');
   const params = new URLSearchParams();
@@ -752,6 +763,21 @@ export async function updateAdminTicket(ticketId, payload) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to update ticket');
+  return data;
+}
+
+export async function postAdminTicketMessage(ticketId, payload) {
+  const token = localStorage.getItem('adminToken');
+  const res = await fetch(`${API_URL}/support/admin/tickets/${ticketId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'x-auth-token': token } : {})
+    },
+    body: JSON.stringify(payload || {})
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to post admin ticket message');
   return data;
 }
 

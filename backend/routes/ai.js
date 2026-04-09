@@ -4,6 +4,12 @@ const path = require('path');
 const axios = require('axios');
 const Job = require('../models/Job');
 const Application = require('../models/Application');
+let pdfParse = null;
+try {
+  pdfParse = require('pdf-parse');
+} catch {
+  pdfParse = null;
+}
 
 // Import AI services
 const { verifyJD } = require(path.join(__dirname, '../../AI/jdVerifier.cjs'));
@@ -14,6 +20,49 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const ML_SERVER_URL = process.env.ML_SERVER_URL || 'http://localhost:5001';
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const JD_GENERATE_MAX_REQUESTS_PER_MINUTE = Number.parseInt(process.env.JD_GENERATE_MAX_REQUESTS_PER_MINUTE || '5', 10);
+
+const jdRequestBuckets = new Map();
+function enforceGenerateJdRateLimit(req, res, next) {
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const rawIp = String(req.headers['x-forwarded-for'] || req.ip || 'unknown').split(',')[0].trim();
+  const key = rawIp || 'unknown';
+
+  const bucket = jdRequestBuckets.get(key) || { count: 0, windowStart: now };
+  if (now - bucket.windowStart >= windowMs) {
+    bucket.count = 0;
+    bucket.windowStart = now;
+  }
+
+  bucket.count += 1;
+  jdRequestBuckets.set(key, bucket);
+
+  const remaining = Math.max(0, JD_GENERATE_MAX_REQUESTS_PER_MINUTE - bucket.count);
+  const retryAfterSeconds = Math.max(0, Math.ceil((windowMs - (now - bucket.windowStart)) / 1000));
+
+  res.setHeader('X-RateLimit-Limit', String(JD_GENERATE_MAX_REQUESTS_PER_MINUTE));
+  res.setHeader('X-RateLimit-Remaining', String(remaining));
+  res.setHeader('X-RateLimit-Reset', String(retryAfterSeconds));
+
+  if (bucket.count > JD_GENERATE_MAX_REQUESTS_PER_MINUTE) {
+    res.setHeader('Retry-After', String(retryAfterSeconds));
+    return res.status(429).json({
+      error: 'Too many generate-jd requests. Please wait and try again.',
+      retryAfterSeconds
+    });
+  }
+
+  // Lightweight opportunistic cleanup.
+  if (jdRequestBuckets.size > 5000) {
+    for (const [ip, data] of jdRequestBuckets.entries()) {
+      if (now - data.windowStart > windowMs * 2) jdRequestBuckets.delete(ip);
+    }
+  }
+
+  return next();
+}
 
 const normalizeSkillToken = (value) => String(value || '')
   .toLowerCase()
@@ -70,6 +119,81 @@ function scoreApplicationForJob(application, jobSkillSet) {
     matchedSkills: matches,
     totalJobSkills: jobSkillSet.size
   };
+}
+
+function extractSnippetByKeywords(text, keywords) {
+  const source = String(text || '');
+  const lower = source.toLowerCase();
+  for (const keyword of keywords) {
+    const idx = lower.indexOf(keyword);
+    if (idx >= 0) {
+      const start = Math.max(0, idx - 70);
+      const end = Math.min(source.length, idx + 200);
+      return source.slice(start, end).replace(/\s+/g, ' ').trim();
+    }
+  }
+  return '';
+}
+
+async function getResumeSignals(resumeUrl, jobSkills) {
+  if (!resumeUrl || !pdfParse) {
+    return {
+      matchedSkills: [],
+      experienceSnippet: '',
+      projectsSnippet: '',
+      educationSnippet: '',
+      experienceScore: 0,
+      projectsScore: 0,
+      academicScore: 0,
+      skillScore: 0
+    };
+  }
+
+  try {
+    const response = await axios.get(resumeUrl, { responseType: 'arraybuffer', timeout: 20000 });
+    const parsed = await pdfParse(Buffer.from(response.data));
+    const text = String(parsed?.text || '').replace(/\s+/g, ' ').trim();
+    const lower = text.toLowerCase();
+
+    const matchedSkills = (jobSkills || []).filter((skill) => skill && lower.includes(String(skill).toLowerCase()));
+    const skillScore = jobSkills?.length ? Math.min(1, matchedSkills.length / jobSkills.length) : 0;
+
+    const yearsMatch = [...lower.matchAll(/(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)/g)].map((m) => Number(m[1]));
+    const years = yearsMatch.length ? Math.max(...yearsMatch) : 0;
+    const experienceScore = Math.min(1, years / 8);
+
+    const projectHits = ['project', 'developed', 'built', 'implemented', 'deployed'].reduce((acc, token) => acc + (lower.match(new RegExp(token, 'g')) || []).length, 0);
+    const projectsScore = Math.min(1, projectHits / 8);
+
+    let academicScore = 0;
+    if (/b\.tech|btech|m\.tech|mtech|b\.e|be\b|b\.sc|bsc|mca|mba|phd|diploma/.test(lower)) academicScore = Math.max(academicScore, 0.35);
+    const cgpa = lower.match(/(?:cgpa|gpa)\s*[:-]?\s*(\d+(?:\.\d+)?)/);
+    if (cgpa) academicScore = Math.max(academicScore, Math.min(1, Number(cgpa[1]) / 10));
+    const perc = lower.match(/(\d{2}(?:\.\d+)?)\s*%/);
+    if (perc) academicScore = Math.max(academicScore, Math.min(1, Number(perc[1]) / 100));
+
+    return {
+      matchedSkills,
+      experienceSnippet: extractSnippetByKeywords(text, ['experience', 'work experience', 'internship']),
+      projectsSnippet: extractSnippetByKeywords(text, ['projects', 'project experience']),
+      educationSnippet: extractSnippetByKeywords(text, ['education', 'academic', 'qualification']),
+      experienceScore,
+      projectsScore,
+      academicScore,
+      skillScore
+    };
+  } catch {
+    return {
+      matchedSkills: [],
+      experienceSnippet: '',
+      projectsSnippet: '',
+      educationSnippet: '',
+      experienceScore: 0,
+      projectsScore: 0,
+      academicScore: 0,
+      skillScore: 0
+    };
+  }
 }
 
 function cleanGeminiJsonText(rawText) {
@@ -179,30 +303,41 @@ async function getDetailedRecommendationPayload(jobId, topN) {
   const jobSkills = extractJobSkills(job);
   const jobSkillSet = new Set(jobSkills);
 
-  const fallbackRecommendations = applications
-    .map((app) => {
+  const fallbackRecommendationsRaw = await Promise.all(applications
+    .map(async (app) => {
       const scoring = scoreApplicationForJob(app, jobSkillSet);
+      const resumeSignals = await getResumeSignals(app.resume, jobSkills);
+      const blendedScore = Number((((scoring.score / 100) * 0.45) + (resumeSignals.skillScore * 0.25) + (resumeSignals.experienceScore * 0.12) + (resumeSignals.projectsScore * 0.10) + (resumeSignals.academicScore * 0.08)) * 100).toFixed(2);
       return {
         applicantName: app.applicantName,
         email: app.applicantEmail || '',
         resume_url: app.resume || '',
         skills: Array.isArray(app.skills) ? app.skills : [],
-        similarity_score: scoring.score,
-        score: scoring.score,
-        final_score: scoring.score,
-        matched_skills: scoring.matchedSkills,
+        similarity_score: blendedScore,
+        score: blendedScore,
+        final_score: blendedScore,
+        matched_skills: resumeSignals.matchedSkills,
         total_job_skills: scoring.totalJobSkills,
+        experience: resumeSignals.experienceSnippet,
+        projects: resumeSignals.projectsSnippet,
+        education: resumeSignals.educationSnippet,
+        skill_score: resumeSignals.skillScore,
+        exp_score: resumeSignals.experienceScore,
+        project_score: resumeSignals.projectsScore,
+        edu_score: resumeSignals.academicScore,
         source: 'fallback-rule-engine',
         vectorData: {
           featureVector: [
-            scoring.score / 100,
-            scoring.matchedSkills,
-            scoring.totalJobSkills,
-            app.resume ? 1 : 0,
+            resumeSignals.skillScore,
+            resumeSignals.experienceScore,
+            resumeSignals.projectsScore,
+            resumeSignals.academicScore,
           ],
         }
       };
-    })
+    }));
+
+  const fallbackRecommendations = fallbackRecommendationsRaw
     .sort((a, b) => b.score - a.score)
     .slice(0, normalizedTopN);
 
@@ -282,7 +417,7 @@ router.post('/verify-jd', async (req, res) => {
     // ── Use Gemini for verification ──
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
       const prompt = `You are a professional HR consultant reviewing a job description.
 
@@ -436,7 +571,7 @@ Text to fix:
 ${text}`;
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
     const result    = await model.generateContent(prompt);
     const rephrased = result.response.text();
@@ -539,7 +674,7 @@ router.post('/rephrase-batch', async (req, res) => {
 });
 
 // ==================== GENERATE JD ====================
-router.post('/generate-jd', async (req, res) => {
+router.post('/generate-jd', enforceGenerateJdRateLimit, async (req, res) => {
   try {
     const { prompt, jobTitle, skills } = req.body;
 
@@ -564,7 +699,7 @@ Now generate for the requested role. Return ONLY the raw JSON object, no markdow
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: GEMINI_MODEL,
       generationConfig: {
         maxOutputTokens: 8192,
         temperature: 0.7,
@@ -650,11 +785,46 @@ Now generate for the requested role. Return ONLY the raw JSON object, no markdow
 
   } catch (error) {
     console.error('Generate JD error:', error.message);
+
+    const { prompt = '', jobTitle = '', skills = '' } = req.body || {};
+    const safeTitle = String(jobTitle || '').trim() || 'the role';
+    const skillItems = String(skills || '')
+      .split(/[,\n|/]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 12);
+
+    const fallbackSections = {
+      jobDescription: `We are hiring for ${safeTitle}. The selected candidate will collaborate with cross-functional teams to deliver high-quality outcomes aligned with business objectives.${prompt ? ` Context: ${String(prompt).slice(0, 220)}` : ''}`,
+      responsibilities: '* Deliver assigned projects with quality and timeliness\n* Collaborate with cross-functional stakeholders\n* Maintain clear documentation and updates\n* Contribute to continuous process improvements',
+      skills: skillItems.length
+        ? skillItems.map((s) => `* ${s}`).join('\n')
+        : '* Strong communication and collaboration\n* Role-specific technical competency\n* Problem-solving and ownership mindset',
+      eligibility: '* Bachelor degree or equivalent practical experience\n* Relevant role experience\n* Ability to work effectively in a team environment',
+      benefits: '* Competitive compensation\n* Professional growth opportunities\n* Inclusive and collaborative work culture',
+      recruitmentProcess: '* Application screening\n* Technical or role-specific evaluation\n* Final discussion with hiring stakeholders',
+      relocationBenefits: 'Relocation support is evaluated based on role requirements and business needs.'
+    };
+
     if (error.message?.includes('API_KEY') || error.message?.includes('API key')) {
-      return res.status(500).json({ error: 'Invalid Gemini API key.' });
+      return res.status(200).json({
+        sections: fallbackSections,
+        generated: fallbackSections.jobDescription,
+        jobTitle,
+        skills: skills || '',
+        fallbackUsed: true,
+        fallbackReason: 'gemini-api-key-invalid'
+      });
     }
     if (error.message?.includes('quota') || error.message?.includes('429')) {
-      return res.status(429).json({ error: 'Gemini quota exceeded. Try again later.' });
+      return res.status(200).json({
+        sections: fallbackSections,
+        generated: fallbackSections.jobDescription,
+        jobTitle,
+        skills: skills || '',
+        fallbackUsed: true,
+        fallbackReason: 'gemini-quota-exceeded'
+      });
     }
     return res.status(500).json({ error: 'Failed to generate: ' + error.message });
   }
@@ -815,7 +985,7 @@ router.get('/recommendation-insights', async (req, res) => {
     if (GEMINI_API_KEY && payload.recommendations.length > 0) {
       try {
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
         const prompt = `You are a senior recruiter reviewing ranked job applicants.
 
@@ -909,7 +1079,7 @@ router.post('/chat', async (req, res) => {
     if (GEMINI_API_KEY) {
       try {
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
         const prompt = `You are kGamify's hiring assistant chatbot.
 
 Guidelines:

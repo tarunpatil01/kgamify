@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 
 const ticketMessageSchema = new mongoose.Schema({
-  role: { type: String, enum: ['user', 'ai', 'system'], required: true },
+  role: { type: String, enum: ['user', 'ai', 'system', 'admin'], required: true },
   text: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  by: { type: String, default: '' }
 }, { _id: false });
 
 const supportTicketSchema = new mongoose.Schema({
@@ -14,6 +15,7 @@ const supportTicketSchema = new mongoose.Schema({
   source: { type: String, enum: ['chatbot', 'portal'], default: 'chatbot' },
   status: { type: String, enum: ['open', 'in-progress', 'resolved'], default: 'open' },
   transcript: { type: [ticketMessageSchema], default: [] },
+  messages: { type: [ticketMessageSchema], default: [] },
   resolutionNote: { type: String, default: '' }
 }, { timestamps: true });
 

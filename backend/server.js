@@ -138,6 +138,14 @@ mongoose.connect(process.env.MONGO_URI)
 io.on('connection', (socket) => {
   socket.on('join', room => socket.join(room));
   socket.on('leave', room => socket.leave(room));
+  socket.on('ticket:typing', ({ ticketId, by, isTyping }) => {
+    if (!ticketId) return;
+    socket.to(`ticket:${ticketId}`).emit('ticket:typing', {
+      ticketId,
+      by: by || 'unknown',
+      isTyping: Boolean(isTyping)
+    });
+  });
 });
 
 app.set('io', io);
