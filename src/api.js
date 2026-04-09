@@ -501,10 +501,64 @@ export const getRecommendationsForJob = async (jobId, topN = 5) => {
   }));
 };
 
-export const getRecommendationInsightsForJob = async (jobId, topN = 10) => {
+const RECOMMENDATION_INSIGHTS_CACHE_PREFIX = 'kgamify:recommendation-insights:';
+const RECOMMENDATION_INSIGHTS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function getRecommendationInsightsCacheKey(jobId, topN) {
+  return `${RECOMMENDATION_INSIGHTS_CACHE_PREFIX}${jobId}:${topN}`;
+}
+
+function readRecommendationInsightsCache(jobId, topN) {
+  try {
+    const key = getRecommendationInsightsCacheKey(jobId, topN);
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.savedAt || !parsed?.data) return null;
+    if (Date.now() - parsed.savedAt > RECOMMENDATION_INSIGHTS_CACHE_TTL_MS) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function writeRecommendationInsightsCache(jobId, topN, data) {
+  try {
+    const key = getRecommendationInsightsCacheKey(jobId, topN);
+    localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), data }));
+  } catch {
+    // no-op if storage is unavailable
+  }
+}
+
+export const clearRecommendationInsightsCacheForJob = (jobId) => {
+  try {
+    const prefix = `${RECOMMENDATION_INSIGHTS_CACHE_PREFIX}${jobId}:`;
+    const keys = Object.keys(localStorage);
+    keys.forEach((k) => {
+      if (k.startsWith(prefix)) localStorage.removeItem(k);
+    });
+  } catch {
+    // no-op
+  }
+};
+
+export const getRecommendationInsightsForJob = async (jobId, topN = 10, options = {}) => {
+  const { forceRefresh = false } = options;
+
+  if (!forceRefresh) {
+    const cached = readRecommendationInsightsCache(jobId, topN);
+    if (cached) return cached;
+  }
+
   const response = await axios.get(`${API_URL}/ai/recommendation-insights`, {
     params: { job_id: jobId, top_n: topN }
   });
+
+  writeRecommendationInsightsCache(jobId, topN, response.data);
   return response.data;
 };
 

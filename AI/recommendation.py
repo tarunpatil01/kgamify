@@ -184,6 +184,37 @@ def _extract_candidate_features(resume_text):
     }
 
 
+def _build_fallback_candidate_text(app):
+    skills = app.get("skills") or []
+    if isinstance(skills, list):
+        skills_text = ", ".join(str(s).strip() for s in skills if str(s).strip())
+    else:
+        skills_text = str(skills or "")
+
+    return " ".join([
+        f"Candidate name: {app.get('applicantName', '')}",
+        f"Skills: {skills_text}",
+        f"Test score: {app.get('testScore', '')}",
+        "Resume content unavailable; using application metadata fallback."
+    ]).strip()
+
+
+def _safe_resume_text(app):
+    resume_url = app.get("resume")
+    if not resume_url:
+        return _build_fallback_candidate_text(app), False
+
+    try:
+        extracted = extract_text_from_pdf(resume_url)
+        translated = translate_to_english(extracted)
+        if translated and str(translated).strip():
+            return translated, True
+    except Exception:
+        pass
+
+    return _build_fallback_candidate_text(app), False
+
+
 def _score_candidate(job, app, job_skills, model, resume_text):
     eligibility_text = translate_to_english(job.get("eligibility", ""))
     job_description = translate_to_english(job.get("jobDescription", ""))
@@ -278,10 +309,7 @@ def recommend_resumes_detailed(job_id, top_n=5, job_context=None):
     recommendations = []
     for app in applications:
         resume_url = app.get("resume")
-        if not resume_url:
-            continue
-
-        resume_text = translate_to_english(extract_text_from_pdf(resume_url))
+        resume_text, parsed_resume_ok = _safe_resume_text(app)
         scoring = _score_candidate(job, app, job_skills, model, resume_text)
 
         recommendations.append({
@@ -302,6 +330,7 @@ def recommend_resumes_detailed(job_id, top_n=5, job_context=None):
             "project_score": scoring["signals"]["project_score"],
             "edu_score": scoring["signals"]["academic_score"],
             "test_score": scoring["signals"]["test_score"],
+            "resume_parsed": parsed_resume_ok,
             "vectorData": {
                 "featureVector": scoring["feature_vector"],
                 "signals": scoring["signals"],

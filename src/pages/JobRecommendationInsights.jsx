@@ -4,7 +4,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft, FaRedo, FaBrain, FaChartBar, FaFileAlt, FaUserCheck, FaExclamationTriangle } from 'react-icons/fa';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
-import { getJobById, getRecommendationInsightsForJob, shortlistApplication, rejectApplication } from '../api';
+import { getJobById, getRecommendationInsightsForJob, shortlistApplication, rejectApplication, clearRecommendationInsightsCacheForJob } from '../api';
 import ResumeViewer from '../components/ResumeViewer';
 
 const JobRecommendationInsights = ({ isDarkMode }) => {
@@ -21,7 +21,7 @@ const JobRecommendationInsights = ({ isDarkMode }) => {
   const [processingIds, setProcessingIds] = useState(new Set());
   const [selectedApplicant, setSelectedApplicant] = useState(null);
 
-  const loadData = async ({ silent = false } = {}) => {
+  const loadData = async ({ silent = false, forceRefresh = false } = {}) => {
     try {
       if (!silent) setLoading(true);
       else setRefreshing(true);
@@ -29,7 +29,7 @@ const JobRecommendationInsights = ({ isDarkMode }) => {
 
       const [jobData, insights] = await Promise.all([
         getJobById(jobId),
-        getRecommendationInsightsForJob(jobId, topN),
+        getRecommendationInsightsForJob(jobId, topN, { forceRefresh }),
       ]);
 
       setJob(jobData);
@@ -75,7 +75,8 @@ const JobRecommendationInsights = ({ isDarkMode }) => {
         message: `Application ${action}ed successfully`,
         severity: 'success'
       });
-      await loadData({ silent: true });
+      clearRecommendationInsightsCacheForJob(jobId);
+      await loadData({ silent: true, forceRefresh: true });
     } catch (e) {
       setSnack({
         open: true,
@@ -163,7 +164,7 @@ const JobRecommendationInsights = ({ isDarkMode }) => {
               />
             </label>
             <button
-              onClick={() => loadData({ silent: true })}
+              onClick={() => loadData({ silent: true, forceRefresh: true })}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#ff8200] text-white font-semibold"
               disabled={refreshing}
             >
