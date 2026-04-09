@@ -12,7 +12,7 @@ const isMobileDevice = () => {
 // Map frontends to the correct backend base URL
 const HOST_API_MAP = {
   'kgamify-job.onrender.com': '/api',  // Same origin backend
-  'kgamify-job-portal.vercel.app': 'https://job-portal-backend-629b.onrender.com/api',
+  'kgamify-job-portal.vercel.app': 'https://kgamify-job.onrender.com/api',
   'localhost:5173': 'http://localhost:5000/api',
   'localhost:3000': 'http://localhost:5000/api'
 };
@@ -22,11 +22,11 @@ let resolvedApiUrl = import.meta.env.VITE_API_URL || HOST_API_MAP[host];
 
 // For mobile devices on localhost, use production backend
 if (isMobileDevice() && (!resolvedApiUrl || resolvedApiUrl.includes('localhost'))) {
-  resolvedApiUrl = 'https://job-portal-backend-629b.onrender.com/api';
+  resolvedApiUrl = 'https://kgamify-job.onrender.com/api';
 }
 
 // Final fallback
-resolvedApiUrl = resolvedApiUrl || 'https://job-portal-backend-629b.onrender.com/api';
+resolvedApiUrl = resolvedApiUrl || 'https://kgamify-job.onrender.com/api';
 
 export const config = {
   API_URL: resolvedApiUrl,

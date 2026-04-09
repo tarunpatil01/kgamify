@@ -14,6 +14,25 @@ const apiClient = axios.create({
   withCredentials: true // Include credentials in cross-origin requests
 });
 
+const getBackendOrigin = () => {
+  if (!API_URL) return '';
+  if (API_URL.startsWith('/')) {
+    if (typeof window !== 'undefined') return window.location.origin;
+    return '';
+  }
+  return API_URL.replace(/\/api\/?$/, '');
+};
+
+const wakeBackendIfSleeping = async () => {
+  const origin = getBackendOrigin();
+  if (!origin) return;
+  try {
+    await axios.get(`${origin}/health`, { timeout: 20000, withCredentials: true });
+  } catch {
+    // Best-effort warm-up call.
+  }
+};
+
 export const registerCompany = async (formData) => {
   const response = await axios.post(`${API_URL}/companies`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -37,7 +56,18 @@ export const loginCompany = async (loginData) => {
       throw { error: 'Email and password are required' };
     }
     
-    const response = await apiClient.post('/companies/login', payload);
+    let response;
+    try {
+      response = await apiClient.post('/companies/login', payload);
+    } catch (firstError) {
+      // Free Render instances can sleep; warm backend and retry once for better mobile reliability.
+      if (firstError.code === 'ECONNABORTED' || firstError.code === 'ERR_NETWORK' || firstError.message?.includes('timeout')) {
+        await wakeBackendIfSleeping();
+        response = await apiClient.post('/companies/login', payload);
+      } else {
+        throw firstError;
+      }
+    }
     
     // Only process successful responses
     if (response.status !== 200) {
